@@ -42,7 +42,7 @@ const contractABI = [
   }
 ] as const;
 
-export const CONTRACT_ADDRESS = '0xF41989d68F12CBAD2E94f8A039aaA6e709EbEbA1';
+export const CONTRACT_ADDRESS = '0x3a1eEAa401F13Be2e30EB519Ed06b23f3Ff43BD6';
 
 // Create a public client for reading from the contract
 export const publicClient = createPublicClient({

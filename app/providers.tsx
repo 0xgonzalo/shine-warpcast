@@ -5,6 +5,7 @@ import { baseSepolia } from 'wagmi/chains';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PrivyProvider } from '@privy-io/react-auth';
 import type { ReactNode } from 'react';
+import { coinbaseWallet, injected, metaMask } from 'wagmi/connectors';
 
 // Ensure the environment variable is set
 if (typeof process.env.NEXT_PUBLIC_PRIVY_APP_ID !== 'string') {
@@ -16,6 +17,11 @@ const config = createConfig({
   transports: {
     [baseSepolia.id]: http(),
   },
+  connectors: [
+    metaMask(),
+    coinbaseWallet({ appName: 'Audio NFT DApp' }),
+    injected(), // fallback for any injected wallet
+  ],
 });
 
 const queryClient = new QueryClient();
@@ -36,18 +42,6 @@ export function Providers({ children }: { children: ReactNode }) {
           showWalletLoginFirst: true,
         },
         loginMethods: ['wallet'],
-        walletConnectors: {
-          injected: {
-            options: {
-              shimDisconnect: true,
-            },
-          },
-          walletConnect: {
-            options: {
-              projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
-            },
-          },
-        },
       }}
     >
       <WagmiProvider config={config}>
