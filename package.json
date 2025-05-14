@@ -17,6 +17,7 @@
     "privy": "^0.4.1",
     "react": "^18",
     "react-dom": "^18",
+    "react-h5-audio-player": "^3.10.0-rc.1",
     "viem": "^2.27.2",
     "wagmi": "^2.15.2"
   },

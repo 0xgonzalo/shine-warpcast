@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { CONTRACT_ADDRESS, contractABI } from '../utils/contract';
 import { uploadToIPFS, uploadMetadataToIPFS } from '@/app/utils/pinata';
+import { useAudio } from '../context/AudioContext';
+import GlobalAudioPlayer from '../components/GlobalAudioPlayer';
 
 export default function CreatePage() {
   const { address, isConnected } = useAccount();
@@ -18,6 +20,7 @@ export default function CreatePage() {
   const [isMinting, setIsMinting] = useState(false);
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
   const [mintError, setMintError] = useState<string | null>(null);
+  const { playAudio, currentAudio, isPlaying } = useAudio();
 
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash: txHash,
@@ -51,6 +54,12 @@ export default function CreatePage() {
       setImageFile(file);
       const url = URL.createObjectURL(file);
       setImagePreview(url);
+    }
+  };
+
+  const handlePlayPreview = () => {
+    if (audioPreview) {
+      playAudio(audioPreview, 'Audio Preview');
     }
   };
 
@@ -88,7 +97,7 @@ export default function CreatePage() {
   };
 
   return (
-    <main className="min-h-screen p-8">
+    <main className="min-h-screen p-8 pb-32">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-4xl font-bold mb-8 text-center">Audio NFT Creator</h1>
         {!isConnected ? (
@@ -116,12 +125,18 @@ export default function CreatePage() {
                 className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
               />
               {audioPreview && (
-                <div className="mt-4">
-                  <audio controls className="w-full">
-                    <source src={audioPreview} type="audio/mpeg" />
-                    Your browser does not support the audio element.
-                  </audio>
-                </div>
+                <button
+                  onClick={handlePlayPreview}
+                  className={`w-full mt-4 px-4 py-2 rounded-lg transition-colors ${
+                    currentAudio?.src === audioPreview && isPlaying
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  {currentAudio?.src === audioPreview && isPlaying
+                    ? 'Playing Preview...'
+                    : 'Play Preview'}
+                </button>
               )}
             </div>
             {/* Image Upload Section */}
@@ -202,6 +217,7 @@ export default function CreatePage() {
           </div>
         )}
       </div>
+      <GlobalAudioPlayer />
     </main>
   );
 } 

@@ -5,6 +5,9 @@ import { CONTRACT_ADDRESS, contractABI } from '../utils/contract';
 import { useState, useEffect } from 'react';
 import CollectedModal from '../components/CollectedModal';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
+import { useAudio } from '../context/AudioContext';
+import { AudioProvider } from '../context/AudioContext';
+import GlobalAudioPlayer from '../components/GlobalAudioPlayer';
 
 const MAX_SCAN = 20; // Scan token IDs 1 to 20
 
@@ -19,6 +22,20 @@ function NFTCard({ tokenId }: { tokenId: bigint }) {
   const { writeContract, isPending, isSuccess, data: txData } = useWriteContract();
   const [clicked, setClicked] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const { playAudio, currentAudio, isPlaying } = useAudio();
+
+  const handlePlayAudio = () => {
+    if (data?.audioURI && data.audioURI !== 'ipfs://placeholder-audio-uri') {
+      const audioUrl = getIPFSGatewayURL(data.audioURI);
+      // If it's the same audio, toggle play/pause
+      if (currentAudio?.src === audioUrl) {
+        playAudio(audioUrl, data.name);
+      } else {
+        // If it's a different audio, play it
+        playAudio(audioUrl, data.name);
+      }
+    }
+  };
 
   const handleCollect = () => {
     setClicked(true);
@@ -48,22 +65,40 @@ function NFTCard({ tokenId }: { tokenId: bigint }) {
           Creator: {data.creator?.slice(0, 6)}...{data.creator?.slice(-4)}
         </p>
         {data.imageURI && data.imageURI !== 'ipfs://placeholder-image-uri' && (
-          <img
-            src={getIPFSGatewayURL(data.imageURI)}
-            alt={data.name}
-            className="w-full h-48 object-cover rounded-lg mb-2"
-          />
-        )}
-        {data.audioURI && data.audioURI !== 'ipfs://placeholder-audio-uri' && (
-          <audio controls className="w-full mb-2">
-            <source src={getIPFSGatewayURL(data.audioURI)} type="audio/mpeg" />
-            Your browser does not support the audio element.
-          </audio>
+          <div className="relative group cursor-pointer" onClick={handlePlayAudio}>
+            <img
+              src={getIPFSGatewayURL(data.imageURI)}
+              alt={data.name}
+              className={`w-full h-48 object-cover rounded-lg mb-2 transition-all duration-300 ${
+                currentAudio?.src === getIPFSGatewayURL(data.audioURI) && isPlaying
+                  ? 'ring-2 ring-blue-500'
+                  : 'hover:opacity-90'
+              }`}
+            />
+            {data.audioURI && data.audioURI !== 'ipfs://placeholder-audio-uri' && (
+              <div className={`absolute inset-0 flex items-center justify-center bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
+                currentAudio?.src === getIPFSGatewayURL(data.audioURI) && isPlaying ? 'opacity-100' : ''
+              }`}>
+                <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center shadow-lg">
+                  {currentAudio?.src === getIPFSGatewayURL(data.audioURI) && isPlaying ? (
+                    <svg className="w-6 h-6 text-gray-900" viewBox="0 0 24 24" fill="currentColor">
+                      <rect x="6" y="4" width="4" height="16" />
+                      <rect x="14" y="4" width="4" height="16" />
+                    </svg>
+                  ) : (
+                    <svg className="w-6 h-6 text-gray-900" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         )}
         <button
           onClick={handleCollect}
           disabled={isPending}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+          className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
         >
           {isPending ? 'Collecting...' : 'Collect'}
         </button>
@@ -97,15 +132,18 @@ function NFTExists({ tokenId }: { tokenId: bigint }) {
 export default function HomePage() {
   const tokenIds = Array.from({ length: MAX_SCAN }, (_, i) => BigInt(i + 1));
   return (
-    <main className="min-h-screen p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8">NFT Gallery</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {tokenIds.map((tokenId) => (
-            <NFTExists key={tokenId.toString()} tokenId={tokenId} />
-          ))}
+    <AudioProvider>
+      <main className="min-h-screen p-8 pb-32">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-4xl font-bold mb-8">NFT Gallery</h1>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {tokenIds.map((tokenId) => (
+              <NFTExists key={tokenId.toString()} tokenId={tokenId} />
+            ))}
+          </div>
         </div>
-      </div>
-    </main>
+        <GlobalAudioPlayer />
+      </main>
+    </AudioProvider>
   );
 }
