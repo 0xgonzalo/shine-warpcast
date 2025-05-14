@@ -39,6 +39,15 @@ const contractABI = [
     stateMutability: 'view',
     inputs: [{ name: 'tokenId', type: 'uint256' }],
     outputs: [{ name: '', type: 'bool' }]
+  },
+  {
+    name: 'buy',
+    type: 'function',
+    stateMutability: 'payable',
+    inputs: [
+      { name: 'tokenId', type: 'uint256' }
+    ],
+    outputs: []
   }
 ] as const;
 
