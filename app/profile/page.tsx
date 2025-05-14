@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import Link from 'next/link';
 import { CONTRACT_ADDRESS, getNFTMetadata, publicClient } from '../utils/contract';
+import { getIPFSGatewayURL } from '@/app/utils/pinata';
 
 const TABS = ['Created', 'Collected'] as const;
 
@@ -112,9 +113,16 @@ export default function ProfilePage() {
                     <div key={nft.tokenId.toString()} className="bg-white/10 p-4 rounded-lg">
                       <h3 className="text-lg font-semibold mb-2">{nft.metadata.name}</h3>
                       <p className="text-sm text-gray-400 mb-2">{nft.metadata.description}</p>
-                      {nft.metadata.audioURI && (
+                      {nft.metadata.imageURI && nft.metadata.imageURI !== 'ipfs://placeholder-image-uri' && (
+                        <img
+                          src={getIPFSGatewayURL(nft.metadata.imageURI)}
+                          alt={nft.metadata.name}
+                          className="w-full h-48 object-cover rounded-lg mb-2"
+                        />
+                      )}
+                      {nft.metadata.audioURI && nft.metadata.audioURI !== 'ipfs://placeholder-audio-uri' && (
                         <audio controls className="w-full">
-                          <source src={nft.metadata.audioURI} type="audio/mpeg" />
+                          <source src={getIPFSGatewayURL(nft.metadata.audioURI)} type="audio/mpeg" />
                           Your browser does not support the audio element.
                         </audio>
                       )}

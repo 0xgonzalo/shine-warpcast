@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { CONTRACT_ADDRESS, contractABI } from '../utils/contract';
+import { uploadToIPFS, uploadMetadataToIPFS } from '@/app/utils/pinata';
 
 export default function CreatePage() {
   const { address, isConnected } = useAccount();
@@ -58,9 +59,21 @@ export default function CreatePage() {
     setIsMinting(true);
     setMintError(null);
     try {
-      // In a real app, upload audioFile and imageFile to IPFS and use the resulting URLs
-      const audioURI = 'ipfs://placeholder-audio-uri';
-      const imageURI = 'ipfs://placeholder-image-uri';
+      // Upload files to IPFS
+      const [audioURI, imageURI] = await Promise.all([
+        uploadToIPFS(audioFile),
+        uploadToIPFS(imageFile)
+      ]);
+
+      // Upload metadata to IPFS
+      const metadataURI = await uploadMetadataToIPFS({
+        name: nftName,
+        description: nftDescription,
+        audioURI,
+        imageURI
+      });
+
+      // Mint NFT with the metadata URI
       writeContract({
         address: CONTRACT_ADDRESS as `0x${string}`,
         abi: contractABI,
@@ -68,6 +81,7 @@ export default function CreatePage() {
         args: [address as `0x${string}`, nftName, nftDescription, audioURI, imageURI, BigInt(1)],
       });
     } catch (error) {
+      console.error('Minting error:', error);
       setMintError(error instanceof Error ? error.message : 'Failed to mint NFT');
       setIsMinting(false);
     }

@@ -4,6 +4,7 @@ import { useReadContract, useWriteContract } from 'wagmi';
 import { CONTRACT_ADDRESS, contractABI } from '../utils/contract';
 import { useState, useEffect } from 'react';
 import CollectedModal from '../components/CollectedModal';
+import { getIPFSGatewayURL } from '@/app/utils/pinata';
 
 const MAX_SCAN = 20; // Scan token IDs 1 to 20
 
@@ -48,10 +49,16 @@ function NFTCard({ tokenId }: { tokenId: bigint }) {
         </p>
         {data.imageURI && data.imageURI !== 'ipfs://placeholder-image-uri' && (
           <img
-            src={data.imageURI}
+            src={getIPFSGatewayURL(data.imageURI)}
             alt={data.name}
             className="w-full h-48 object-cover rounded-lg mb-2"
           />
+        )}
+        {data.audioURI && data.audioURI !== 'ipfs://placeholder-audio-uri' && (
+          <audio controls className="w-full mb-2">
+            <source src={getIPFSGatewayURL(data.audioURI)} type="audio/mpeg" />
+            Your browser does not support the audio element.
+          </audio>
         )}
         <button
           onClick={handleCollect}
@@ -63,7 +70,10 @@ function NFTCard({ tokenId }: { tokenId: bigint }) {
       </div>
       {showModal && txData && (
         <CollectedModal
-          nft={{ imageURI: data.imageURI, name: data.name }}
+          nft={{ 
+            imageURI: getIPFSGatewayURL(data.imageURI), 
+            name: data.name 
+          }}
           txHash={txData}
           onClose={() => setShowModal(false)}
         />

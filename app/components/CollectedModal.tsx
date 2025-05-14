@@ -1,4 +1,5 @@
 import React from 'react';
+import { getIPFSGatewayURL } from '@/app/utils/pinata';
 
 interface CollectedModalProps {
   nft: { imageURI: string; name: string };
@@ -19,7 +20,7 @@ const CollectedModal: React.FC<CollectedModalProps> = ({ nft, txHash, onClose })
         <h2 className="text-2xl font-bold mb-4">Collect Successful!</h2>
         {nft.imageURI && nft.imageURI !== 'ipfs://placeholder-image-uri' && (
           <img
-            src={nft.imageURI}
+            src={getIPFSGatewayURL(nft.imageURI)}
             alt={nft.name}
             className="w-full h-48 object-cover rounded-lg mb-4"
           />

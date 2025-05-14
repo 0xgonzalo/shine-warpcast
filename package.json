@@ -13,6 +13,7 @@
     "@privy-io/react-auth": "^2.13.1",
     "@tanstack/react-query": "^5",
     "next": "14.2.15",
+    "pinata-web3": "^0.5.4",
     "privy": "^0.4.1",
     "react": "^18",
     "react-dom": "^18",
