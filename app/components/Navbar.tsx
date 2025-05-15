@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useAccount, useDisconnect } from 'wagmi';
+import { useDisconnect } from 'wagmi';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { useEffect, useState, useRef } from 'react';
 
 export default function Navbar() {
-  const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
-  const { login, logout, ready, authenticated, linkWallet, user } = usePrivy();
+  const { login, logout, ready, authenticated, linkWallet } = usePrivy();
   const { wallets, ready: walletsReady } = useWallets();
   const [mounted, setMounted] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);

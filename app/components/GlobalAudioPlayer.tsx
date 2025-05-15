@@ -5,15 +5,20 @@ import AudioPlayer, { RHAP_UI } from 'react-h5-audio-player';
 import 'react-h5-audio-player/lib/styles.css';
 import { useRef, useEffect } from 'react';
 
-type AudioPlayerRef = {
+interface AudioPlayerInstance {
   audio: {
     current: HTMLAudioElement;
   };
-};
+  progressBar: HTMLDivElement;
+  container: HTMLDivElement;
+  togglePlay: () => void;
+  play: () => void;
+  pause: () => void;
+}
 
 export default function GlobalAudioPlayer() {
   const { currentAudio, isPlaying, setIsPlaying, stopAudio } = useAudio();
-  const playerRef = useRef<AudioPlayerRef | null>(null);
+  const playerRef = useRef<AudioPlayerInstance>(null);
 
   // Sync the player's state with the context
   useEffect(() => {
@@ -38,7 +43,7 @@ export default function GlobalAudioPlayer() {
           <span className="text-white font-medium truncate">{currentAudio.name}</span>
         </div>
         <AudioPlayer
-          ref={playerRef as any}
+          ref={playerRef as any} // Type assertion needed due to library's type definitions
           src={currentAudio.src}
           autoPlay={false}
           showJumpControls={false}

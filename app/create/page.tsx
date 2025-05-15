@@ -74,8 +74,8 @@ export default function CreatePage() {
         uploadToIPFS(imageFile)
       ]);
 
-      // Upload metadata to IPFS (we don't need to store the result since we're using the URIs directly)
-      await uploadMetadataToIPFS({
+      // Upload metadata to IPFS
+      const metadataURI = await uploadMetadataToIPFS({
         name: nftName,
         description: nftDescription,
         audioURI,
@@ -87,7 +87,14 @@ export default function CreatePage() {
         address: CONTRACT_ADDRESS as `0x${string}`,
         abi: contractABI,
         functionName: 'mint',
-        args: [address as `0x${string}`, nftName, nftDescription, audioURI, imageURI, BigInt(1)],
+        args: [
+          address as `0x${string}`,
+          nftName,
+          nftDescription,
+          audioURI,
+          imageURI,
+          BigInt(1)
+        ],
       });
     } catch (error) {
       console.error('Minting error:', error);

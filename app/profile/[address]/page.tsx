@@ -10,6 +10,19 @@ import { useParams } from 'next/navigation';
 const TABS = ['Created', 'Collected'] as const;
 type Tab = (typeof TABS)[number];
 
+interface NFTMetadata {
+  name: string;
+  description: string;
+  audioURI: string;
+  imageURI: string;
+  creator: `0x${string}`;
+}
+
+interface NFT {
+  tokenId: bigint;
+  metadata: NFTMetadata;
+}
+
 export default function ProfilePage() {
   const params = useParams();
   const { address: paramAddress } = params;
@@ -17,8 +30,8 @@ export default function ProfilePage() {
   const { ready, authenticated } = usePrivy();
   const { wallets, ready: walletsReady } = useWallets();
   const [activeTab, setActiveTab] = useState<Tab>('Created');
-  const [createdNFTs, setCreatedNFTs] = useState<any[]>([]);
-  const [collectedNFTs, setCollectedNFTs] = useState<any[]>([]);
+  const [createdNFTs, setCreatedNFTs] = useState<NFT[]>([]);
+  const [collectedNFTs, setCollectedNFTs] = useState<NFT[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Use the address from URL params, fallback to connected wallet
@@ -32,8 +45,8 @@ export default function ProfilePage() {
     (async () => {
       // Get all token IDs (for demo, scan first 20)
       const tokenIds = Array.from({ length: 20 }, (_, i) => BigInt(i.toString()));
-      const created: any[] = [];
-      const collected: any[] = [];
+      const created: NFT[] = [];
+      const collected: NFT[] = [];
       for (const tokenId of tokenIds) {
         try {
           const metadata = await getNFTMetadata(tokenId);
@@ -62,7 +75,7 @@ export default function ProfilePage() {
           if (balance && typeof balance === 'bigint' && balance > BigInt(0)) {
             collected.push({ tokenId, metadata });
           }
-        } catch (e) {
+        } catch {
           // Token may not exist, skip
         }
       }
