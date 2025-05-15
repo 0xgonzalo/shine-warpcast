@@ -74,8 +74,8 @@ export default function CreatePage() {
         uploadToIPFS(imageFile)
       ]);
 
-      // Upload metadata to IPFS
-      const metadataURI = await uploadMetadataToIPFS({
+      // Upload metadata to IPFS (we don't need to store the result since we're using the URIs directly)
+      await uploadMetadataToIPFS({
         name: nftName,
         description: nftDescription,
         audioURI,

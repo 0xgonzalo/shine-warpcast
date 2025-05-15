@@ -20,7 +20,6 @@ function NFTCard({ tokenId }: { tokenId: bigint }) {
   });
 
   const { writeContract, isPending, isSuccess, data: txData } = useWriteContract();
-  const [clicked, setClicked] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const { playAudio, currentAudio, isPlaying } = useAudio();
 
@@ -38,7 +37,6 @@ function NFTCard({ tokenId }: { tokenId: bigint }) {
   };
 
   const handleCollect = () => {
-    setClicked(true);
     writeContract({
       address: CONTRACT_ADDRESS,
       abi: contractABI,

@@ -5,9 +5,15 @@ import AudioPlayer, { RHAP_UI } from 'react-h5-audio-player';
 import 'react-h5-audio-player/lib/styles.css';
 import { useRef, useEffect } from 'react';
 
+type AudioPlayerRef = {
+  audio: {
+    current: HTMLAudioElement;
+  };
+};
+
 export default function GlobalAudioPlayer() {
   const { currentAudio, isPlaying, setIsPlaying, stopAudio } = useAudio();
-  const playerRef = useRef<any>(null);
+  const playerRef = useRef<AudioPlayerRef | null>(null);
 
   // Sync the player's state with the context
   useEffect(() => {
@@ -32,7 +38,7 @@ export default function GlobalAudioPlayer() {
           <span className="text-white font-medium truncate">{currentAudio.name}</span>
         </div>
         <AudioPlayer
-          ref={playerRef}
+          ref={playerRef as any}
           src={currentAudio.src}
           autoPlay={false}
           showJumpControls={false}
@@ -48,9 +54,7 @@ export default function GlobalAudioPlayer() {
           ]}
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
-          onEnded={() => {
-            stopAudio();
-          }}
+          onEnded={stopAudio}
           className="bg-transparent"
           preload="none"
         />
