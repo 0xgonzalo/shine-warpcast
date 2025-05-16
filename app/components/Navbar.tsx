@@ -1,22 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useDisconnect } from 'wagmi';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
-import { useEffect, useState, useRef } from 'react';
+import { usePrivy } from '@privy-io/react-auth';
+import { useEffect, useRef, useState } from 'react';
+import useConnectedWallet from "@/hooks/useConnectedWallet";
 
 export default function Navbar() {
-  const { disconnect } = useDisconnect();
-  const { login, logout, ready, authenticated, linkWallet } = usePrivy();
-  const { wallets, ready: walletsReady } = useWallets();
-  const [mounted, setMounted] = useState(false);
+  const { login } = usePrivy();
+  const { 
+    connectedWallet,
+    isReady,
+    isAuthenticated,
+    isConnecting,
+    connectWallet,
+    disconnectWallet
+  } = useConnectedWallet();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Handle component mounting
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Handle click outside dropdown
   useEffect(() => {
@@ -31,36 +31,20 @@ export default function Navbar() {
   }, []);
 
   const handleConnect = async () => {
-    try {
-      if (!authenticated) {
-        // If user is not authenticated, perform login
-        await login();
-      } else if (wallets.length === 0) {
-        // If authenticated but no wallet connected, link a wallet
-        await linkWallet();
-      }
-    } catch (error) {
-      console.error('Failed to connect wallet:', error);
+    const result = await connectWallet();
+    if (result.needsLogin) {
+      await login();
     }
   };
 
   const handleDisconnect = async () => {
-    try {
-      // Disconnect all wallets first
-      for (const wallet of wallets) {
-        await wallet.disconnect();
-      }
-      await logout();
-      disconnect();
-      setIsDropdownOpen(false);
-    } catch (error) {
-      console.error('Failed to disconnect:', error);
-    }
+    await disconnectWallet();
+    setIsDropdownOpen(false);
   };
 
-  if (!mounted || !ready || !walletsReady) return null;
-
-  const isWalletConnected = wallets.length > 0;
+  if (!isReady) {
+    return null; // Don't render until Privy is ready
+  }
 
   return (
     <nav className="w-full bg-black/20 backdrop-blur-sm border-b border-white/10">
@@ -76,14 +60,14 @@ export default function Navbar() {
 
           {/* Wallet Connection */}
           <div className="relative" ref={dropdownRef}>
-            {authenticated && isWalletConnected ? (
+            {isAuthenticated && connectedWallet ? (
               <div>
                 <button
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                   className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-white"
                 >
                   <span className="text-sm">
-                    {wallets[0].address.slice(0, 6)}...{wallets[0].address.slice(-4)}
+                    {connectedWallet.slice(0, 6)}...{connectedWallet.slice(-4)}
                   </span>
                   <svg 
                     className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} 
@@ -106,7 +90,7 @@ export default function Navbar() {
                       Create
                     </Link>
                     <Link
-                      href={wallets[0]?.address ? `/profile/${wallets[0].address}` : '/profile'}
+                      href={connectedWallet ? `/profile/${connectedWallet}` : '/profile'}
                       className="block px-4 py-2 text-sm text-white hover:bg-white/10 transition-colors"
                       onClick={() => setIsDropdownOpen(false)}
                     >
@@ -124,9 +108,19 @@ export default function Navbar() {
             ) : (
               <button
                 onClick={handleConnect}
-                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 transition-colors text-white font-medium"
+                disabled={isConnecting}
+                className={`px-4 py-2 rounded-lg transition-colors text-white font-medium ${
+                  isConnecting 
+                    ? 'bg-blue-400 cursor-not-allowed' 
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
               >
-                {authenticated ? 'Link Wallet' : 'Connect Wallet'}
+                {isConnecting 
+                  ? 'Connecting...' 
+                  : isAuthenticated 
+                    ? 'Link Wallet' 
+                    : 'Connect Wallet'
+                }
               </button>
             )}
           </div>
