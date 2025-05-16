@@ -21,7 +21,7 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
 
   const { writeContract, isPending, isSuccess, data: txData } = useWriteContract();
   const [showModal, setShowModal] = useState(false);
-  const { playAudio, currentAudio, isPlaying } = useAudio();
+  const { playAudio, currentAudio, isPlaying, addToQueue } = useAudio();
 
   const handlePlayAudio = () => {
     if (data?.audioURI && data.audioURI !== 'ipfs://placeholder-audio-uri') {
@@ -33,6 +33,14 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
         // If it's a different audio, play it
         playAudio(audioUrl, data.name);
       }
+    }
+  };
+
+  const handleAddToQueue = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering handlePlayAudio
+    if (data?.audioURI && data.audioURI !== 'ipfs://placeholder-audio-uri') {
+      const audioUrl = getIPFSGatewayURL(data.audioURI);
+      addToQueue(audioUrl, data.name);
     }
   };
 
@@ -91,14 +99,29 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
             )}
           </div>
         )}
-        <h3 className="text-lg font-semibold ml-2 ">{data.name}</h3>
-        <p className="text-xs text-gray-500 ml-2 mb-2 ">
-        {data.creator?.slice(0, 6)}...{data.creator?.slice(-4)}
-        </p>
+        <div className="flex items-center justify-between px-2 mb-2">
+          <div>
+            <h3 className="text-lg font-semibold">{data.name}</h3>
+            <p className="text-xs text-gray-500">
+              {data.creator?.slice(0, 6)}...{data.creator?.slice(-4)}
+            </p>
+          </div>
+          {data.audioURI && data.audioURI !== 'ipfs://placeholder-audio-uri' && (
+            <button
+              onClick={handleAddToQueue}
+              className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"
+              title="Add to queue"
+            >
+              <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+              </svg>
+            </button>
+          )}
+        </div>
         <button
           onClick={handleCollect}
           disabled={isPending}
-          className="w-full px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 "
+          className="w-full px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
         >
           {isPending ? 'Collecting...' : 'Collect'}
         </button>

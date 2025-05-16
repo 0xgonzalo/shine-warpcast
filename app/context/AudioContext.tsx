@@ -8,9 +8,13 @@ interface AudioContextType {
     name: string;
   } | null;
   isPlaying: boolean;
+  queue: Array<{ src: string; name: string }>;
   setIsPlaying: (isPlaying: boolean) => void;
   playAudio: (src: string, name: string) => void;
   stopAudio: () => void;
+  addToQueue: (src: string, name: string) => void;
+  removeFromQueue: (index: number) => void;
+  playNext: () => void;
 }
 
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
@@ -18,6 +22,7 @@ const AudioContext = createContext<AudioContextType | undefined>(undefined);
 export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [currentAudio, setCurrentAudio] = useState<{ src: string; name: string } | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [queue, setQueue] = useState<Array<{ src: string; name: string }>>([]);
 
   const playAudio = useCallback((src: string, name: string) => {
     // If it's the same audio, just update the state
@@ -36,14 +41,37 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     setCurrentAudio(null);
   }, []);
 
+  const addToQueue = useCallback((src: string, name: string) => {
+    setQueue(prev => [...prev, { src, name }]);
+  }, []);
+
+  const removeFromQueue = useCallback((index: number) => {
+    setQueue(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const playNext = useCallback(() => {
+    if (queue.length > 0) {
+      const [nextTrack, ...remainingQueue] = queue;
+      setQueue(remainingQueue);
+      setCurrentAudio(nextTrack);
+      setIsPlaying(true);
+    } else {
+      stopAudio();
+    }
+  }, [queue, stopAudio]);
+
   return (
     <AudioContext.Provider
       value={{
         currentAudio,
         isPlaying,
+        queue,
         setIsPlaying,
         playAudio,
         stopAudio,
+        addToQueue,
+        removeFromQueue,
+        playNext,
       }}
     >
       {children}
