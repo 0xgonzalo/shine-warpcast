@@ -6,7 +6,6 @@ import { useState, useEffect } from 'react';
 import CollectedModal from './CollectedModal';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
 import { useAudio } from '../context/AudioContext';
-import { useMiniKit } from '@coinbase/onchainkit/minikit';
 
 interface NFTCardProps {
   tokenId: bigint;
@@ -56,7 +55,6 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
   if (isLoading) return <div className="p-4">Loading...</div>;
   if (isError || !data) return null;
 
-  const { setFrameReady, isFrameReady } = useMiniKit();
 
   return (
     <>

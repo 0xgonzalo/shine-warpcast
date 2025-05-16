@@ -9,6 +9,7 @@ import NFTExists from '../components/NFTExists';
 const MAX_SCAN = 20; // Scan token IDs 1 to 20
 
 export default function HomePage() {
+   
   const { setFrameReady, isFrameReady } = useMiniKit();
  
   useEffect(() => {
