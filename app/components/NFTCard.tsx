@@ -58,17 +58,14 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
 
   return (
     <>
-      <div className="p-4 border rounded-lg bg-white/5">
-        <h3 className="text-lg font-semibold mb-2">{data.name}</h3>
-        <p className="text-xs text-gray-500 mb-2">
-          Creator: {data.creator?.slice(0, 6)}...{data.creator?.slice(-4)}
-        </p>
+      <div className="rounded-lg bg-[#282828]">
+      
         {data.imageURI && data.imageURI !== 'ipfs://placeholder-image-uri' && (
           <div className="relative group cursor-pointer" onClick={handlePlayAudio}>
             <img
               src={getIPFSGatewayURL(data.imageURI)}
               alt={data.name}
-              className={`w-full h-48 object-cover rounded-lg mb-2 transition-all duration-300 ${
+              className={`w-full h-[200] object-cover rounded-t-lg mb-2 transition-all duration-300 ${
                 currentAudio?.src === getIPFSGatewayURL(data.audioURI) && isPlaying
                   ? 'ring-2 ring-blue-500'
                   : 'hover:opacity-90'
@@ -94,10 +91,14 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
             )}
           </div>
         )}
+        <h3 className="text-lg font-semibold ml-2 ">{data.name}</h3>
+        <p className="text-xs text-gray-500 ml-2 mb-2 ">
+        {data.creator?.slice(0, 6)}...{data.creator?.slice(-4)}
+        </p>
         <button
           onClick={handleCollect}
           disabled={isPending}
-          className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+          className="w-full px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 "
         >
           {isPending ? 'Collecting...' : 'Collect'}
         </button>
