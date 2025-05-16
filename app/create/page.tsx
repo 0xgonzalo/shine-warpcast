@@ -114,7 +114,7 @@ export default function CreatePage() {
   return (
     <main className="min-h-screen p-8 pb-32">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8 text-center">Audio NFT Creator</h1>
+        <h1 className="text-4xl font-bold mb-8 text-center">Upload Your Music 🎵</h1>
         {!isConnected ? (
           <div className="text-center space-y-2">
             {connectors.map((connector) => (
@@ -156,7 +156,7 @@ export default function CreatePage() {
             </div>
             {/* Image Upload Section */}
             <div className="bg-white/5 p-6 rounded-lg">
-              <h2 className="text-2xl font-semibold mb-4">Upload Artwork Image</h2>
+              <h2 className="text-2xl font-semibold mb-4">Upload Cover Art</h2>
               <input
                 type="file"
                 accept="image/*"
@@ -171,7 +171,7 @@ export default function CreatePage() {
             </div>
             {/* NFT Details Form */}
             <div className="bg-white/5 p-6 rounded-lg">
-              <h2 className="text-2xl font-semibold mb-4">NFT Details</h2>
+              <h2 className="text-2xl font-semibold mb-4">Track Details</h2>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-2">Name</label>
@@ -180,7 +180,7 @@ export default function CreatePage() {
                     value={nftName}
                     onChange={(e) => setNftName(e.target.value)}
                     className="w-full p-2 rounded bg-white/10 border border-white/20"
-                    placeholder="Enter NFT name"
+                    placeholder="Enter track name"
                   />
                 </div>
                 <div>
@@ -189,7 +189,7 @@ export default function CreatePage() {
                     value={nftDescription}
                     onChange={(e) => setNftDescription(e.target.value)}
                     className="w-full p-2 rounded bg-white/10 border border-white/20"
-                    placeholder="Enter NFT description"
+                    placeholder="Enter track description"
                     rows={3}
                   />
                 </div>
@@ -205,7 +205,7 @@ export default function CreatePage() {
                 >
                   {isMinting ? 'Preparing Transaction...' :
                     isConfirming ? 'Confirming Transaction...' :
-                      'Mint NFT'}
+                      'Upload Music'}
                 </button>
               </div>
               {mintError && (
@@ -216,7 +216,7 @@ export default function CreatePage() {
               {txHash && (
                 <div className="text-center space-y-2">
                   <div className="text-green-500">
-                    {isConfirmed ? 'NFT Minted Successfully!' : 'Transaction Submitted!'}
+                    {isConfirmed ? 'Song Minted Successfully!' : 'Transaction Submitted!'}
                   </div>
                   <a
                     href={`https://sepolia.basescan.org/tx/${txHash}`}

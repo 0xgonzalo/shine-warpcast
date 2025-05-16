@@ -99,6 +99,13 @@ export default function Navbar() {
                 {isDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-48 rounded-lg bg-black/90 backdrop-blur-sm border border-white/10 shadow-lg py-1 z-50">
                     <Link
+                      href="/create"
+                      className="block px-4 py-2 text-sm text-white hover:bg-white/10 transition-colors"
+                      onClick={() => setIsDropdownOpen(false)}
+                    >
+                      Create
+                    </Link>
+                    <Link
                       href={wallets[0]?.address ? `/profile/${wallets[0].address}` : '/profile'}
                       className="block px-4 py-2 text-sm text-white hover:bg-white/10 transition-colors"
                       onClick={() => setIsDropdownOpen(false)}
