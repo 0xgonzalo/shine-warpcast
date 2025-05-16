@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import CollectedModal from './CollectedModal';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
 import { useAudio } from '../context/AudioContext';
+import useConnectedWallet from '@/hooks/useConnectedWallet';
 
 interface NFTCardProps {
   tokenId: bigint;
@@ -19,9 +20,10 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
     args: [tokenId],
   });
 
-  const { writeContract, isPending, isSuccess, data: txData } = useWriteContract();
+  const { writeContract, isPending, isSuccess, data: txData, error: txError } = useWriteContract();
   const [showModal, setShowModal] = useState(false);
   const { playAudio, currentAudio, isPlaying, addToQueue } = useAudio();
+  const { isAuthenticated } = useConnectedWallet();
 
   const handlePlayAudio = () => {
     if (data?.audioURI && data.audioURI !== 'ipfs://placeholder-audio-uri') {
@@ -45,6 +47,10 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
   };
 
   const handleCollect = () => {
+    if (!isAuthenticated) {
+      console.warn("Attempted to collect while not authenticated.");
+      return;
+    }
     writeContract({
       address: CONTRACT_ADDRESS,
       abi: contractABI,
@@ -63,42 +69,41 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
   if (isLoading) return <div className="p-4">Loading...</div>;
   if (isError || !data) return null;
 
+  const isAudioAvailable = data.audioURI && data.audioURI !== 'ipfs://placeholder-audio-uri';
 
   return (
     <>
-      <div className="rounded-lg bg-[#282828]">
-      
-        {data.imageURI && data.imageURI !== 'ipfs://placeholder-image-uri' && (
-          <div className="relative group cursor-pointer" onClick={handlePlayAudio}>
+      <div className="bg-gray-800 text-white rounded-lg shadow-lg overflow-hidden p-4 transition-all duration-300 hover:shadow-2xl w-full max-w-xs mx-auto">
+        <div
+          className="aspect-square bg-gray-700 rounded-md mb-3 relative cursor-pointer group flex items-center justify-center"
+          onClick={isAudioAvailable ? handlePlayAudio : undefined}
+        >
+          {data.imageURI && data.imageURI !== 'ipfs://placeholder-image-uri' ? (
             <img
               src={getIPFSGatewayURL(data.imageURI)}
               alt={data.name}
-              className={`w-full h-[200] object-cover rounded-t-lg mb-2 transition-all duration-300 ${
-                currentAudio?.src === getIPFSGatewayURL(data.audioURI) && isPlaying
-                  ? 'ring-2 ring-blue-500'
-                  : 'hover:opacity-90'
-              }`}
+              className="w-full h-full object-cover transition-opacity duration-300 group-hover:opacity-70"
             />
-            {data.audioURI && data.audioURI !== 'ipfs://placeholder-audio-uri' && (
-              <div className={`absolute inset-0 flex items-center justify-center bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
-                currentAudio?.src === getIPFSGatewayURL(data.audioURI) && isPlaying ? 'opacity-100' : ''
-              }`}>
-                <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center shadow-lg">
-                  {currentAudio?.src === getIPFSGatewayURL(data.audioURI) && isPlaying ? (
-                    <svg className="w-6 h-6 text-gray-900" viewBox="0 0 24 24" fill="currentColor">
-                      <rect x="6" y="4" width="4" height="16" />
-                      <rect x="14" y="4" width="4" height="16" />
-                    </svg>
-                  ) : (
-                    <svg className="w-6 h-6 text-gray-900" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gray-600">
+              <svg className="w-16 h-16 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 12v4h-4v-4H7l5-5 5 5h-3z" />
+              </svg>
+            </div>
+          )}
+          {isAudioAvailable && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <svg className="w-16 h-16 text-white" fill="currentColor" viewBox="0 0 24 24">
+                {isPlaying && currentAudio?.src === getIPFSGatewayURL(data.audioURI) ? (
+                  <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                ) : (
+                  <path d="M8 5v14l11-7z" />
+                )}
+              </svg>
+            </div>
+          )}
+        </div>
+
         <div className="flex items-center justify-between px-2 mb-2">
           <div>
             <h3 className="text-lg font-semibold">{data.name}</h3>
@@ -106,7 +111,7 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
               {data.creator?.slice(0, 6)}...{data.creator?.slice(-4)}
             </p>
           </div>
-          {data.audioURI && data.audioURI !== 'ipfs://placeholder-audio-uri' && (
+          {isAudioAvailable && (
             <button
               onClick={handleAddToQueue}
               className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"
@@ -120,11 +125,17 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
         </div>
         <button
           onClick={handleCollect}
-          disabled={isPending}
+          disabled={isPending || !isAuthenticated}
           className="w-full px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
         >
           {isPending ? 'Collecting...' : 'Collect'}
         </button>
+
+        {txError && (
+          <div className="mt-2 text-sm text-red-500 text-center px-2">
+            {'Transaction failed. Please try again.'}
+          </div>
+        )}
       </div>
       {showModal && txData && (
         <CollectedModal

@@ -6,14 +6,14 @@ import { useEffect, useRef, useState } from 'react';
 import useConnectedWallet from "@/hooks/useConnectedWallet";
 
 export default function Navbar() {
-  const { login } = usePrivy();
+  const { login, logout } = usePrivy();
   const { 
     connectedWallet,
     isReady,
     isAuthenticated,
     isConnecting,
     connectWallet,
-    disconnectWallet
+    hasExternalWallet
   } = useConnectedWallet();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -38,8 +38,12 @@ export default function Navbar() {
   };
 
   const handleDisconnect = async () => {
-    await disconnectWallet();
-    setIsDropdownOpen(false);
+    try {
+      await logout();
+      setIsDropdownOpen(false);
+    } catch (error) {
+      console.error('Failed to logout:', error);
+    }
   };
 
   if (!isReady) {

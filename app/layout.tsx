@@ -1,7 +1,7 @@
 import '@coinbase/onchainkit/styles.css';
 import type { Metadata } from 'next';
 import './globals.css';
-import { Providers } from './providers';
+import { Providers } from '@/providers/providers';
 import Navbar from './components/Navbar';
 import { MiniKitProviderWrapper } from './components/MiniKitProviderWrapper';
 

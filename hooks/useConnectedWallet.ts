@@ -41,19 +41,6 @@ const useConnectedWallet = () => {
     }
   };
 
-  // Handle wallet disconnection
-  const disconnectWallet = async () => {
-    try {
-      // Disconnect all wallets first
-      for (const wallet of wallets) {
-        await wallet.disconnect();
-      }
-      await logout();
-    } catch (error) {
-      console.error('Failed to disconnect wallet:', error);
-    }
-  };
-
   // Auto-logout if no wallets are connected after initialization
   useEffect(() => {
     if (privyReady && walletsReady && authenticated && !wallets.length) {
@@ -68,7 +55,6 @@ const useConnectedWallet = () => {
     isReady: privyReady && walletsReady,
     isAuthenticated: authenticated,
     connectWallet,
-    disconnectWallet,
     hasExternalWallet: !!externalWallet,
     hasPrivyWallet: !!privyWallet
   };
