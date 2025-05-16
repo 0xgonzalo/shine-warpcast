@@ -3,8 +3,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Providers } from './providers';
 import Navbar from './components/Navbar';
-import { MiniKitProvider } from '@coinbase/onchainkit/minikit';
-import { baseSepolia } from 'wagmi/chains';
+import { MiniKitProviderWrapper } from './components/MiniKitProviderWrapper';
 
 export const generateMetadata = (): Metadata => {
   return {
@@ -38,19 +37,10 @@ export default function RootLayout({
     <html lang="en">
       <body className="bg-background dark">
         <Providers>
-          <MiniKitProvider 
-            projectId={process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_ID} 
-            chain={baseSepolia}
-            config={{
-              appearance: {
-                mode: "dark",
-                theme: "snake",
-              }
-            }}
-          >
+          <MiniKitProviderWrapper>
             <Navbar />
             {children}
-          </MiniKitProvider>
+          </MiniKitProviderWrapper>
         </Providers>
       </body>
     </html>
