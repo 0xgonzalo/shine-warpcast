@@ -19,6 +19,7 @@ export default function PrivyProvider({
           theme: "light",
           accentColor: "#676FFF",
         },
+        loginMethods: ['farcaster', 'wallet'],
         embeddedWallets: {
           createOnLogin: "users-without-wallets",
         },
