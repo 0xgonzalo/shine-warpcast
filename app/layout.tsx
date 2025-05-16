@@ -36,14 +36,23 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <MiniKitProvider projectId={process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_ID} chain={baseSepolia}>
-        <body className="bg-background dark">
-          <Providers>
+      <body className="bg-background dark">
+        <Providers>
+          <MiniKitProvider 
+            projectId={process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_ID} 
+            chain={baseSepolia}
+            config={{
+              appearance: {
+                mode: "dark",
+                theme: "snake",
+              }
+            }}
+          >
             <Navbar />
             {children}
-          </Providers>
-        </body>
-      </MiniKitProvider>
+          </MiniKitProvider>
+        </Providers>
+      </body>
     </html>
   );
 }

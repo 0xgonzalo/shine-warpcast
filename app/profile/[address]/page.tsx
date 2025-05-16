@@ -7,6 +7,9 @@ import { CONTRACT_ADDRESS, getNFTMetadata, publicClient } from '../../utils/cont
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
 import { useParams } from 'next/navigation';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic' as const;
+
 const TABS = ['Created', 'Collected'] as const;
 type Tab = (typeof TABS)[number];
 

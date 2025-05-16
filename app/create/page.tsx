@@ -1,11 +1,19 @@
 'use client';
 
+import dynamicImport from 'next/dynamic';
 import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { CONTRACT_ADDRESS, contractABI } from '../utils/contract';
 import { uploadToIPFS, uploadMetadataToIPFS } from '@/app/utils/pinata';
 import { useAudio } from '../context/AudioContext';
-import GlobalAudioPlayer from '../components/GlobalAudioPlayer';
+
+// Dynamically import GlobalAudioPlayer with no SSR
+const GlobalAudioPlayer = dynamicImport(() => import('../components/GlobalAudioPlayer'), {
+  ssr: false
+});
+
+// Force dynamic rendering
+export const dynamic = 'force-dynamic' as const;
 
 export default function CreatePage() {
   const { address, isConnected } = useAccount();
