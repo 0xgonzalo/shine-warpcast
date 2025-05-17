@@ -107,20 +107,13 @@ export default function ProfilePage() {
         {walletAddress ? (
           <>
             <div className="flex flex-col items-center mb-8">
-              <span className="text-xl font-semibold">
-                {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
-              </span>
             </div>
-            <div className="flex justify-center mb-6">
+            <div className="flex justify-start mb-6 gap-x-8">
               {TABS.map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-2 rounded-t-lg font-semibold transition-colors ${
-                    activeTab === tab
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white/10 text-gray-300 hover:bg-blue-100/10'
-                  }`}
+                  className={`py-2 text-2xl focus:outline-none transition-colors ${activeTab === tab ? 'font-semibold text-white' : 'font-normal text-[#692a7c] hover:text-gray-300'}`}
                 >
                   {tab}
                 </button>
