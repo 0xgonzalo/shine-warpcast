@@ -7,12 +7,14 @@ import CollectedModal from './CollectedModal';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
 import { useAudio } from '../context/AudioContext';
 import useConnectedWallet from '@/hooks/useConnectedWallet';
+import { useRouter } from 'next/navigation';
 
 interface NFTCardProps {
   tokenId: bigint;
 }
 
 export default function NFTCard({ tokenId }: NFTCardProps) {
+  const router = useRouter();
   const { data, isLoading, isError } = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: contractABI,
@@ -28,18 +30,16 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
   const handlePlayAudio = () => {
     if (data?.audioURI && data.audioURI !== 'ipfs://placeholder-audio-uri') {
       const audioUrl = getIPFSGatewayURL(data.audioURI);
-      // If it's the same audio, toggle play/pause
       if (currentAudio?.src === audioUrl) {
         playAudio(audioUrl, data.name);
       } else {
-        // If it's a different audio, play it
         playAudio(audioUrl, data.name);
       }
     }
   };
 
   const handleAddToQueue = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent triggering handlePlayAudio
+    e.stopPropagation();
     if (data?.audioURI && data.audioURI !== 'ipfs://placeholder-audio-uri') {
       const audioUrl = getIPFSGatewayURL(data.audioURI);
       addToQueue(audioUrl, data.name);
@@ -60,6 +60,14 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
     });
   };
 
+  const handleCreatorClick = () => {
+    if (data?.creator) {
+      router.push(`/profile/${data.creator}`);
+    } else {
+      console.warn('Creator address not available for this NFT.');
+    }
+  };
+
   useEffect(() => {
     if (isSuccess && txData) {
       setShowModal(true);
@@ -73,9 +81,9 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
 
   return (
     <>
-      <div className="bg-gray-800 text-white rounded-lg shadow-lg overflow-hidden p-4 transition-all duration-300 hover:shadow-2xl w-full max-w-xs mx-auto">
+      <div className="bg-gradient-to-r from-[#323232] to-[#232323] text-white rounded-lg shadow-lg overflow-hidden p-4 transition-all duration-300 hover:shadow-2xl w-full max-w-xs mx-auto">
         <div
-          className="aspect-square bg-gray-700 rounded-md mb-3 relative cursor-pointer group flex items-center justify-center"
+          className="aspect-square bg-gradient-to-r from-[#282828] to-[#232323] rounded-md mb-3 relative cursor-pointer group flex items-center justify-center"
           onClick={isAudioAvailable ? handlePlayAudio : undefined}
         >
           {data.imageURI && data.imageURI !== 'ipfs://placeholder-image-uri' ? (
@@ -107,7 +115,10 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
         <div className="flex items-center justify-between px-2 mb-2">
           <div>
             <h3 className="text-lg font-semibold">{data.name}</h3>
-            <p className="text-xs text-gray-500">
+            <p 
+              className="text-xs text-gray-500 cursor-pointer hover:underline"
+              onClick={handleCreatorClick}
+            >
               {data.creator?.slice(0, 6)}...{data.creator?.slice(-4)}
             </p>
           </div>
@@ -126,7 +137,7 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
         <button
           onClick={handleCollect}
           disabled={isPending || !isAuthenticated}
-          className="w-full px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+          className="w-full px-4 py-2 bg-gradient-to-r from-[#5D2DA0] to-[#821FA5] text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
         >
           {isPending ? 'Collecting...' : 'Collect'}
         </button>

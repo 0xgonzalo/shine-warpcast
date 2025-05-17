@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { useAccount } from 'wagmi';
 import { CONTRACT_ADDRESS, getNFTMetadata, publicClient } from '../../utils/contract';
-import { getIPFSGatewayURL } from '@/app/utils/pinata';
 import { useParams } from 'next/navigation';
+import NFTCard from '@/app/components/NFTCard';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic' as const;
@@ -132,26 +132,7 @@ export default function ProfilePage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {(activeTab === 'Created' ? createdNFTs : collectedNFTs).map((nft) => (
-                    <div key={nft.tokenId.toString()} className="bg-white/10 p-4 rounded-lg">
-                      <h3 className="text-lg font-semibold mb-2">{nft.metadata.name}</h3>
-                      <p className="text-sm text-gray-400 mb-2">{nft.metadata.description}</p>
-                      {nft.metadata.imageURI && nft.metadata.imageURI !== 'ipfs://placeholder-image-uri' && (
-                        <img
-                          src={getIPFSGatewayURL(nft.metadata.imageURI)}
-                          alt={nft.metadata.name}
-                          className="w-full h-48 object-cover rounded-lg mb-2"
-                        />
-                      )}
-                      {nft.metadata.audioURI && nft.metadata.audioURI !== 'ipfs://placeholder-audio-uri' && (
-                        <audio controls className="w-full">
-                          <source src={getIPFSGatewayURL(nft.metadata.audioURI)} type="audio/mpeg" />
-                          Your browser does not support the audio element.
-                        </audio>
-                      )}
-                      <p className="text-xs text-gray-500 mt-2">
-                        Token ID: {nft.tokenId.toString()}
-                      </p>
-                    </div>
+                    <NFTCard key={nft.tokenId.toString()} tokenId={nft.tokenId} />
                   ))}
                   {((activeTab === 'Created' ? createdNFTs : collectedNFTs).length === 0 && !loading) && (
                     <div className="col-span-full text-center text-gray-400">No NFTs found.</div>
