@@ -16,6 +16,9 @@ interface AudioPlayerInstance {
   pause: () => void;
 }
 
+const FOOTER_NAV_HEIGHT_CLASS = 'bottom-[4rem]'; // Approx 72px, adjust if needed
+const FOOTER_NAV_BREAKPOINT = 'md'; // Should match FooterNav's hide breakpoint
+
 export default function GlobalAudioPlayer() {
   const { currentAudio, isPlaying, setIsPlaying, stopAudio, queue, playNext, removeFromQueue } = useAudio();
   const playerRef = useRef<AudioPlayerInstance>(null);
@@ -38,11 +41,13 @@ export default function GlobalAudioPlayer() {
   if (!currentAudio) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-sm border-t border-white/10 p-4 z-50">
+    <div 
+      className={`fixed left-0 right-0 bg-black/80 backdrop-blur-sm border-t border-white/10 z-50 
+                  ${FOOTER_NAV_BREAKPOINT}:bottom-0 ${FOOTER_NAV_HEIGHT_CLASS}`}>
       <div className="max-w-4xl mx-auto relative">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <span className="text-white font-medium truncate">{currentAudio.name}</span>
+            <span className="text-white font-medium truncate pl-8">{currentAudio.name}</span>
             {queue.length > 0 && (
               <button
                 onClick={() => setIsQueueOpen(!isQueueOpen)}
@@ -63,8 +68,8 @@ export default function GlobalAudioPlayer() {
 
         {/* Queue Panel */}
         {isQueueOpen && queue.length > 0 && (
-          <div className="absolute bottom-full left-0 right-0 mb-2 bg-black/90 backdrop-blur-sm rounded-lg border border-white/10 p-4 max-h-60 overflow-y-auto">
-            <div className="flex items-center justify-between mb-2">
+          <div className="absolute bottom-full left-0 right-0 bg-black/90 backdrop-blur-sm rounded-lg border border-white/10 max-h-60 overflow-y-auto">
+            <div className="flex items-center justify-between">
               <h3 className="text-white font-medium">Queue</h3>
               <button
                 onClick={() => setIsQueueOpen(false)}
