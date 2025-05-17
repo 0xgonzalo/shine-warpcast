@@ -18,7 +18,7 @@ export default function HomePage() {
     }
   }, [setFrameReady, isFrameReady]);
 
-  const tokenIds = Array.from({ length: MAX_SCAN }, (_, i) => BigInt(i + 1));
+  const tokenIds = Array.from({ length: MAX_SCAN }, (_, i) => BigInt(i + 1)).slice(3);
 
   return (
     <AudioProvider>
