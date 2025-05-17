@@ -13,7 +13,9 @@ export default function Navbar() {
     isAuthenticated,
     isConnecting,
     connectWallet,
-    hasExternalWallet
+    hasExternalWallet,
+    farcasterUsername,
+    farcasterPfpUrl
   } = useConnectedWallet();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -64,15 +66,22 @@ export default function Navbar() {
 
           {/* Wallet Connection */}
           <div className="relative" ref={dropdownRef}>
-            {isAuthenticated && connectedWallet ? (
+            {isAuthenticated && (farcasterUsername || connectedWallet) ? (
               <div>
                 <button
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                   className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-white"
                 >
-                  <span className="text-sm">
-                    {connectedWallet.slice(0, 6)}...{connectedWallet.slice(-4)}
-                  </span>
+                  {farcasterPfpUrl && farcasterUsername ? (
+                    <>
+                      <img src={farcasterPfpUrl} alt={farcasterUsername} className="w-6 h-6 rounded-full" />
+                      <span className="text-sm">{farcasterUsername}</span>
+                    </>
+                  ) : connectedWallet ? (
+                    <span className="text-sm">
+                      {connectedWallet.slice(0, 6)}...{connectedWallet.slice(-4)}
+                    </span>
+                  ) : null}
                   <svg 
                     className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} 
                     fill="none" 
@@ -94,7 +103,7 @@ export default function Navbar() {
                       Create
                     </Link>
                     <Link
-                      href={connectedWallet ? `/profile/${connectedWallet}` : '/profile'}
+                      href={connectedWallet ? `/profile/${connectedWallet}` : farcasterUsername ? `/profile/@${farcasterUsername}` : '/profile'}
                       className="block px-4 py-2 text-sm text-white hover:bg-white/10 transition-colors"
                       onClick={() => setIsDropdownOpen(false)}
                     >
@@ -121,8 +130,8 @@ export default function Navbar() {
               >
                 {isConnecting 
                   ? 'Connecting...' 
-                  : isAuthenticated 
-                    ? 'Link Wallet' 
+                  : isAuthenticated
+                    ? 'Link Wallet'
                     : 'Connect Wallet'
                 }
               </button>

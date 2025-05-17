@@ -1,10 +1,10 @@
-import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { usePrivy, useWallets, User } from "@privy-io/react-auth";
 import { useEffect, useState } from "react";
 import { Address } from "viem";
 
 const useConnectedWallet = () => {
   const { wallets, ready: walletsReady } = useWallets();
-  const { logout, authenticated, ready: privyReady, linkWallet } = usePrivy();
+  const { user, logout, authenticated, ready: privyReady, linkWallet } = usePrivy();
   const [isConnecting, setIsConnecting] = useState(false);
 
   // Find the active wallet - prefer external wallet over privy wallet
@@ -16,6 +16,9 @@ const useConnectedWallet = () => {
   );
   const activeWallet = externalWallet || privyWallet;
   const connectedWallet = activeWallet?.address as Address | undefined;
+
+  // Extract Farcaster details if available
+  const farcasterProfile = user?.farcaster;
 
   // Handle wallet connection
   const connectWallet = async () => {
@@ -56,7 +59,11 @@ const useConnectedWallet = () => {
     isAuthenticated: authenticated,
     connectWallet,
     hasExternalWallet: !!externalWallet,
-    hasPrivyWallet: !!privyWallet
+    hasPrivyWallet: !!privyWallet,
+    farcasterUsername: farcasterProfile?.username,
+    farcasterPfpUrl: farcasterProfile?.pfp,
+    // Expose the whole farcaster profile if needed for other details later
+    farcasterUser: farcasterProfile 
   };
 };
 
