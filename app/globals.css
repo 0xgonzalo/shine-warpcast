@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 :root {
+  color-scheme: light dark; /* Tell browsers the app handles its own dark mode */
   --background: #ffffff;
   --foreground: #171717;
 }

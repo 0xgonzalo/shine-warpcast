@@ -34,8 +34,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="bg-background dark">
+    <html lang="en" className="bg-background">
+      <body className="bg-background">
         <Providers>
           <MiniKitProviderWrapper>
             <Navbar />
