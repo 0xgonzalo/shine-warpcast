@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Providers } from '@/providers/providers';
 import Navbar from './components/Navbar';
+import FooterNav from './components/FooterNav';
 import { MiniKitProviderWrapper } from './components/MiniKitProviderWrapper';
 
 export const generateMetadata = (): Metadata => {
@@ -39,7 +40,10 @@ export default function RootLayout({
         <Providers>
           <MiniKitProviderWrapper>
             <Navbar />
-            {children}
+            <main className="pb-16">
+              {children}
+            </main>
+            <FooterNav />
           </MiniKitProviderWrapper>
         </Providers>
       </body>
