@@ -25,3 +25,14 @@ body {
     text-wrap: balance;
   }
 }
+
+/* Custom styles for react-h5-audio-player time elements */
+.rhap_container .rhap_current-time,
+.rhap_container .rhap_duration,
+.rhap_time {
+  color: white !important; 
+}
+
+.rhap_container .rhap_current-time {
+  margin-right: 0.25rem; /* Add margin to the right of the current time */
+}

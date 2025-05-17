@@ -116,7 +116,7 @@ export default function GlobalAudioPlayer() {
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
           onEnded={playNext}
-          className="bg-transparent"
+          className="bg-gradient-to-r from-[#111111] to-[#282828]"
           preload="none"
         />
       </div>
