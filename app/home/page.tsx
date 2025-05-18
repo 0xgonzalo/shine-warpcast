@@ -25,24 +25,24 @@ export default function HomePage() {
       <main className="min-h-screen p-8 pb-32">
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-center mb-8">
-            <h1 className="text-4xl font-bold text-center">New Releases</h1>
+            <h1 className="md:text-4xl text-2xl font-bold text-center">New Releases</h1>
             
             <div className="flex space-x-2 md:hidden">
               <button 
                 onClick={() => setMobileColumns(1)}
-                className={`p-2 border ${mobileColumns === 1 ? 'bg-blue-500 text-white' : 'bg-gray-200'} rounded flex items-center justify-center w-10 h-10`}
+                className={`p-1.5 border ${mobileColumns === 1 ? 'bg-[#5D2DA0] text-white' : ''} rounded flex items-center justify-center w-8 h-8`}
                 aria-label="Single column view"
               >
-                <div className="w-6 h-6 border-2 border-current"></div>
+                <div className="w-4 h-4 border-2 border-current"></div>
               </button>
               <button 
                 onClick={() => setMobileColumns(2)}
-                className={`p-2 border ${mobileColumns === 2 ? 'bg-blue-500 text-white' : 'bg-gray-200'} rounded flex items-center justify-center w-10 h-10`}
+                className={`p-1.5 border ${mobileColumns === 2 ? 'bg-[#5D2DA0] text-white' : ''} rounded flex items-center justify-center w-8 h-8`}
                 aria-label="Double column view"
               >
-                <div className="flex space-x-1">
-                  <div className="w-4 h-4 border-2 border-current"></div>
-                  <div className="w-4 h-4 border-2 border-current"></div>
+                <div className="flex space-x-0.5">
+                  <div className="w-3 h-3 border-2 border-current"></div>
+                  <div className="w-3 h-3 border-2 border-current"></div>
                 </div>
               </button>
             </div>

@@ -114,7 +114,7 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
 
         <div className="flex items-center justify-between px-2 mb-2">
           <div>
-            <h3 className="text-lg font-semibold">{data.name}</h3>
+            <h3 className="md:text-lg text-sm font-semibold">{data.name}</h3>
             <p 
               className="text-xs text-gray-500 cursor-pointer hover:underline"
               onClick={handleCreatorClick}
