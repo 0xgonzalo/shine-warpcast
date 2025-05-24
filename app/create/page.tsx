@@ -1,16 +1,10 @@
 'use client';
 
-import dynamicImport from 'next/dynamic';
 import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { CONTRACT_ADDRESS, contractABI } from '../utils/contract';
 import { uploadToIPFS, uploadMetadataToIPFS } from '@/app/utils/pinata';
 import { useAudio } from '../context/AudioContext';
-
-// Dynamically import GlobalAudioPlayer with no SSR
-const GlobalAudioPlayer = dynamicImport(() => import('../components/GlobalAudioPlayer'), {
-  ssr: false
-});
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic' as const;
@@ -154,6 +148,7 @@ export default function CreatePage() {
                 </button>
               )}
             </div>
+
             {/* Image Upload Section */}
             <div className="bg-white/5 p-6 rounded-lg">
               <h2 className="text-2xl font-semibold mb-4">Upload Cover Art</h2>
@@ -164,38 +159,40 @@ export default function CreatePage() {
                 className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
               />
               {imagePreview && (
-                <div className="mt-4 flex justify-center">
-                  <img src={imagePreview} alt="Artwork Preview" className="max-h-48 rounded-lg border border-white/20" />
+                <div className="mt-4">
+                  <img
+                    src={imagePreview}
+                    alt="Cover art preview"
+                    className="max-w-xs rounded-lg mx-auto"
+                  />
                 </div>
               )}
             </div>
-            {/* NFT Details Form */}
-            <div className="bg-white/5 p-6 rounded-lg">
-              <h2 className="text-2xl font-semibold mb-4">Track Details</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Name</label>
-                  <input
-                    type="text"
-                    value={nftName}
-                    onChange={(e) => setNftName(e.target.value)}
-                    className="w-full p-2 rounded bg-white/10 border border-white/20"
-                    placeholder="Enter track name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Description</label>
-                  <textarea
-                    value={nftDescription}
-                    onChange={(e) => setNftDescription(e.target.value)}
-                    className="w-full p-2 rounded bg-white/10 border border-white/20"
-                    placeholder="Enter track description"
-                    rows={3}
-                  />
-                </div>
+
+            {/* Metadata Section */}
+            <div className="bg-white/5 p-6 rounded-lg space-y-4">
+              <h2 className="text-2xl font-semibold mb-4">Song Details</h2>
+              <div>
+                <label className="block text-sm font-medium mb-2">Song Name</label>
+                <input
+                  type="text"
+                  value={nftName}
+                  onChange={(e) => setNftName(e.target.value)}
+                  className="w-full px-3 py-2 bg-white/10 text-white rounded-lg border border-white/20 focus:border-blue-500 focus:outline-none"
+                  placeholder="Enter song name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Description</label>
+                <textarea
+                  value={nftDescription}
+                  onChange={(e) => setNftDescription(e.target.value)}
+                  className="w-full px-3 py-2 bg-white/10 text-white rounded-lg border border-white/20 focus:border-blue-500 focus:outline-none h-24"
+                  placeholder="Enter song description"
+                />
               </div>
             </div>
-            {/* Mint Button and Status */}
+
             <div className="space-y-4">
               <div className="flex justify-center">
                 <button
@@ -232,7 +229,6 @@ export default function CreatePage() {
           </div>
         )}
       </div>
-      <GlobalAudioPlayer />
     </main>
   );
 } 

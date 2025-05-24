@@ -5,6 +5,7 @@ import { Providers } from '@/providers/providers';
 import Navbar from './components/Navbar';
 import FooterNav from './components/FooterNav';
 import { MiniKitProviderWrapper } from './components/MiniKitProviderWrapper';
+import GlobalAudioPlayer from './components/GlobalAudioPlayer';
 
 export const generateMetadata = (): Metadata => {
   return {
@@ -44,6 +45,7 @@ export default function RootLayout({
               {children}
             </main>
             <FooterNav />
+            <GlobalAudioPlayer />
           </MiniKitProviderWrapper>
         </Providers>
       </body>

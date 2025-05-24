@@ -9,7 +9,13 @@ interface AudioContextType {
   } | null;
   isPlaying: boolean;
   queue: Array<{ src: string; name: string }>;
+  currentTime: number;
+  duration: number;
   setIsPlaying: (isPlaying: boolean) => void;
+  setCurrentTime: (time: number) => void;
+  setDuration: (duration: number) => void;
+  setAudioElement: (element: HTMLAudioElement | null) => void;
+  seekTo: (time: number) => void;
   playAudio: (src: string, name: string) => void;
   stopAudio: () => void;
   addToQueue: (src: string, name: string) => void;
@@ -23,6 +29,16 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [currentAudio, setCurrentAudio] = useState<{ src: string; name: string } | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [queue, setQueue] = useState<Array<{ src: string; name: string }>>([]);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+
+  const seekTo = useCallback((time: number) => {
+    if (audioElement) {
+      audioElement.currentTime = time;
+      setCurrentTime(time);
+    }
+  }, [audioElement]);
 
   const playAudio = useCallback((src: string, name: string) => {
     // If it's the same audio, just update the state
@@ -66,7 +82,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         currentAudio,
         isPlaying,
         queue,
+        currentTime,
+        duration,
         setIsPlaying,
+        setCurrentTime,
+        setDuration,
+        setAudioElement,
+        seekTo,
         playAudio,
         stopAudio,
         addToQueue,

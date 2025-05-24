@@ -20,7 +20,7 @@ const FOOTER_NAV_HEIGHT_CLASS = 'bottom-[4rem]'; // Approx 72px, adjust if neede
 const FOOTER_NAV_BREAKPOINT = 'md'; // Should match FooterNav's hide breakpoint
 
 export default function GlobalAudioPlayer() {
-  const { currentAudio, isPlaying, setIsPlaying, stopAudio, queue, playNext, removeFromQueue } = useAudio();
+  const { currentAudio, isPlaying, setIsPlaying, stopAudio, queue, playNext, removeFromQueue, setCurrentTime, setDuration, setAudioElement } = useAudio();
   const playerRef = useRef<AudioPlayerInstance>(null);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
 
@@ -37,6 +37,30 @@ export default function GlobalAudioPlayer() {
       playerRef.current.audio.current.pause();
     }
   }, [isPlaying, setIsPlaying]);
+
+  // Register audio element and setup time tracking
+  useEffect(() => {
+    if (!playerRef.current?.audio?.current) return;
+    
+    const audio = playerRef.current.audio.current;
+    
+    // Register the audio element for seeking
+    setAudioElement(audio);
+    
+    const updateTime = () => setCurrentTime(audio.currentTime);
+    const updateDuration = () => setDuration(audio.duration);
+    
+    audio.addEventListener('timeupdate', updateTime);
+    audio.addEventListener('loadedmetadata', updateDuration);
+    audio.addEventListener('durationchange', updateDuration);
+    
+    return () => {
+      audio.removeEventListener('timeupdate', updateTime);
+      audio.removeEventListener('loadedmetadata', updateDuration);
+      audio.removeEventListener('durationchange', updateDuration);
+      setAudioElement(null);
+    };
+  }, [currentAudio?.src, setCurrentTime, setDuration, setAudioElement]);
 
   if (!currentAudio) return null;
 

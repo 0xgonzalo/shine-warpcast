@@ -114,7 +114,12 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
 
         <div className="flex items-center justify-between md:px-2 mb-2">
           <div>
-            <h3 className="md:text-lg text-sm font-semibold">{data.name}</h3>
+            <h3 
+              className="md:text-lg text-sm font-semibold cursor-pointer hover:text-purple-300 transition-colors"
+              onClick={() => router.push(`/token/${tokenId}`)}
+            >
+              {data.name}
+            </h3>
             <p 
               className="md:text-xs text-[10px] text-gray-500 cursor-pointer hover:underline"
               onClick={handleCreatorClick}
