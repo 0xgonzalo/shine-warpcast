@@ -11,6 +11,9 @@ export const generateMetadata = (): Metadata => {
   return {
     title: process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME,
     description:  "Shine, the simplest way to create music onchain",
+    icons: {
+      icon: '/favicon.ico',
+    },
     other: {
       "fc:frame": JSON.stringify({
         version: process.env.NEXT_PUBLIC_VERSION,

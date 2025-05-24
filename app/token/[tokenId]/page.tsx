@@ -21,18 +21,6 @@ export default function TokenPage() {
   const { currentAudio, isPlaying, playAudio, setIsPlaying, currentTime, duration, setCurrentTime, setDuration, seekTo } = useAudio();
   const [showLyrics, setShowLyrics] = useState(false);
 
-  // Mock lyrics for demo - in production this would come from metadata
-  const lyrics = [
-    "It can never last",
-    "Must erase it fast",
-    "But it could have been right",
-    "",
-    "Love is our resistance",
-    "They'll keep us apart, and",
-    "they won't stop breaking us",
-    "",
-    "Hold me"
-  ];
 
   const handlePlayPause = () => {
     if (data?.audioURI && data.audioURI !== 'ipfs://placeholder-audio-uri') {
@@ -193,15 +181,6 @@ export default function TokenPage() {
         >
           {showLyrics ? 'Hide Lyrics' : 'Show Lyrics'}
         </button>
-
-        {/* Lyrics */}
-        {showLyrics && (
-          <div className="text-center text-gray-300 max-w-sm space-y-2">
-            {lyrics.map((line, index) => (
-              <p key={index} className={line === '' ? 'h-4' : ''}>{line}</p>
-            ))}
-          </div>
-        )}
       </div>
 
       <style jsx>{`
