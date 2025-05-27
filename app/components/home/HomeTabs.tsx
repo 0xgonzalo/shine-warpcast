@@ -21,7 +21,7 @@ export default function HomeTabs({ activeTab, onTabChange }: HomeTabsProps) {
           onClick={() => onTabChange(tab.id)}
           className={`pb-3 px-1 text-lg font-medium transition-colors duration-200 relative ${
             activeTab === tab.id
-              ? 'text-black border-b-2 border-yellow-400'
+              ? 'text-white border-b-2 border-yellow-400'
               : 'text-gray-500 hover:text-gray-700'
           }`}
         >

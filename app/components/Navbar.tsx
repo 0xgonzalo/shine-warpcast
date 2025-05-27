@@ -70,14 +70,19 @@ export default function Navbar() {
               <div>
                 <button
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-white"
+                  className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-black hover:bg-white/20 transition-colors text-white"
                 >
-                  {farcasterPfpUrl && farcasterUsername ? (
+                  {/* Prioritize Farcaster avatar and username when available */}
+                  {farcasterPfpUrl ? (
                     <>
-                      <img src={farcasterPfpUrl} alt={farcasterUsername} className="w-6 h-6 rounded-full" />
-                      <span className="text-sm">{farcasterUsername}</span>
+                      <img src={farcasterPfpUrl} alt={farcasterUsername || 'Farcaster User'} className="w-6 h-6 rounded-full" />
+                      {farcasterUsername && <span className="text-sm">{farcasterUsername}</span>}
                     </>
+                  ) : farcasterUsername ? (
+                    /* Show username even without avatar */
+                    <span className="text-sm">{farcasterUsername}</span>
                   ) : connectedWallet ? (
+                    /* Fallback to wallet address only when no Farcaster data */
                     <span className="text-sm">
                       {connectedWallet.slice(0, 6)}...{connectedWallet.slice(-4)}
                     </span>
