@@ -17,6 +17,7 @@
     "pinata-web3": "^0.5.4",
     "privy": "^0.4.1",
     "react": "^18",
+    "react-canvas-confetti": "^2.0.7",
     "react-dom": "^18",
     "react-h5-audio-player": "^3.10.0-rc.1",
     "viem": "^2.29.3",
