@@ -70,7 +70,7 @@ export default function Navbar() {
               <div>
                 <button
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-black hover:bg-white/20 transition-colors text-white"
+                  className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-black transition-colors text-white"
                 >
                   {/* Prioritize Farcaster avatar and username when available */}
                   {farcasterPfpUrl ? (
@@ -99,7 +99,7 @@ export default function Navbar() {
 
                 {/* Dropdown Menu */}
                 {isDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 rounded-lg bg-black/90 backdrop-blur-sm border border-white/10 shadow-lg py-1 z-50">
+                  <div className="absolute right-0 mt-2 w-48 rounded-lg bg-black backdrop-blur-sm border border-white/10 shadow-lg py-1 z-50">
                     <Link
                       href="/create"
                       className="block px-4 py-2 text-sm text-white hover:bg-white/10 transition-colors"
