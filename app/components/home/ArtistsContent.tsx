@@ -206,7 +206,7 @@ export default function ArtistsContent() {
         {artists.map((artist) => (
           <div 
             key={artist.address} 
-            className="flex items-center space-x-4 py-2 md:p-4 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+            className="flex items-center space-x-4 py-2 md:p-4 rounded-lg hover:bg-gray-50 hover:bg-opacity-30 transition-colors cursor-pointer"
             onClick={() => handleArtistClick(artist)}
           >
             {/* Artist Avatar */}
