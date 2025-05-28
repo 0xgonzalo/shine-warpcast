@@ -6,6 +6,7 @@ import { CONTRACT_ADDRESS, contractABI } from '../utils/contract';
 import { uploadToIPFS, uploadMetadataToIPFS } from '@/app/utils/pinata';
 import { useAudio } from '../context/AudioContext';
 import { useFarcaster } from '../context/FarcasterContext';
+import { encodeFunctionData } from 'viem';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic' as const;
@@ -27,6 +28,7 @@ export default function CreatePage() {
   const [debugInfo, setDebugInfo] = useState<string>('');
   const { playAudio, currentAudio, isPlaying } = useAudio();
   const { isSDKLoaded, isReady, context, ethProvider } = useFarcaster();
+  const [manualTxHash, setManualTxHash] = useState<string>('');
 
   // Check if we're in a mobile environment
   const isMobile = typeof window !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -194,22 +196,85 @@ export default function CreatePage() {
       
       setDebugInfo('Submitting transaction to wallet...');
 
-      // Mint NFT with the metadata URI
-      writeContract({
-        address: CONTRACT_ADDRESS as `0x${string}`,
-        abi: contractABI,
-        functionName: 'mint',
-        args: mintArgs,
-      });
-      
-      console.log('📝 writeContract called successfully');
-      
+      try {
+        // First try with wagmi
+        writeContract({
+          address: CONTRACT_ADDRESS as `0x${string}`,
+          abi: contractABI,
+          functionName: 'mint',
+          args: mintArgs,
+          // Add explicit gas settings for mobile compatibility
+          gas: BigInt(500000), // Set a reasonable gas limit
+        });
+        
+        console.log('📝 writeContract called successfully');
+      } catch (wagmiError) {
+        console.warn('⚠️ Wagmi method failed, trying Farcaster SDK...', wagmiError);
+        
+        // Fallback to Farcaster SDK method
+        if (ethProvider && isFarcasterFrame) {
+          setDebugInfo('Trying alternative transaction method...');
+          const txHash = await mintWithFarcasterSDK(mintArgs);
+          setTxHash(txHash as `0x${string}`);
+          setDebugInfo(`Transaction submitted via Farcaster SDK: ${txHash}`);
+        } else {
+          throw wagmiError;
+        }
+      }
     } catch (error) {
       console.error('❌ Minting error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to mint NFT';
       setMintError(errorMessage);
       setDebugInfo(`Error: ${errorMessage}`);
       setIsMinting(false);
+    }
+  };
+
+  // Alternative transaction method using Farcaster SDK directly
+  const mintWithFarcasterSDK = async (mintArgs: readonly [`0x${string}`, string, string, string, string, bigint]) => {
+    if (!ethProvider) {
+      throw new Error('Farcaster eth provider not available');
+    }
+
+    console.log('🔄 Trying alternative method with Farcaster SDK...');
+    
+    // Encode the function call
+    const data = encodeFunctionData({
+      abi: contractABI,
+      functionName: 'mint',
+      args: mintArgs,
+    });
+
+    // Send transaction using Farcaster's eth provider
+    const txHash = await ethProvider.request({
+      method: 'eth_sendTransaction',
+      params: [{
+        to: CONTRACT_ADDRESS,
+        data,
+        gas: '0x7A120', // 500000 in hex
+      }],
+    });
+
+    console.log('✅ Transaction sent via Farcaster SDK:', txHash);
+    return txHash;
+  };
+
+  // Test wallet connection
+  const testWalletConnection = async () => {
+    try {
+      console.log('🧪 Testing wallet connection...');
+      setDebugInfo('Testing wallet connection...');
+      
+      if (ethProvider) {
+        const accounts = await ethProvider.request({ method: 'eth_requestAccounts' });
+        console.log('✅ Accounts:', accounts);
+        setDebugInfo(`Connected accounts: ${accounts.length}`);
+      } else {
+        setDebugInfo('No eth provider available');
+      }
+    } catch (error) {
+      console.error('❌ Wallet test failed:', error);
+      setDebugInfo(`Wallet test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -344,6 +409,18 @@ export default function CreatePage() {
                       'Upload Music'}
                 </button>
               </div>
+              
+              {/* Wallet test button for debugging */}
+              {(isMobile || isFarcasterFrame) && (
+                <div className="flex justify-center mt-2">
+                  <button
+                    onClick={testWalletConnection}
+                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
+                  >
+                    Test Wallet Connection
+                  </button>
+                </div>
+              )}
               {mintError && (
                 <div className="text-center text-red-500 mt-2">
                   {mintError}
@@ -377,6 +454,28 @@ export default function CreatePage() {
                   >
                     View on BaseScan
                   </a>
+                </div>
+              )}
+              
+              {/* Manual transaction verification for debugging */}
+              {(isMobile || isFarcasterFrame) && !txHash && (
+                <div className="mt-4 p-4 bg-white/5 rounded-lg">
+                  <div className="text-sm text-gray-400 mb-2">Debug: Manual Transaction Verification</div>
+                  <input
+                    type="text"
+                    placeholder="Enter transaction hash if you see one in your wallet"
+                    value={manualTxHash}
+                    onChange={(e) => setManualTxHash(e.target.value)}
+                    className="w-full px-3 py-2 bg-white/10 text-white rounded-lg border border-white/20 focus:border-blue-500 focus:outline-none text-xs"
+                  />
+                  {manualTxHash && (
+                    <button
+                      onClick={() => setTxHash(manualTxHash as `0x${string}`)}
+                      className="mt-2 px-3 py-1 bg-blue-600 text-white rounded text-xs"
+                    >
+                      Verify Transaction
+                    </button>
+                  )}
                 </div>
               )}
             </div>
