@@ -22,21 +22,26 @@ export default function HomePage() {
  
   useEffect(() => {
     const initializeFrame = async () => {
+      // Set ready immediately for better UX, then try to initialize Frame SDK
+      setIsFrameReady(true);
+      
       if (typeof window === 'undefined' || !sdk) return;
 
       try {
-        // Call ready when the interface is loaded
-        await sdk.actions.ready();
-        setIsFrameReady(true);
+        // Add timeout to prevent hanging
+        await Promise.race([
+          sdk.actions.ready(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Frame SDK timeout')), 3000))
+        ]);
         console.log('🎯 Farcaster Frame is ready');
       } catch (error) {
         console.log('📱 Not in Farcaster context or ready failed:', error);
-        setIsFrameReady(true); // Still allow the app to work outside Farcaster
+        // App continues to work normally
       }
     };
 
-    // Wait a bit for SDK to load
-    const timer = setTimeout(initializeFrame, 100);
+    // Shorter delay for better perceived performance
+    const timer = setTimeout(initializeFrame, 50);
     return () => clearTimeout(timer);
   }, []);
 
@@ -55,7 +60,7 @@ export default function HomePage() {
     }
   };
 
-  // Don't render until frame is ready to avoid jarring loading effects
+  // Show loading only for a very brief moment
   if (!isFrameReady) {
     return (
       <main className="min-h-screen p-8 pb-32 flex items-center justify-center">

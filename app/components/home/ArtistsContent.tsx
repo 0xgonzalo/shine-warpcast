@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { getMostCollectedArtists } from '../../utils/contract';
 import { getFarcasterUserByAddress, getMockFarcasterUser, FarcasterUser } from '../../utils/farcaster';
@@ -26,28 +26,50 @@ interface Artist {
   farcasterUser?: FarcasterUser | null;
 }
 
+// Cache for artists data (5 minutes cache)
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+let artistsCache: { data: Artist[]; timestamp: number } | null = null;
+
 export default function ArtistsContent() {
   const router = useRouter();
   const [artists, setArtists] = useState<Artist[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const fetchingRef = useRef(false);
 
   useEffect(() => {
     const fetchArtists = async () => {
+      // Prevent multiple simultaneous fetches
+      if (fetchingRef.current) return;
+      
+      // Check cache first
+      if (artistsCache && Date.now() - artistsCache.timestamp < CACHE_DURATION) {
+        console.log('📦 Using cached artists data');
+        setArtists(artistsCache.data);
+        setIsLoading(false);
+        return;
+      }
+
       try {
+        fetchingRef.current = true;
         setIsLoading(true);
+        setError(null);
         console.log('🎨 Fetching most collected artists...');
         
         // Get most collected artists from smart contract
         const contractArtists = await getMostCollectedArtists(6);
         console.log('📊 Contract artists:', contractArtists);
 
-        // Enrich with Farcaster data
+        // Only enrich with Farcaster data for first 3 artists to reduce load
         const enrichedArtists = await Promise.all(
-          contractArtists.map(async (artist) => {
+          contractArtists.map(async (artist, index) => {
             try {
-              // Try to get Farcaster user data
-              const farcasterUser = await getFarcasterUserByAddress(artist.address) || 
-                                   getMockFarcasterUser(artist.address);
+              // Only fetch Farcaster data for top 3 artists to reduce API calls
+              let farcasterUser = null;
+              if (index < 3) {
+                farcasterUser = await getFarcasterUserByAddress(artist.address) || 
+                               getMockFarcasterUser(artist.address);
+              }
               
               return {
                 ...artist,
@@ -63,18 +85,26 @@ export default function ArtistsContent() {
           })
         );
 
+        // Cache the results
+        artistsCache = {
+          data: enrichedArtists,
+          timestamp: Date.now()
+        };
+
         setArtists(enrichedArtists);
         console.log('✅ Artists loaded:', enrichedArtists);
       } catch (error) {
         console.error('Error fetching artists:', error);
+        setError('Failed to load artists. Please try again later.');
         setArtists([]);
       } finally {
         setIsLoading(false);
+        fetchingRef.current = false;
       }
     };
 
     fetchArtists();
-  }, []);
+  }, []); // Empty dependency array - only fetch once
 
   const handleArtistClick = (artist: Artist) => {
     // Navigate to artist's profile
@@ -88,7 +118,15 @@ export default function ArtistsContent() {
     if (artist.farcasterUser && sdk) {
       console.log('Showing Farcaster profile for:', artist.farcasterUser.username);
       try {
-        sdk.actions.viewProfile({ fid: artist.farcasterUser.fid });
+        // Add timeout to prevent hanging
+        Promise.race([
+          sdk.actions.viewProfile({ fid: artist.farcasterUser.fid }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+        ]).catch((error) => {
+          console.error('Error showing Farcaster profile:', error);
+          // Fallback to navigating to their profile page
+          router.push(`/profile/${artist.address}`);
+        });
       } catch (error) {
         console.error('Error showing Farcaster profile:', error);
         // Fallback to navigating to their profile page
@@ -129,7 +167,7 @@ export default function ArtistsContent() {
       <div>
         <h2 className="text-2xl font-bold mb-6">Popular Artists</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
-          {Array.from({ length: 6 }).map((_, index) => (
+          {Array.from({ length: 3 }).map((_, index) => (
             <div key={index} className="flex items-center space-x-4 py-2 md:p-4 rounded-lg animate-pulse">
               <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-300 rounded-full flex-shrink-0"></div>
               <div className="flex-1">
@@ -139,6 +177,23 @@ export default function ArtistsContent() {
               <div className="w-16 h-8 bg-gray-300 rounded-full"></div>
             </div>
           ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div>
+        <h2 className="text-2xl font-bold mb-6">Popular Artists</h2>
+        <div className="text-center py-8">
+          <p className="text-gray-500 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-[#5D2DA0] text-white px-4 py-2 rounded-lg hover:bg-[#4A2380] transition-colors"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );

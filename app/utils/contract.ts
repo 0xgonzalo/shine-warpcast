@@ -229,20 +229,20 @@ async function getFallbackRecentSongs(limit: number = 10) {
 // Export the contract ABI for use in the frontend
 export { contractABI };
 
-// Function to get most collected artists
+// Function to get most collected artists (optimized version)
 export async function getMostCollectedArtists(limit: number = 6) {
   try {
     console.log('🎨 Fetching most collected artists...');
     
-    // Get the latest block number
+    // Use a smaller block range to reduce load
     const latestBlock = await publicClient.getBlockNumber();
     console.log('📦 Latest block:', latestBlock.toString());
     
-    // Look back more blocks to catch more events (20000 blocks ≈ ~66 hours on Base)
-    const fromBlock = latestBlock - BigInt(20000);
+    // Look back fewer blocks to reduce load (5000 blocks ≈ ~16 hours on Base)
+    const fromBlock = latestBlock - BigInt(5000);
     console.log('📦 Searching from block:', fromBlock.toString(), 'to', latestBlock.toString());
     
-    // Get all Transfer events (excluding mints - where from is zero address)
+    // Get Transfer events with a smaller range
     const logs = await publicClient.getLogs({
       address: CONTRACT_ADDRESS as `0x${string}`,
       event: {
@@ -262,102 +262,112 @@ export async function getMostCollectedArtists(limit: number = 6) {
 
     console.log('📋 Total transfer events found:', logs.length);
 
-    // Filter out mints and group by token ID to count collections
-    const collectionEvents = logs.filter(log => 
+    // If too many events, limit to recent ones to avoid performance issues
+    const recentLogs = logs.slice(0, 100); // Limit to 100 most recent events
+    
+    // Filter out mints
+    const collectionEvents = recentLogs.filter(log => 
       log.args.from !== '0x0000000000000000000000000000000000000000'
     );
 
-    // Get unique token IDs that have been collected
-    const collectedTokenIds = Array.from(new Set(collectionEvents.map(log => log.args.id).filter((id): id is bigint => id !== undefined)));
-    console.log('🎵 Unique collected token IDs:', collectedTokenIds.length);
-
-    // Count collections per creator
-    const creatorCollectionCounts: { [creator: string]: number } = {};
-    const creatorTokens: { [creator: string]: bigint[] } = {};
-
-    for (const tokenId of collectedTokenIds) {
-      if (tokenId !== undefined) {
-        try {
-          const metadata = await getNFTMetadata(tokenId);
-          const creator = metadata.creator.toLowerCase();
-          
-          // Count how many times this creator's works have been collected
-          const tokenCollections = collectionEvents.filter(log => log.args.id === tokenId).length;
-          
-          if (!creatorCollectionCounts[creator]) {
-            creatorCollectionCounts[creator] = 0;
-            creatorTokens[creator] = [];
-          }
-          
-          creatorCollectionCounts[creator] += tokenCollections;
-          creatorTokens[creator].push(tokenId);
-        } catch (error) {
-          console.error(`❌ Error fetching metadata for token ${tokenId}:`, error);
-        }
-      }
-    }
-
-    // If no collections found, fall back to getting creators with most tokens
-    if (Object.keys(creatorCollectionCounts).length === 0) {
-      console.log('⚠️ No collections found, falling back to creators with most tokens...');
+    // If no collections found, use fallback immediately
+    if (collectionEvents.length === 0) {
+      console.log('⚠️ No collection events found, using fallback...');
       return await getFallbackMostActiveCreators(limit);
     }
 
-    // Sort creators by collection count and get top artists
+    // Get unique token IDs (limit to avoid too many calls)
+    const collectedTokenIds = Array.from(new Set(collectionEvents.map(log => log.args.id).filter((id): id is bigint => id !== undefined))).slice(0, 20);
+    console.log('🎵 Processing', collectedTokenIds.length, 'unique token IDs');
+
+    // Batch metadata calls with error handling
+    const tokenMetadataMap = new Map();
+    const creatorCollectionCounts: { [creator: string]: number } = {};
+    const creatorTokens: { [creator: string]: bigint[] } = {};
+
+    // Process tokens in smaller batches to avoid overwhelming the RPC
+    const batchSize = 5;
+    for (let i = 0; i < collectedTokenIds.length; i += batchSize) {
+      const batch = collectedTokenIds.slice(i, i + batchSize);
+      
+      await Promise.all(
+        batch.map(async (tokenId) => {
+          try {
+            const metadata = await getNFTMetadata(tokenId);
+            tokenMetadataMap.set(tokenId, metadata);
+            
+            const creator = metadata.creator.toLowerCase();
+            const tokenCollections = collectionEvents.filter(log => log.args.id === tokenId).length;
+            
+            if (!creatorCollectionCounts[creator]) {
+              creatorCollectionCounts[creator] = 0;
+              creatorTokens[creator] = [];
+            }
+            
+            creatorCollectionCounts[creator] += tokenCollections;
+            creatorTokens[creator].push(tokenId);
+          } catch (error) {
+            console.error(`❌ Error fetching metadata for token ${tokenId}:`, error);
+          }
+        })
+      );
+      
+      // Small delay between batches to avoid rate limiting
+      if (i + batchSize < collectedTokenIds.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+
+    // If still no data, use fallback
+    if (Object.keys(creatorCollectionCounts).length === 0) {
+      console.log('⚠️ No creator data found, using fallback...');
+      return await getFallbackMostActiveCreators(limit);
+    }
+
+    // Sort and limit results
     const sortedCreators = Object.entries(creatorCollectionCounts)
       .sort(([, a], [, b]) => b - a)
       .slice(0, limit);
 
     console.log('🎨 Top creators by collections:', sortedCreators);
 
-    // Get additional metadata for each top creator
-    const topArtists = await Promise.all(
-      sortedCreators.map(async ([creator, collectionCount]) => {
-        try {
-          // Get one of their tokens to display as example
-          const exampleTokenId = creatorTokens[creator][0];
-          const exampleMetadata = await getNFTMetadata(exampleTokenId);
-          
-          return {
-            address: creator as `0x${string}`,
-            collectionCount,
-            tokenCount: creatorTokens[creator].length,
-            exampleToken: {
-              tokenId: exampleTokenId,
-              name: exampleMetadata.name,
-              imageURI: exampleMetadata.imageURI
-            }
-          };
-        } catch (error) {
-          console.error(`❌ Error getting example token for creator ${creator}:`, error);
-          return {
-            address: creator as `0x${string}`,
-            collectionCount,
-            tokenCount: creatorTokens[creator].length,
-            exampleToken: null
-          };
-        }
-      })
-    );
+    // Build final result
+    const topArtists = sortedCreators.map(([creator, collectionCount]) => {
+      const tokens = creatorTokens[creator];
+      const exampleTokenId = tokens[0];
+      const exampleMetadata = tokenMetadataMap.get(exampleTokenId);
+      
+      return {
+        address: creator as `0x${string}`,
+        collectionCount,
+        tokenCount: tokens.length,
+        exampleToken: exampleMetadata ? {
+          tokenId: exampleTokenId,
+          name: exampleMetadata.name,
+          imageURI: exampleMetadata.imageURI
+        } : null
+      };
+    });
 
     console.log('🎉 Successfully fetched', topArtists.length, 'most collected artists');
     return topArtists;
   } catch (error) {
     console.error('❌ Error fetching most collected artists:', error);
-    // Try fallback approach
+    // Always fallback on error
     return await getFallbackMostActiveCreators(limit);
   }
 }
 
-// Fallback function to get creators with most tokens (when no collections are found)
+// Fallback function to get creators with most tokens (optimized)
 async function getFallbackMostActiveCreators(limit: number = 6) {
   console.log('🔄 Using fallback approach to get most active creators...');
   
   try {
     const creatorTokenCounts: { [creator: string]: bigint[] } = {};
     
-    // Scan existing tokens to find creators
-    for (let i = 3; i <= 50; i++) {
+    // Scan fewer tokens to reduce load (only scan 20 tokens instead of 50)
+    const maxTokensToScan = 20;
+    for (let i = 3; i <= maxTokensToScan && Object.keys(creatorTokenCounts).length < limit * 2; i++) {
       try {
         const tokenId = BigInt(i);
         const exists = await checkNFTExists(tokenId);
@@ -370,6 +380,11 @@ async function getFallbackMostActiveCreators(limit: number = 6) {
             creatorTokenCounts[creator] = [];
           }
           creatorTokenCounts[creator].push(tokenId);
+        }
+        
+        // Add small delay to avoid overwhelming the RPC
+        if (i % 5 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 50));
         }
       } catch (error) {
         console.error(`❌ Error checking token ${i}:`, error);
@@ -384,11 +399,11 @@ async function getFallbackMostActiveCreators(limit: number = 6) {
 
     console.log('🎨 Top creators by token count:', sortedCreators.map(([creator, tokens]) => [creator, tokens.length]));
 
-    // Get additional metadata for each top creator
+    // Build result without additional metadata calls
     const topArtists = await Promise.all(
       sortedCreators.map(async ([creator, tokens]) => {
         try {
-          // Get one of their tokens to display as example
+          // Get metadata for the first token only
           const exampleTokenId = tokens[0];
           const exampleMetadata = await getNFTMetadata(exampleTokenId);
           
