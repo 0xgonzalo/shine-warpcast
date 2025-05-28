@@ -10,9 +10,9 @@ import { useAudio } from '../context/AudioContext';
 export const dynamic = 'force-dynamic' as const;
 
 export default function CreatePage() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, connector } = useAccount();
   const { connectors, connect } = useConnect();
-  const { writeContract, isSuccess, data: mintData, error: writeError } = useWriteContract();
+  const { writeContract, isSuccess, data: mintData, error: writeError, isPending } = useWriteContract();
   const [nftName, setNftName] = useState('');
   const [nftDescription, setNftDescription] = useState('');
   const [audioFile, setAudioFile] = useState<File | null>(null);
@@ -23,7 +23,12 @@ export default function CreatePage() {
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
   const [mintError, setMintError] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string>('');
   const { playAudio, currentAudio, isPlaying } = useAudio();
+
+  // Check if we're in a mobile environment
+  const isMobile = typeof window !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const isFarcasterFrame = connector?.id === 'farcasterFrame';
 
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash: txHash,
@@ -31,16 +36,45 @@ export default function CreatePage() {
 
   useEffect(() => {
     if (writeError) {
-      setMintError(writeError.message);
+      console.error('Write contract error:', writeError);
+      setMintError(`Transaction failed: ${writeError.message}`);
+      setDebugInfo(`Error: ${writeError.name} - ${writeError.message}`);
       setIsMinting(false);
     }
   }, [writeError]);
 
   useEffect(() => {
     if (isSuccess && mintData) {
+      console.log('Transaction submitted successfully:', mintData);
       setTxHash(mintData);
+      setDebugInfo(`Transaction submitted: ${mintData}`);
+      setIsMinting(false); // Stop the minting state when transaction is submitted
     }
   }, [isSuccess, mintData]);
+
+  useEffect(() => {
+    if (isConfirmed && txHash) {
+      console.log('Transaction confirmed:', txHash);
+      setDebugInfo(`Transaction confirmed: ${txHash}`);
+      // Reset form after successful confirmation
+      setTimeout(() => {
+        setNftName('');
+        setNftDescription('');
+        setAudioFile(null);
+        setImageFile(null);
+        setAudioPreview('');
+        setImagePreview('');
+        setTxHash(undefined);
+        setDebugInfo('');
+      }, 5000);
+    }
+  }, [isConfirmed, txHash]);
+
+  useEffect(() => {
+    if (isConfirming && txHash) {
+      setDebugInfo(`Waiting for confirmation: ${txHash}`);
+    }
+  }, [isConfirming, txHash]);
 
   const handleAudioUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -81,15 +115,33 @@ export default function CreatePage() {
   };
 
   const handleMint = async () => {
-    if (!address || !nftName || !nftDescription || !audioFile || !imageFile) return;
+    if (!address || !nftName || !nftDescription || !audioFile || !imageFile) {
+      setMintError('Please fill in all fields and upload both audio and image files');
+      return;
+    }
+    
+    console.log('Starting mint process...', {
+      address,
+      nftName,
+      nftDescription,
+      audioFile: audioFile.name,
+      imageFile: imageFile.name
+    });
+    
     setIsMinting(true);
     setMintError(null);
+    setDebugInfo('Uploading files to IPFS...');
+    
     try {
       // Upload files to IPFS
+      console.log('Uploading files to IPFS...');
       const [audioURI, imageURI] = await Promise.all([
         uploadToIPFS(audioFile),
         uploadToIPFS(imageFile)
       ]);
+      
+      console.log('Files uploaded:', { audioURI, imageURI });
+      setDebugInfo('Files uploaded, creating metadata...');
 
       // Upload metadata to IPFS
       const metadataURI = await uploadMetadataToIPFS({
@@ -98,6 +150,22 @@ export default function CreatePage() {
         audioURI,
         imageURI
       });
+      
+      console.log('Metadata uploaded:', metadataURI);
+      setDebugInfo('Metadata uploaded, preparing transaction...');
+
+      // Validate contract address
+      if (!CONTRACT_ADDRESS || CONTRACT_ADDRESS.length < 10) {
+        throw new Error('Invalid contract address');
+      }
+
+      console.log('Calling writeContract with:', {
+        address: CONTRACT_ADDRESS,
+        functionName: 'mint',
+        args: [address, nftName, nftDescription, audioURI, imageURI, BigInt(1)]
+      });
+      
+      setDebugInfo('Submitting transaction...');
 
       // Mint NFT with the metadata URI
       writeContract({
@@ -113,9 +181,14 @@ export default function CreatePage() {
           BigInt(1)
         ],
       });
+      
+      console.log('writeContract called successfully');
+      
     } catch (error) {
       console.error('Minting error:', error);
-      setMintError(error instanceof Error ? error.message : 'Failed to mint NFT');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to mint NFT';
+      setMintError(errorMessage);
+      setDebugInfo(`Error: ${errorMessage}`);
       setIsMinting(false);
     }
   };
@@ -234,10 +307,11 @@ export default function CreatePage() {
               <div className="flex justify-center">
                 <button
                   onClick={handleMint}
-                  disabled={isMinting || isConfirming || !audioFile || !imageFile || !nftName || !nftDescription}
+                  disabled={isMinting || isConfirming || isPending || !audioFile || !imageFile || !nftName || !nftDescription}
                   className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isMinting ? 'Preparing Transaction...' :
+                  {isPending ? 'Waiting for Wallet...' :
+                    isMinting ? 'Preparing Transaction...' :
                     isConfirming ? 'Confirming Transaction...' :
                       'Upload Music'}
                 </button>
@@ -247,10 +321,23 @@ export default function CreatePage() {
                   {mintError}
                 </div>
               )}
+              {debugInfo && (
+                <div className="text-center text-blue-400 mt-2 text-sm">
+                  {debugInfo}
+                </div>
+              )}
+              {(isMobile || isFarcasterFrame) && (
+                <div className="text-center text-xs text-gray-500 mt-2">
+                  Mobile: {isMobile ? 'Yes' : 'No'} | Farcaster: {isFarcasterFrame ? 'Yes' : 'No'} | Wallet: {connector?.name || 'None'}
+                </div>
+              )}
               {txHash && (
                 <div className="text-center space-y-2">
                   <div className="text-green-500">
                     {isConfirmed ? 'Song Minted Successfully!' : 'Transaction Submitted!'}
+                  </div>
+                  <div className="text-xs text-gray-400 break-all">
+                    TX: {txHash}
                   </div>
                   <a
                     href={`https://sepolia.basescan.org/tx/${txHash}`}
