@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { CONTRACT_ADDRESS, contractABI } from '../utils/contract';
+import { CONTRACT_ADDRESS, contractABI, publicClient } from '../utils/contract';
 import { uploadToIPFS, uploadMetadataToIPFS } from '@/app/utils/pinata';
 import { useAudio } from '../context/AudioContext';
 import { useFarcaster } from '../context/FarcasterContext';
@@ -149,17 +149,29 @@ export default function CreatePage() {
     
     setIsMinting(true);
     setMintError(null);
-    setDebugInfo('Uploading files to IPFS...');
+    setDebugInfo('Starting mint process...');
     
     try {
       // Upload files to IPFS
-      console.log('📤 Uploading files to IPFS...');
-      const [audioURI, imageURI] = await Promise.all([
-        uploadToIPFS(audioFile),
-        uploadToIPFS(imageFile)
-      ]);
+      console.log('📤 Starting IPFS uploads...');
+      setDebugInfo('Uploading audio file to IPFS...');
       
-      console.log('✅ Files uploaded:', { audioURI, imageURI });
+      const audioURI = await uploadToIPFS(audioFile);
+      console.log('✅ Audio uploaded:', audioURI);
+      
+      if (!audioURI || audioURI.includes('placeholder')) {
+        throw new Error('Audio upload failed - got placeholder URI');
+      }
+      
+      setDebugInfo('Uploading image file to IPFS...');
+      const imageURI = await uploadToIPFS(imageFile);
+      console.log('✅ Image uploaded:', imageURI);
+      
+      if (!imageURI || imageURI.includes('placeholder')) {
+        throw new Error('Image upload failed - got placeholder URI');
+      }
+      
+      console.log('✅ Both files uploaded successfully:', { audioURI, imageURI });
       setDebugInfo('Files uploaded, creating metadata...');
 
       // Upload metadata to IPFS
@@ -171,6 +183,11 @@ export default function CreatePage() {
       });
       
       console.log('✅ Metadata uploaded:', metadataURI);
+      
+      if (!metadataURI || metadataURI.includes('placeholder')) {
+        throw new Error('Metadata upload failed - got placeholder URI');
+      }
+      
       setDebugInfo('Metadata uploaded, preparing transaction...');
 
       // Validate contract address
@@ -187,11 +204,12 @@ export default function CreatePage() {
         BigInt(1)
       ];
 
-      console.log('🔗 Calling writeContract with:', {
-        address: CONTRACT_ADDRESS,
+      console.log('🔗 Transaction details:', {
+        contractAddress: CONTRACT_ADDRESS,
         functionName: 'mint',
         args: mintArgs,
-        connector: connector?.name
+        connector: connector?.name,
+        gasLimit: 500000
       });
       
       setDebugInfo('Submitting transaction to wallet...');
@@ -221,6 +239,7 @@ export default function CreatePage() {
           throw wagmiError;
         }
       }
+      
     } catch (error) {
       console.error('❌ Minting error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to mint NFT';
@@ -275,6 +294,76 @@ export default function CreatePage() {
     } catch (error) {
       console.error('❌ Wallet test failed:', error);
       setDebugInfo(`Wallet test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  // Test IPFS connection
+  const testIPFSConnection = async () => {
+    try {
+      console.log('🧪 Testing IPFS connection...');
+      setDebugInfo('Testing IPFS connection...');
+      
+      // Check environment variables
+      const hasApiKey = !!(process.env.NEXT_PUBLIC_PINATA_API_KEY);
+      const hasSecretKey = !!(process.env.NEXT_PUBLIC_PINATA_SECRET_KEY);
+      
+      console.log('Environment check:', {
+        hasApiKey,
+        hasSecretKey,
+        apiKeyLength: process.env.NEXT_PUBLIC_PINATA_API_KEY?.length || 0,
+        secretKeyLength: process.env.NEXT_PUBLIC_PINATA_SECRET_KEY?.length || 0
+      });
+      
+      if (!hasApiKey || !hasSecretKey) {
+        throw new Error('Missing Pinata API credentials');
+      }
+      
+      // Create a test file
+      const testBlob = new Blob(['test'], { type: 'text/plain' });
+      const testFile = new File([testBlob], 'test.txt', { type: 'text/plain' });
+      
+      const testURI = await uploadToIPFS(testFile);
+      console.log('✅ Test upload successful:', testURI);
+      setDebugInfo(`IPFS test successful: ${testURI}`);
+      
+    } catch (error) {
+      console.error('❌ IPFS test failed:', error);
+      setDebugInfo(`IPFS test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  // Test contract connection
+  const testContractConnection = async () => {
+    try {
+      console.log('🧪 Testing contract connection...');
+      setDebugInfo('Testing contract connection...');
+      
+      // Test if contract exists at the address
+      const bytecode = await publicClient.getBytecode({ address: CONTRACT_ADDRESS as `0x${string}` });
+      console.log('Contract bytecode exists:', !!bytecode);
+      
+      if (!bytecode) {
+        throw new Error('No contract found at the specified address');
+      }
+      
+      // Test if we can call a read function (like checking if token exists)
+      try {
+        const exists = await publicClient.readContract({
+          address: CONTRACT_ADDRESS as `0x${string}`,
+          abi: contractABI,
+          functionName: 'exists',
+          args: [BigInt(1)],
+        });
+        console.log('✅ Contract read test successful:', exists);
+        setDebugInfo(`Contract accessible: ${CONTRACT_ADDRESS}`);
+      } catch (readError) {
+        console.log('Contract exists but read failed:', readError);
+        setDebugInfo(`Contract at ${CONTRACT_ADDRESS} exists but may have different ABI`);
+      }
+      
+    } catch (error) {
+      console.error('❌ Contract test failed:', error);
+      setDebugInfo(`Contract test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -412,12 +501,24 @@ export default function CreatePage() {
               
               {/* Wallet test button for debugging */}
               {(isMobile || isFarcasterFrame) && (
-                <div className="flex justify-center mt-2">
+                <div className="flex justify-center mt-2 space-x-2">
                   <button
                     onClick={testWalletConnection}
-                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
+                    className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-xs"
                   >
-                    Test Wallet Connection
+                    Test Wallet
+                  </button>
+                  <button
+                    onClick={testIPFSConnection}
+                    className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-xs"
+                  >
+                    Test IPFS
+                  </button>
+                  <button
+                    onClick={testContractConnection}
+                    className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs"
+                  >
+                    Test Contract
                   </button>
                 </div>
               )}
