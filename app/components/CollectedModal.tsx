@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
+import ReactCanvasConfetti from 'react-canvas-confetti';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
-import { triggerCelebrationConfetti } from '@/app/utils/confetti';
+import { getCelebrationConfettiConfig } from '@/app/utils/confetti';
 
 interface CollectedModalProps {
   nft: { imageURI: string; name: string };
@@ -9,25 +10,37 @@ interface CollectedModalProps {
 }
 
 const CollectedModal: React.FC<CollectedModalProps> = ({ nft, txHash, onClose }) => {
-  const confettiRef = useRef<HTMLCanvasElement>(null);
+  const confettiRef = useRef<any>(null);
 
   useEffect(() => {
     // Trigger confetti after a short delay to ensure modal is rendered
     const timer = setTimeout(() => {
       if (confettiRef.current) {
-        triggerCelebrationConfetti(confettiRef.current);
+        const config = getCelebrationConfettiConfig();
+        confettiRef.current(config);
       }
     }, 300);
     
     return () => clearTimeout(timer);
   }, []);
 
+  const getInstance = (instance: any) => {
+    confettiRef.current = instance;
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
       {/* Confetti Canvas */}
-      <canvas
-        ref={confettiRef}
-        className="fixed inset-0 w-full h-full pointer-events-none z-40"
+      <ReactCanvasConfetti
+        onInit={({ confetti }) => getInstance(confetti)}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          pointerEvents: 'none',
+          zIndex: 40
+        }}
       />
       
       <div className="bg-black rounded-lg p-6 md:p-12 max-w-xs md:max-w-sm w-full text-center relative border border-white/10 z-50">
