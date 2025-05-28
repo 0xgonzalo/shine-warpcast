@@ -22,6 +22,7 @@ export default function CreatePage() {
   const [isMinting, setIsMinting] = useState(false);
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
   const [mintError, setMintError] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const { playAudio, currentAudio, isPlaying } = useAudio();
 
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
@@ -43,7 +44,21 @@ export default function CreatePage() {
 
   const handleAudioUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+    setFileError(null);
+    
     if (file) {
+      // Check if it's actually an audio file
+      if (!file.type.startsWith('audio/')) {
+        setFileError('Please select a valid audio file');
+        return;
+      }
+      
+      // Check file size (limit to 50MB)
+      if (file.size > 50 * 1024 * 1024) {
+        setFileError('Audio file must be less than 50MB');
+        return;
+      }
+      
       setAudioFile(file);
       const url = URL.createObjectURL(file);
       setAudioPreview(url);
@@ -127,26 +142,48 @@ export default function CreatePage() {
             {/* Audio Upload Section */}
             <div className="bg-white/5 p-6 rounded-lg">
               <h2 className="text-2xl font-semibold mb-4">Upload Audio</h2>
-              <input
-                type="file"
-                accept="audio/*"
-                onChange={handleAudioUpload}
-                className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-              />
-              {audioPreview && (
-                <button
-                  onClick={handlePlayPreview}
-                  className={`w-full mt-4 px-4 py-2 rounded-lg transition-colors ${
-                    currentAudio?.src === audioPreview && isPlaying
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white/10 text-white hover:bg-white/20'
-                  }`}
+              <div className="space-y-4">
+                <input
+                  id="audio-upload"
+                  type="file"
+                  accept="audio/*,audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/aac,audio/m4a,.mp3,.wav,.ogg,.aac,.m4a"
+                  onChange={handleAudioUpload}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="audio-upload"
+                  className="block w-full p-4 border-2 border-dashed border-white/30 rounded-lg text-center cursor-pointer hover:border-white/50 transition-colors"
                 >
-                  {currentAudio?.src === audioPreview && isPlaying
-                    ? 'Playing Preview...'
-                    : 'Play Preview'}
-                </button>
-              )}
+                  <div className="space-y-2">
+                    <div className="text-4xl">🎵</div>
+                    <div className="text-lg font-medium">
+                      {audioFile ? audioFile.name : 'Choose Audio File'}
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      Tap to select an audio file from your device
+                    </div>
+                  </div>
+                </label>
+                {fileError && (
+                  <div className="text-red-500 text-sm text-center">
+                    {fileError}
+                  </div>
+                )}
+                {audioPreview && (
+                  <button
+                    onClick={handlePlayPreview}
+                    className={`w-full mt-4 px-4 py-2 rounded-lg transition-colors ${
+                      currentAudio?.src === audioPreview && isPlaying
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white/10 text-white hover:bg-white/20'
+                    }`}
+                  >
+                    {currentAudio?.src === audioPreview && isPlaying
+                      ? 'Playing Preview...'
+                      : 'Play Preview'}
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Image Upload Section */}
