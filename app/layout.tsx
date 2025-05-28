@@ -6,6 +6,7 @@ import Navbar from './components/Navbar';
 import FooterNav from './components/FooterNav';
 import { MiniKitProviderWrapper } from './components/MiniKitProviderWrapper';
 import GlobalAudioPlayer from './components/GlobalAudioPlayer';
+import { FarcasterProvider } from './context/FarcasterContext';
 
 export const generateMetadata = (): Metadata => {
   return {
@@ -42,14 +43,16 @@ export default function RootLayout({
     <html lang="en" className="bg-background">
       <body className="bg-background">
         <Providers>
-          <MiniKitProviderWrapper>
-            <Navbar />
-            <main className="pb-16">
-              {children}
-            </main>
-            <FooterNav />
-            <GlobalAudioPlayer />
-          </MiniKitProviderWrapper>
+          <FarcasterProvider>
+            <MiniKitProviderWrapper>
+              <Navbar />
+              <main className="pb-16">
+                {children}
+              </main>
+              <FooterNav />
+              <GlobalAudioPlayer />
+            </MiniKitProviderWrapper>
+          </FarcasterProvider>
         </Providers>
       </body>
     </html>

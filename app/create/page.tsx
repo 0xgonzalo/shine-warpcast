@@ -5,6 +5,7 @@ import { useAccount, useConnect, useWriteContract, useWaitForTransactionReceipt 
 import { CONTRACT_ADDRESS, contractABI } from '../utils/contract';
 import { uploadToIPFS, uploadMetadataToIPFS } from '@/app/utils/pinata';
 import { useAudio } from '../context/AudioContext';
+import { useFarcaster } from '../context/FarcasterContext';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic' as const;
@@ -25,6 +26,7 @@ export default function CreatePage() {
   const [fileError, setFileError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
   const { playAudio, currentAudio, isPlaying } = useAudio();
+  const { isSDKLoaded, isReady, context, ethProvider } = useFarcaster();
 
   // Check if we're in a mobile environment
   const isMobile = typeof window !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -76,6 +78,17 @@ export default function CreatePage() {
     }
   }, [isConfirming, txHash]);
 
+  // Auto-connect to Farcaster frame if available
+  useEffect(() => {
+    if (isSDKLoaded && !isConnected && connectors.length > 0) {
+      const farcasterConnector = connectors.find(c => c.id === 'farcasterFrame');
+      if (farcasterConnector && farcasterConnector.ready) {
+        console.log('🔗 Auto-connecting to Farcaster frame...');
+        connect({ connector: farcasterConnector });
+      }
+    }
+  }, [isSDKLoaded, isConnected, connectors, connect]);
+
   const handleAudioUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     setFileError(null);
@@ -120,12 +133,16 @@ export default function CreatePage() {
       return;
     }
     
-    console.log('Starting mint process...', {
+    console.log('🎵 Starting mint process...', {
       address,
       nftName,
       nftDescription,
       audioFile: audioFile.name,
-      imageFile: imageFile.name
+      imageFile: imageFile.name,
+      connector: connector?.name,
+      isFarcasterFrame,
+      isSDKLoaded,
+      ethProvider: !!ethProvider
     });
     
     setIsMinting(true);
@@ -134,13 +151,13 @@ export default function CreatePage() {
     
     try {
       // Upload files to IPFS
-      console.log('Uploading files to IPFS...');
+      console.log('📤 Uploading files to IPFS...');
       const [audioURI, imageURI] = await Promise.all([
         uploadToIPFS(audioFile),
         uploadToIPFS(imageFile)
       ]);
       
-      console.log('Files uploaded:', { audioURI, imageURI });
+      console.log('✅ Files uploaded:', { audioURI, imageURI });
       setDebugInfo('Files uploaded, creating metadata...');
 
       // Upload metadata to IPFS
@@ -151,7 +168,7 @@ export default function CreatePage() {
         imageURI
       });
       
-      console.log('Metadata uploaded:', metadataURI);
+      console.log('✅ Metadata uploaded:', metadataURI);
       setDebugInfo('Metadata uploaded, preparing transaction...');
 
       // Validate contract address
@@ -159,33 +176,36 @@ export default function CreatePage() {
         throw new Error('Invalid contract address');
       }
 
-      console.log('Calling writeContract with:', {
+      const mintArgs: readonly [`0x${string}`, string, string, string, string, bigint] = [
+        address as `0x${string}`,
+        nftName,
+        nftDescription,
+        audioURI,
+        imageURI,
+        BigInt(1)
+      ];
+
+      console.log('🔗 Calling writeContract with:', {
         address: CONTRACT_ADDRESS,
         functionName: 'mint',
-        args: [address, nftName, nftDescription, audioURI, imageURI, BigInt(1)]
+        args: mintArgs,
+        connector: connector?.name
       });
       
-      setDebugInfo('Submitting transaction...');
+      setDebugInfo('Submitting transaction to wallet...');
 
       // Mint NFT with the metadata URI
       writeContract({
         address: CONTRACT_ADDRESS as `0x${string}`,
         abi: contractABI,
         functionName: 'mint',
-        args: [
-          address as `0x${string}`,
-          nftName,
-          nftDescription,
-          audioURI,
-          imageURI,
-          BigInt(1)
-        ],
+        args: mintArgs,
       });
       
-      console.log('writeContract called successfully');
+      console.log('📝 writeContract called successfully');
       
     } catch (error) {
-      console.error('Minting error:', error);
+      console.error('❌ Minting error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to mint NFT';
       setMintError(errorMessage);
       setDebugInfo(`Error: ${errorMessage}`);
@@ -197,7 +217,15 @@ export default function CreatePage() {
     <main className="min-h-screen p-8 pb-32">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-4xl font-bold mb-8 text-center">Upload Your Music 🎵</h1>
-        {!isConnected ? (
+        
+        {!isSDKLoaded && (
+          <div className="text-center py-8">
+            <div className="text-lg">Initializing Farcaster SDK...</div>
+            <div className="text-sm text-gray-400 mt-2">Please wait while we connect to your wallet</div>
+          </div>
+        )}
+        
+        {isSDKLoaded && !isConnected ? (
           <div className="text-center space-y-2">
             {connectors.map((connector) => (
               <button
@@ -329,6 +357,8 @@ export default function CreatePage() {
               {(isMobile || isFarcasterFrame) && (
                 <div className="text-center text-xs text-gray-500 mt-2">
                   Mobile: {isMobile ? 'Yes' : 'No'} | Farcaster: {isFarcasterFrame ? 'Yes' : 'No'} | Wallet: {connector?.name || 'None'}
+                  <br />
+                  SDK: {isSDKLoaded ? 'Loaded' : 'Loading'} | Ready: {isReady ? 'Yes' : 'No'} | ETH Provider: {ethProvider ? 'Available' : 'None'}
                 </div>
               )}
               {txHash && (

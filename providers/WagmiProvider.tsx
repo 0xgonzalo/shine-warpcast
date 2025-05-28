@@ -13,12 +13,13 @@ export const config = createConfig({
   connectors: [
     farcasterFrame(),
     metaMask(),
-    coinbaseWallet({ appName: 'Shine' }),
+    coinbaseWallet({ appName: 'Shine Music NFT' }),
     injected(),
   ],
   transports: {
-    [baseSepolia.id]: http(),
+    [baseSepolia.id]: http('https://sepolia.base.org'),
   },
+  ssr: false,
 });
 
 export function WagmiProvider({ 
