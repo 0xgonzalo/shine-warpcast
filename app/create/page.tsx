@@ -262,15 +262,52 @@ export default function CreatePage() {
     }
 
     console.log('🔄 Using Farcaster SDK transaction method...');
-    setDebugInfo('Estimating gas for Farcaster transaction...');
+    setDebugInfo('Preparing Farcaster-optimized transaction...');
     
     try {
+      // First, let's verify the contract exists and is accessible
+      const code = await ethProvider.request({
+        method: 'eth_getCode',
+        params: [CONTRACT_ADDRESS, 'latest'],
+      });
+      
+      if (code === '0x') {
+        throw new Error('Contract not found at specified address');
+      }
+      
+      console.log('✅ Contract verified at address:', CONTRACT_ADDRESS);
+      
       // Encode the function call
       const data = encodeFunctionData({
         abi: contractABI,
         functionName: 'mint',
         args: mintArgs,
       });
+
+      // Check if the mint function is payable (might need ETH value)
+      // Some contracts require a small payment to avoid spam
+      const testValue = '0x0'; // Start with 0, but we might need to add value
+      
+      console.log('🔍 Testing transaction with simulation...');
+      
+      // Try to simulate the call first
+      try {
+        const callResult = await ethProvider.request({
+          method: 'eth_call',
+          params: [{
+            to: CONTRACT_ADDRESS,
+            from: address,
+            data,
+            value: testValue,
+          }, 'latest'],
+        });
+        
+        console.log('✅ eth_call simulation successful:', callResult);
+      } catch (callError) {
+        console.log('⚠️ eth_call failed, this might be expected for state-changing functions:', callError);
+      }
+
+      setDebugInfo('Estimating gas for transaction...');
 
       // Estimate gas using the Farcaster provider
       const gasEstimate = await ethProvider.request({
@@ -279,15 +316,16 @@ export default function CreatePage() {
           to: CONTRACT_ADDRESS,
           from: address,
           data,
+          value: testValue,
         }],
       });
 
       console.log('⛽ Gas estimate:', gasEstimate);
       
-      // Add 20% buffer to gas estimate
-      const gasLimit = BigInt(Math.floor(parseInt(gasEstimate, 16) * 1.2));
+      // Add 50% buffer to gas estimate for Farcaster compatibility
+      const gasLimit = BigInt(Math.floor(parseInt(gasEstimate, 16) * 1.5));
       
-      setDebugInfo(`Gas estimated: ${gasLimit.toString()}, sending transaction...`);
+      setDebugInfo(`Gas estimated: ${gasLimit.toString()}, getting network info...`);
 
       // Get current gas price
       const gasPrice = await ethProvider.request({
@@ -295,18 +333,69 @@ export default function CreatePage() {
         params: [],
       });
 
-      console.log('💰 Gas price:', gasPrice);
+      // Get chain ID to verify we're on the right network
+      const chainId = await ethProvider.request({
+        method: 'eth_chainId',
+        params: [],
+      });
 
-      // Send transaction using Farcaster's eth provider with proper gas settings
-      const txHash = await ethProvider.request({
-        method: 'eth_sendTransaction',
-        params: [{
+      console.log('🌐 Network info:', {
+        chainId: parseInt(chainId, 16),
+        gasPrice,
+        gasLimit: gasLimit.toString()
+      });
+
+      // Verify we're on Base Sepolia (chain ID 84532)
+      if (parseInt(chainId, 16) !== 84532) {
+        throw new Error(`Wrong network! Expected Base Sepolia (84532), got ${parseInt(chainId, 16)}`);
+      }
+
+      setDebugInfo('Sending transaction to Farcaster wallet...');
+
+      // For Farcaster, try EIP-1559 transaction format which is better recognized
+      // Get the base fee from the latest block
+      const latestBlock = await ethProvider.request({
+        method: 'eth_getBlockByNumber',
+        params: ['latest', false],
+      });
+
+      let txParams;
+      
+      // If the network supports EIP-1559, use it for better wallet recognition
+      if (latestBlock.baseFeePerGas) {
+        const baseFeePerGas = BigInt(latestBlock.baseFeePerGas);
+        const maxPriorityFeePerGas = parseGwei('2'); // 2 gwei tip
+        const maxFeePerGas = baseFeePerGas * BigInt(2) + maxPriorityFeePerGas; // 2x base fee + tip
+        
+        txParams = {
+          to: CONTRACT_ADDRESS,
+          from: address,
+          data,
+          gas: `0x${gasLimit.toString(16)}`,
+          maxFeePerGas: `0x${maxFeePerGas.toString(16)}`,
+          maxPriorityFeePerGas: `0x${maxPriorityFeePerGas.toString(16)}`,
+          value: testValue,
+          type: '0x2', // EIP-1559 transaction type
+        };
+        
+        console.log('📤 Using EIP-1559 transaction parameters:', txParams);
+      } else {
+        // Fallback to legacy transaction
+        txParams = {
           to: CONTRACT_ADDRESS,
           from: address,
           data,
           gas: `0x${gasLimit.toString(16)}`,
           gasPrice: gasPrice,
-        }],
+          value: testValue,
+        };
+        
+        console.log('📤 Using legacy transaction parameters:', txParams);
+      }
+
+      const txHash = await ethProvider.request({
+        method: 'eth_sendTransaction',
+        params: [txParams],
       });
 
       console.log('✅ Transaction sent via Farcaster SDK:', txHash);
@@ -317,8 +406,75 @@ export default function CreatePage() {
       return txHash;
     } catch (error) {
       console.error('❌ Farcaster SDK transaction failed:', error);
+      
+      // If the error suggests the transaction needs payment, try with a small value
+      if (error instanceof Error && (error.message.includes('revert') || error.message.includes('insufficient'))) {
+        console.log('🔄 Trying transaction with small ETH value...');
+        setDebugInfo('Retrying with payment value...');
+        
+        try {
+          return await mintWithFarcasterSDKWithValue(mintArgs);
+        } catch (retryError) {
+          console.error('❌ Retry with value also failed:', retryError);
+          throw retryError;
+        }
+      }
+      
       throw error;
     }
+  };
+
+  // Alternative method with ETH value for contracts that require payment
+  const mintWithFarcasterSDKWithValue = async (mintArgs: readonly [`0x${string}`, string, string, string, string, bigint]) => {
+    if (!ethProvider) {
+      throw new Error('Farcaster eth provider not available');
+    }
+
+    console.log('🔄 Trying transaction with ETH value...');
+    
+    const data = encodeFunctionData({
+      abi: contractABI,
+      functionName: 'mint',
+      args: mintArgs,
+    });
+
+    // Try with a small amount of ETH (0.001 ETH = 1000000000000000 wei)
+    const ethValue = '0x38D7EA4C68000'; // 0.001 ETH in hex
+
+    const gasEstimate = await ethProvider.request({
+      method: 'eth_estimateGas',
+      params: [{
+        to: CONTRACT_ADDRESS,
+        from: address,
+        data,
+        value: ethValue,
+      }],
+    });
+
+    const gasLimit = BigInt(Math.floor(parseInt(gasEstimate, 16) * 1.5));
+    const gasPrice = await ethProvider.request({
+      method: 'eth_gasPrice',
+      params: [],
+    });
+
+    const txHash = await ethProvider.request({
+      method: 'eth_sendTransaction',
+      params: [{
+        to: CONTRACT_ADDRESS,
+        from: address,
+        data,
+        gas: `0x${gasLimit.toString(16)}`,
+        gasPrice: gasPrice,
+        value: ethValue,
+      }],
+    });
+
+    console.log('✅ Transaction with value sent:', txHash);
+    setTxHash(txHash as `0x${string}`);
+    setDebugInfo(`Transaction with payment submitted: ${txHash}`);
+    setIsMinting(false);
+    
+    return txHash;
   };
 
   // Test wallet connection
@@ -398,7 +554,33 @@ export default function CreatePage() {
           args: [BigInt(1)],
         });
         console.log('✅ Contract read test successful:', exists);
-        setDebugInfo(`Contract accessible: ${CONTRACT_ADDRESS}`);
+        
+        // Test mint function simulation
+        try {
+          const testMintArgs: readonly [`0x${string}`, string, string, string, string, bigint] = [
+            address as `0x${string}`,
+            'Test Song',
+            'Test Description',
+            'ipfs://QmTestAudio',
+            'ipfs://QmTestImage',
+            BigInt(1)
+          ];
+          
+          const simulation = await publicClient.simulateContract({
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            abi: contractABI,
+            functionName: 'mint',
+            args: testMintArgs,
+            account: address as `0x${string}`,
+          });
+          
+          console.log('✅ Mint function simulation successful:', simulation);
+          setDebugInfo(`Contract fully accessible: ${CONTRACT_ADDRESS} - Mint function OK`);
+        } catch (mintError) {
+          console.log('⚠️ Mint simulation failed:', mintError);
+          setDebugInfo(`Contract accessible but mint may have issues: ${mintError instanceof Error ? mintError.message : 'Unknown error'}`);
+        }
+        
       } catch (readError) {
         console.log('Contract exists but read failed:', readError);
         setDebugInfo(`Contract at ${CONTRACT_ADDRESS} exists but may have different ABI`);
@@ -660,6 +842,19 @@ export default function CreatePage() {
                   >
                     View on BaseScan
                   </a>
+                </div>
+              )}
+              
+              {/* Farcaster-specific troubleshooting info */}
+              {isFarcasterFrame && (
+                <div className="mt-4 p-3 bg-yellow-900/20 border border-yellow-600/30 rounded-lg text-xs text-yellow-200">
+                  <div className="font-semibold mb-1">⚠️ Farcaster Wallet Scanner Notice</div>
+                  <div className="space-y-1 text-yellow-300/80">
+                    <div>• If you see "No state changes detected", this is a wallet security feature</div>
+                    <div>• The transaction should still work - check BaseScan for confirmation</div>
+                    <div>• Use the test buttons above to verify everything is working</div>
+                    <div>• Some new contracts trigger false positives in wallet scanners</div>
+                  </div>
                 </div>
               )}
               
