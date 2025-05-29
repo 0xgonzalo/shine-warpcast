@@ -1,13 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAccount, useConnect } from 'wagmi';
+import { useAccount, useConnect, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { CONTRACT_ADDRESS, contractABI } from '../utils/contract';
 import { uploadToIPFS, uploadMetadataToIPFS } from '@/app/utils/pinata';
 import { useAudio } from '../context/AudioContext';
 import { useFarcaster } from '../context/FarcasterContext';
-import { encodeFunctionData, parseGwei } from 'viem';
-import Image from 'next/image';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic' as const;
@@ -15,6 +13,7 @@ export const dynamic = 'force-dynamic' as const;
 export default function CreatePage() {
   const { address, isConnected, connector } = useAccount();
   const { connectors, connect } = useConnect();
+  const { writeContract, data: hash, error: writeError, isPending } = useWriteContract();
   const [nftName, setNftName] = useState('');
   const [nftDescription, setNftDescription] = useState('');
   const [audioFile, setAudioFile] = useState<File | null>(null);
@@ -22,14 +21,16 @@ export default function CreatePage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
   const [isMinting, setIsMinting] = useState(false);
-  const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
   const [mintError, setMintError] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [status, setStatus] = useState<string>('');
   const { playAudio, currentAudio, isPlaying } = useAudio();
-  const { isSDKLoaded, ethProvider } = useFarcaster();
+  const { isSDKLoaded } = useFarcaster();
 
-  // Auto-connect to Farcaster frame when SDK loads
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
+
+  // Auto-connect to Farcaster frame if available and SDK is loaded
   useEffect(() => {
     if (isSDKLoaded && !isConnected && connectors.length > 0) {
       const farcasterConnector = connectors.find(c => c.id === 'farcasterFrame');
@@ -38,6 +39,29 @@ export default function CreatePage() {
       }
     }
   }, [isSDKLoaded, isConnected, connectors, connect]);
+
+  useEffect(() => {
+    if (writeError) {
+      console.error('Transaction error:', writeError);
+      setMintError(`Transaction failed: ${writeError.message}`);
+      setIsMinting(false);
+    }
+  }, [writeError]);
+
+  useEffect(() => {
+    if (isConfirmed && hash) {
+      console.log('Transaction confirmed:', hash);
+      // Reset form after successful confirmation
+      setTimeout(() => {
+        setNftName('');
+        setNftDescription('');
+        setAudioFile(null);
+        setImageFile(null);
+        setAudioPreview('');
+        setImagePreview('');
+      }, 3000);
+    }
+  }, [isConfirmed, hash]);
 
   const handleAudioUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -80,25 +104,21 @@ export default function CreatePage() {
       setMintError('Please fill in all fields and upload both audio and image files');
       return;
     }
-
-    if (!ethProvider) {
-      setMintError('Farcaster wallet not available. Please make sure you are in the Farcaster app.');
-      return;
-    }
     
     setIsMinting(true);
     setMintError(null);
-    setStatus('Uploading files to IPFS...');
     
     try {
+      console.log('🎵 Starting mint process...');
+      
       // Upload files to IPFS
       const [audioURI, imageURI] = await Promise.all([
         uploadToIPFS(audioFile),
         uploadToIPFS(imageFile)
       ]);
       
-      setStatus('Creating metadata...');
-      
+      console.log('✅ Files uploaded:', { audioURI, imageURI });
+
       // Upload metadata to IPFS
       const metadataURI = await uploadMetadataToIPFS({
         name: nftName,
@@ -107,75 +127,27 @@ export default function CreatePage() {
         imageURI
       });
       
-      setStatus('Sending transaction...');
+      console.log('✅ Metadata uploaded:', metadataURI);
 
-      // Prepare transaction data
-      const mintArgs: readonly [`0x${string}`, string, string, string, string, bigint] = [
-        address as `0x${string}`,
-        nftName,
-        nftDescription,
-        audioURI,
-        imageURI,
-        BigInt(1)
-      ];
-
-      const data = encodeFunctionData({
+      // Mint using Wagmi - this will work with Farcaster connector
+      writeContract({
+        address: CONTRACT_ADDRESS as `0x${string}`,
         abi: contractABI,
         functionName: 'mint',
-        args: mintArgs,
+        args: [
+          address as `0x${string}`,
+          nftName,
+          nftDescription,
+          audioURI,
+          imageURI,
+          BigInt(1)
+        ],
       });
-
-      // Estimate gas
-      const gasEstimate = await ethProvider.request({
-        method: 'eth_estimateGas',
-        params: [{
-          to: CONTRACT_ADDRESS,
-          from: address,
-          data,
-        }],
-      });
-
-      const gasLimit = BigInt(Math.floor(parseInt(gasEstimate, 16) * 1.5));
-
-      // Get current gas price
-      const gasPrice = await ethProvider.request({
-        method: 'eth_gasPrice',
-        params: [],
-      });
-
-      // Send transaction
-      const txHash = await ethProvider.request({
-        method: 'eth_sendTransaction',
-        params: [{
-          to: CONTRACT_ADDRESS,
-          from: address,
-          data,
-          gas: `0x${gasLimit.toString(16)}`,
-          gasPrice: gasPrice,
-        }],
-      });
-
-      setTxHash(txHash as `0x${string}`);
-      setStatus(`Transaction submitted: ${txHash}`);
-      
-      // Reset form after a delay
-      setTimeout(() => {
-        setNftName('');
-        setNftDescription('');
-        setAudioFile(null);
-        setImageFile(null);
-        setAudioPreview('');
-        setImagePreview('');
-        setTxHash(undefined);
-        setStatus('');
-      }, 10000);
       
     } catch (error) {
-      console.error('Minting error:', error);
+      console.error('❌ Minting error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to mint NFT';
       setMintError(errorMessage);
-      setStatus('');
-    } finally {
       setIsMinting(false);
     }
   };
@@ -187,14 +159,23 @@ export default function CreatePage() {
         
         {!isSDKLoaded && (
           <div className="text-center py-8">
-            <div className="text-lg">Loading Farcaster Mini App...</div>
+            <div className="text-lg">Initializing Farcaster SDK...</div>
+            <div className="text-sm text-gray-400 mt-2">Please wait while we connect to your wallet</div>
           </div>
         )}
         
         {isSDKLoaded && !isConnected ? (
-          <div className="text-center py-8">
-            <div className="text-lg mb-4">Connecting to your Farcaster wallet...</div>
-            <div className="text-sm text-gray-400">Please wait while we connect</div>
+          <div className="text-center space-y-2">
+            {connectors.map((connector) => (
+              <button
+                key={connector.id}
+                onClick={() => connect({ connector })}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                disabled={!connector.ready}
+              >
+                {connector.name}
+              </button>
+            ))}
           </div>
         ) : (
           <div className="space-y-8">
@@ -202,11 +183,11 @@ export default function CreatePage() {
             <div className="bg-white/5 p-6 rounded-lg">
               <h2 className="text-2xl font-semibold mb-4">Upload Audio</h2>
               <div className="space-y-4">
-                <input
+              <input
                   id="audio-upload"
-                  type="file"
+                type="file"
                   accept="audio/*,audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/aac,audio/m4a,.mp3,.wav,.ogg,.aac,.m4a"
-                  onChange={handleAudioUpload}
+                onChange={handleAudioUpload}
                   className="hidden"
                 />
                 <label
@@ -228,20 +209,20 @@ export default function CreatePage() {
                     {fileError}
                   </div>
                 )}
-                {audioPreview && (
-                  <button
-                    onClick={handlePlayPreview}
-                    className={`w-full mt-4 px-4 py-2 rounded-lg transition-colors ${
-                      currentAudio?.src === audioPreview && isPlaying
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white/10 text-white hover:bg-white/20'
-                    }`}
-                  >
-                    {currentAudio?.src === audioPreview && isPlaying
-                      ? 'Playing Preview...'
-                      : 'Play Preview'}
-                  </button>
-                )}
+              {audioPreview && (
+                <button
+                  onClick={handlePlayPreview}
+                  className={`w-full mt-4 px-4 py-2 rounded-lg transition-colors ${
+                    currentAudio?.src === audioPreview && isPlaying
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  {currentAudio?.src === audioPreview && isPlaying
+                    ? 'Playing Preview...'
+                    : 'Play Preview'}
+                </button>
+              )}
               </div>
             </div>
 
@@ -256,11 +237,9 @@ export default function CreatePage() {
               />
               {imagePreview && (
                 <div className="mt-4">
-                  <Image
+                  <img
                     src={imagePreview}
                     alt="Cover art preview"
-                    width={200}
-                    height={200}
                     className="max-w-xs rounded-lg mx-auto"
                   />
                 </div>
@@ -295,38 +274,34 @@ export default function CreatePage() {
               <div className="flex justify-center">
                 <button
                   onClick={handleMint}
-                  disabled={isMinting || !audioFile || !imageFile || !nftName || !nftDescription}
+                  disabled={isMinting || isConfirming || isPending || !audioFile || !imageFile || !nftName || !nftDescription}
                   className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isMinting ? 'Minting...' : 'Upload Music'}
+                  {isPending ? 'Waiting for Wallet...' :
+                    isMinting ? 'Preparing Transaction...' :
+                    isConfirming ? 'Confirming Transaction...' :
+                      'Upload Music'}
                 </button>
               </div>
-              
-              {status && (
-                <div className="text-center text-blue-400 mt-2 text-sm">
-                  {status}
-                </div>
-              )}
-              
               {mintError && (
                 <div className="text-center text-red-500 mt-2">
                   {mintError}
                 </div>
               )}
               
-              {txHash && (
-                <div className="text-center space-y-2">
+              {hash && (
+                <div className="text-center space-y-2 mt-4">
                   <div className="text-green-500">
-                    Song Minted Successfully! 🎉
+                    {isConfirmed ? 'Song Minted Successfully!' : 'Transaction Submitted!'}
                   </div>
                   <div className="text-xs text-gray-400 break-all">
-                    TX: {txHash}
+                    TX: {hash}
                   </div>
                   <a
-                    href={`https://sepolia.basescan.org/tx/${txHash}`}
+                    href={`https://sepolia.basescan.org/tx/${hash}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-500 hover:underline"
+                    className="text-blue-500 hover:underline block"
                   >
                     View on BaseScan
                   </a>
