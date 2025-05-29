@@ -52,7 +52,7 @@ export default function SongsContent() {
         <div className="space-y-4">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="flex items-center space-x-4 p-4 rounded-lg bg-gray-100 animate-pulse">
-              <div className="w-15 h-15 bg-gray-300 rounded-lg"></div>
+              <div className="w-12 h-12 bg-gray-300 rounded-lg"></div>
               <div className="flex-1">
                 <div className="h-5 bg-gray-300 rounded mb-2"></div>
                 <div className="h-4 bg-gray-300 rounded w-1/2"></div>
@@ -65,7 +65,7 @@ export default function SongsContent() {
         <div className="space-y-4">
           {recentlyCollected.map((nft) => (
             <div key={nft.tokenId.toString()} className="flex items-center space-x-4 p-4 rounded-lg hover:bg-gray-50 transition-colors">
-              <div className={`w-15 h-15 bg-gradient-to-br ${generateGradient(nft.tokenId)} rounded-lg flex-shrink-0 relative overflow-hidden`}>
+              <div className={`w-12 h-12 bg-gradient-to-br ${generateGradient(nft.tokenId)} rounded-lg flex-shrink-0 relative overflow-hidden`}>
                 {nft.metadata.imageURI && nft.metadata.imageURI !== 'ipfs://placeholder-image-uri' ? (
                   <img 
                     src={getIPFSGatewayURL(nft.metadata.imageURI)} 

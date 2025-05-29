@@ -14,23 +14,9 @@ export interface FarcasterUser {
 // a proper Farcaster API service like Neynar, Airstack, or similar
 export async function getFarcasterUserByAddress(address: string): Promise<FarcasterUser | null> {
   try {
-    // For now, we'll return null since we don't have a Farcaster API configured
-    // In a real implementation, you would:
-    // 1. Use a service like Neynar API to lookup users by verified address
-    // 2. Make an API call to get the user profile
-    // 3. Return the formatted user data
-    
+
     console.log(`🔍 Looking up Farcaster user for address: ${address}`);
-    
-    // Placeholder implementation - in real app, replace with actual API call
-    // Example with Neynar API:
-    // const response = await fetch(`https://api.neynar.com/v2/farcaster/user/bulk-by-address?addresses=${address}`, {
-    //   headers: {
-    //     'api_key': process.env.NEYNAR_API_KEY,
-    //   }
-    // });
-    // const data = await response.json();
-    // return data.users?.[address] || null;
+
     
     return null;
   } catch (error) {

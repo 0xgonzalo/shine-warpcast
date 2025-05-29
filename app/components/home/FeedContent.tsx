@@ -1,7 +1,10 @@
 import NFTExists from '../NFTExists';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { getRecentlyCollectedNFTs } from '../../utils/contract';
 import { getIPFSGatewayURL } from '../../utils/pinata';
+import { useAudio } from '../../context/AudioContext';
+import Image from 'next/image';
 
 interface FeedContentProps {
   mobileColumns: number;
@@ -23,6 +26,8 @@ interface CollectedNFT {
 const MAX_SCAN = 20; // Scan token IDs 1 to 20
 
 export default function FeedContent({ mobileColumns, setMobileColumns }: FeedContentProps) {
+  const router = useRouter();
+  const { playAudio, currentAudio, isPlaying } = useAudio();
   const tokenIds = Array.from({ length: MAX_SCAN }, (_, i) => BigInt(i + 1)).slice(3);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [recentlyCollected, setRecentlyCollected] = useState<CollectedNFT[]>([]);
@@ -54,6 +59,33 @@ export default function FeedContent({ mobileColumns, setMobileColumns }: FeedCon
     setOpenMenuId(null);
   };
 
+  const handlePlaySong = (nft: CollectedNFT) => {
+    // Check if audio is available
+    if (!nft.metadata.audioURI || nft.metadata.audioURI === 'ipfs://placeholder-audio-uri') {
+      console.warn('No audio available for this NFT');
+      return;
+    }
+
+    // Get the IPFS gateway URL for the audio
+    const audioUrl = getIPFSGatewayURL(nft.metadata.audioURI);
+    
+    // Use the audio context to play the song
+    playAudio(audioUrl, nft.metadata.name);
+    console.log(`Playing song: ${nft.metadata.name}`);
+  };
+
+  const handleViewToken = (tokenId: bigint) => {
+    // Navigate to the token detail page
+    router.push(`/token/${tokenId.toString()}`);
+    console.log(`Navigating to token page for token ID: ${tokenId}`);
+  };
+
+  const handleViewArtistProfile = (creator: string) => {
+    // Navigate to the artist's profile page
+    console.log(`Viewing artist profile for: ${creator}`);
+    router.push(`/profile/${creator}`);
+  };
+
   const generateGradient = (tokenId: bigint) => {
     const gradients = [
       "from-orange-500 via-red-500 to-blue-600",
@@ -63,6 +95,15 @@ export default function FeedContent({ mobileColumns, setMobileColumns }: FeedCon
       "from-green-500 via-blue-500 to-purple-600"
     ];
     return gradients[Number(tokenId) % gradients.length];
+  };
+
+  // Helper function to check if a song is currently playing
+  const isCurrentlyPlaying = (nft: CollectedNFT) => {
+    if (!nft.metadata.audioURI || nft.metadata.audioURI === 'ipfs://placeholder-audio-uri') {
+      return false;
+    }
+    const audioUrl = getIPFSGatewayURL(nft.metadata.audioURI);
+    return currentAudio?.src === audioUrl && isPlaying;
   };
 
   return (
@@ -117,13 +158,18 @@ export default function FeedContent({ mobileColumns, setMobileColumns }: FeedCon
             {recentlyCollected.map((nft) => (
               <div key={nft.tokenId.toString()} className="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-50 hover:bg-opacity-20 transition-colors relative">
                 {/* Album artwork */}
-                <div className={`w-16 h-16 bg-gradient-to-br ${generateGradient(nft.tokenId)} rounded-lg flex-shrink-0 relative overflow-hidden`}>
+                <div 
+                  className={`w-16 h-16 max-w-[64px] max-h-[64px] bg-gradient-to-br ${generateGradient(nft.tokenId)} rounded-lg flex-shrink-0 relative overflow-hidden cursor-pointer hover:scale-105 transition-transform`}
+                  onClick={() => handlePlaySong(nft)}
+                >
                   {/* Use actual image if available */}
                   {nft.metadata.imageURI && nft.metadata.imageURI !== 'ipfs://placeholder-image-uri' ? (
-                    <img 
+                    <Image 
                       src={getIPFSGatewayURL(nft.metadata.imageURI)} 
                       alt={nft.metadata.name}
-                      className="w-full h-full object-cover"
+                      width={64}
+                      height={64}
+                      className="object-cover rounded-lg"
                     />
                   ) : (
                     /* Abstract art pattern fallback */
@@ -135,20 +181,30 @@ export default function FeedContent({ mobileColumns, setMobileColumns }: FeedCon
                     </div>
                   )}
                   
-                  {/* Play button overlay */}
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                    <button className="w-8 h-8 bg-white/90 rounded-lg flex items-center justify-center hover:bg-white transition-colors">
-                      <svg className="w-4 h-4 text-black ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z"/>
-                      </svg>
-                    </button>
+                  {/* Play icon overlay */}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      {isCurrentlyPlaying(nft) ? (
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 012 0v6a1 1 0 11-2 0V7zM12 7a1 1 0 012 0v6a1 1 0 11-2 0V7z" clipRule="evenodd" />
+                      ) : (
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                      )}
+                    </svg>
                   </div>
                 </div>
                 
                 {/* Song info */}
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-lg text-white truncate">{nft.metadata.name}</h3>
-                  <p className="text-gray-300 text-sm">
+                  <h3 
+                    className="font-semibold text-lg text-white truncate cursor-pointer hover:text-purple-300 transition-colors"
+                    onClick={() => handleViewToken(nft.tokenId)}
+                  >
+                    {nft.metadata.name}
+                  </h3>
+                  <p 
+                    className="text-gray-300 text-sm cursor-pointer hover:text-purple-300 transition-colors"
+                    onClick={() => handleViewArtistProfile(nft.metadata.creator)}
+                  >
                     {nft.metadata.creator.slice(0, 6)}...{nft.metadata.creator.slice(-4)}
                   </p>
                 </div>
