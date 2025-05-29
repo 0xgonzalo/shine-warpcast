@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAccount, useConnect, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useConnect, useWriteContract, useWaitForTransactionReceipt, useSimulateContract } from 'wagmi';
 import { CONTRACT_ADDRESS, contractABI, publicClient } from '../utils/contract';
 import { uploadToIPFS, uploadMetadataToIPFS } from '@/app/utils/pinata';
 import { useAudio } from '../context/AudioContext';
 import { useFarcaster } from '../context/FarcasterContext';
-import { encodeFunctionData } from 'viem';
+import { encodeFunctionData, parseGwei } from 'viem';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic' as const;
@@ -32,7 +32,7 @@ export default function CreatePage() {
 
   // Check if we're in a mobile environment
   const isMobile = typeof window !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  const isFarcasterFrame = connector?.id === 'farcasterFrame';
+  const isFarcasterFrame = connector?.id === 'farcasterFrame' || (isSDKLoaded && context?.client?.name === 'farcaster');
 
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash: txHash,
@@ -209,34 +209,40 @@ export default function CreatePage() {
         functionName: 'mint',
         args: mintArgs,
         connector: connector?.name,
-        gasLimit: 500000
+        isFarcasterFrame
       });
       
-      setDebugInfo('Submitting transaction to wallet...');
-
-      try {
-        // First try with wagmi
-        writeContract({
-          address: CONTRACT_ADDRESS as `0x${string}`,
-          abi: contractABI,
-          functionName: 'mint',
-          args: mintArgs,
-          // Add explicit gas settings for mobile compatibility
-          gas: BigInt(500000), // Set a reasonable gas limit
-        });
+      // For Farcaster Mini Apps, use direct SDK approach
+      if (isFarcasterFrame && ethProvider) {
+        setDebugInfo('Using Farcaster SDK transaction method...');
+        await mintWithFarcasterSDK(mintArgs);
+      } else {
+        setDebugInfo('Simulating transaction...');
         
-        console.log('📝 writeContract called successfully');
-      } catch (wagmiError) {
-        console.warn('⚠️ Wagmi method failed, trying Farcaster SDK...', wagmiError);
-        
-        // Fallback to Farcaster SDK method
-        if (ethProvider && isFarcasterFrame) {
-          setDebugInfo('Trying alternative transaction method...');
-          const txHash = await mintWithFarcasterSDK(mintArgs);
-          setTxHash(txHash as `0x${string}`);
-          setDebugInfo(`Transaction submitted via Farcaster SDK: ${txHash}`);
-        } else {
-          throw wagmiError;
+        // First simulate the transaction to catch any issues
+        try {
+          const simulation = await publicClient.simulateContract({
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            abi: contractABI,
+            functionName: 'mint',
+            args: mintArgs,
+            account: address as `0x${string}`,
+          });
+          
+          console.log('✅ Transaction simulation successful:', simulation);
+          setDebugInfo('Simulation successful, submitting transaction...');
+          
+          // Now execute with wagmi
+          writeContract({
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            abi: contractABI,
+            functionName: 'mint',
+            args: mintArgs,
+            gas: BigInt(600000), // Increased gas limit
+          });
+        } catch (simulationError) {
+          console.error('❌ Transaction simulation failed:', simulationError);
+          throw new Error(`Transaction would fail: ${simulationError instanceof Error ? simulationError.message : 'Unknown simulation error'}`);
         }
       }
       
@@ -249,33 +255,70 @@ export default function CreatePage() {
     }
   };
 
-  // Alternative transaction method using Farcaster SDK directly
+  // Enhanced Farcaster SDK transaction method
   const mintWithFarcasterSDK = async (mintArgs: readonly [`0x${string}`, string, string, string, string, bigint]) => {
     if (!ethProvider) {
       throw new Error('Farcaster eth provider not available');
     }
 
-    console.log('🔄 Trying alternative method with Farcaster SDK...');
+    console.log('🔄 Using Farcaster SDK transaction method...');
+    setDebugInfo('Estimating gas for Farcaster transaction...');
     
-    // Encode the function call
-    const data = encodeFunctionData({
-      abi: contractABI,
-      functionName: 'mint',
-      args: mintArgs,
-    });
+    try {
+      // Encode the function call
+      const data = encodeFunctionData({
+        abi: contractABI,
+        functionName: 'mint',
+        args: mintArgs,
+      });
 
-    // Send transaction using Farcaster's eth provider
-    const txHash = await ethProvider.request({
-      method: 'eth_sendTransaction',
-      params: [{
-        to: CONTRACT_ADDRESS,
-        data,
-        gas: '0x7A120', // 500000 in hex
-      }],
-    });
+      // Estimate gas using the Farcaster provider
+      const gasEstimate = await ethProvider.request({
+        method: 'eth_estimateGas',
+        params: [{
+          to: CONTRACT_ADDRESS,
+          from: address,
+          data,
+        }],
+      });
 
-    console.log('✅ Transaction sent via Farcaster SDK:', txHash);
-    return txHash;
+      console.log('⛽ Gas estimate:', gasEstimate);
+      
+      // Add 20% buffer to gas estimate
+      const gasLimit = BigInt(Math.floor(parseInt(gasEstimate, 16) * 1.2));
+      
+      setDebugInfo(`Gas estimated: ${gasLimit.toString()}, sending transaction...`);
+
+      // Get current gas price
+      const gasPrice = await ethProvider.request({
+        method: 'eth_gasPrice',
+        params: [],
+      });
+
+      console.log('💰 Gas price:', gasPrice);
+
+      // Send transaction using Farcaster's eth provider with proper gas settings
+      const txHash = await ethProvider.request({
+        method: 'eth_sendTransaction',
+        params: [{
+          to: CONTRACT_ADDRESS,
+          from: address,
+          data,
+          gas: `0x${gasLimit.toString(16)}`,
+          gasPrice: gasPrice,
+        }],
+      });
+
+      console.log('✅ Transaction sent via Farcaster SDK:', txHash);
+      setTxHash(txHash as `0x${string}`);
+      setDebugInfo(`Transaction submitted: ${txHash}`);
+      setIsMinting(false);
+      
+      return txHash;
+    } catch (error) {
+      console.error('❌ Farcaster SDK transaction failed:', error);
+      throw error;
+    }
   };
 
   // Test wallet connection
@@ -364,6 +407,60 @@ export default function CreatePage() {
     } catch (error) {
       console.error('❌ Contract test failed:', error);
       setDebugInfo(`Contract test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  // Test Farcaster Mini App environment
+  const testFarcasterEnvironment = async () => {
+    try {
+      console.log('🧪 Testing Farcaster environment...');
+      setDebugInfo('Testing Farcaster Mini App environment...');
+      
+      if (!isFarcasterFrame) {
+        setDebugInfo('Not in Farcaster frame environment');
+        return;
+      }
+      
+      if (!ethProvider) {
+        throw new Error('Farcaster eth provider not available');
+      }
+      
+      // Test basic provider functionality
+      const chainId = await ethProvider.request({ method: 'eth_chainId' });
+      console.log('Chain ID:', chainId);
+      
+      const accounts = await ethProvider.request({ method: 'eth_requestAccounts' });
+      console.log('Connected accounts:', accounts);
+      
+      // Test gas estimation
+      const testData = encodeFunctionData({
+        abi: contractABI,
+        functionName: 'mint',
+        args: [
+          address as `0x${string}`,
+          'Test Song',
+          'Test Description', 
+          'ipfs://test-audio',
+          'ipfs://test-image',
+          BigInt(1)
+        ],
+      });
+      
+      const gasEstimate = await ethProvider.request({
+        method: 'eth_estimateGas',
+        params: [{
+          to: CONTRACT_ADDRESS,
+          from: address,
+          data: testData,
+        }],
+      });
+      
+      console.log('✅ Gas estimation successful:', gasEstimate);
+      setDebugInfo(`Farcaster environment OK - Chain: ${parseInt(chainId, 16)}, Gas est: ${parseInt(gasEstimate, 16)}`);
+      
+    } catch (error) {
+      console.error('❌ Farcaster environment test failed:', error);
+      setDebugInfo(`Farcaster test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -499,9 +596,9 @@ export default function CreatePage() {
                 </button>
               </div>
               
-              {/* Wallet test button for debugging */}
-              {(isMobile || isFarcasterFrame) && (
-                <div className="flex justify-center mt-2 space-x-2">
+              {/* Debug test buttons */}
+              <div className="flex justify-center mt-2">
+                <div className="grid grid-cols-2 gap-2 w-full max-w-md">
                   <button
                     onClick={testWalletConnection}
                     className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-xs"
@@ -520,8 +617,14 @@ export default function CreatePage() {
                   >
                     Test Contract
                   </button>
+                  <button
+                    onClick={testFarcasterEnvironment}
+                    className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs"
+                  >
+                    Test Farcaster
+                  </button>
                 </div>
-              )}
+              </div>
               {mintError && (
                 <div className="text-center text-red-500 mt-2">
                   {mintError}
@@ -537,6 +640,8 @@ export default function CreatePage() {
                   Mobile: {isMobile ? 'Yes' : 'No'} | Farcaster: {isFarcasterFrame ? 'Yes' : 'No'} | Wallet: {connector?.name || 'None'}
                   <br />
                   SDK: {isSDKLoaded ? 'Loaded' : 'Loading'} | Ready: {isReady ? 'Yes' : 'No'} | ETH Provider: {ethProvider ? 'Available' : 'None'}
+                  <br />
+                  Context: {context?.client?.name || 'None'} | Chain: {context?.client?.chain || 'Unknown'}
                 </div>
               )}
               {txHash && (
