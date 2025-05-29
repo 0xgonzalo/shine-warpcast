@@ -850,7 +850,7 @@ export default function CreatePage() {
                 <div className="mt-4 p-3 bg-yellow-900/20 border border-yellow-600/30 rounded-lg text-xs text-yellow-200">
                   <div className="font-semibold mb-1">⚠️ Farcaster Wallet Scanner Notice</div>
                   <div className="space-y-1 text-yellow-300/80">
-                    <div>• If you see "No state changes detected", this is a wallet security feature</div>
+                    <div>• If you see &quot;No state changes detected&quot;, this is a wallet security feature</div>
                     <div>• The transaction should still work - check BaseScan for confirmation</div>
                     <div>• Use the test buttons above to verify everything is working</div>
                     <div>• Some new contracts trigger false positives in wallet scanners</div>

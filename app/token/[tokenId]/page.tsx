@@ -1,11 +1,12 @@
 'use client';
 
 import { useParams } from 'next/navigation';
+import { useState } from 'react';
 import { useReadContract } from 'wagmi';
 import { CONTRACT_ADDRESS, contractABI } from '../../utils/contract';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
 import { useAudio } from '../../context/AudioContext';
-import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 
 export default function TokenPage() {
   const params = useParams();
@@ -87,9 +88,11 @@ export default function TokenPage() {
         {/* Album Art */}
         <div className="w-80 h-80 mb-8 rounded-lg overflow-hidden shadow-2xl">
           {data.imageURI && data.imageURI !== 'ipfs://placeholder-image-uri' ? (
-            <img
+            <Image
               src={getIPFSGatewayURL(data.imageURI)}
               alt={data.name}
+              width={320}
+              height={320}
               className="w-full h-full object-cover"
             />
           ) : (
