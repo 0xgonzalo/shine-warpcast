@@ -6,6 +6,7 @@ import { CONTRACT_ADDRESS, contractABI } from '../utils/contract';
 import { uploadToIPFS, uploadMetadataToIPFS } from '@/app/utils/pinata';
 import { useAudio } from '../context/AudioContext';
 import { useFarcaster } from '../context/FarcasterContext';
+import CreatedModal from '../components/CreatedModal';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic' as const;
@@ -23,6 +24,12 @@ export default function CreatePage() {
   const [isMinting, setIsMinting] = useState(false);
   const [mintError, setMintError] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [showCreatedModal, setShowCreatedModal] = useState(false);
+  const [createdNFT, setCreatedNFT] = useState<{
+    imageURI: string;
+    name: string;
+    description: string;
+  } | null>(null);
   const { playAudio, currentAudio, isPlaying } = useAudio();
   const { isSDKLoaded } = useFarcaster();
 
@@ -49,19 +56,12 @@ export default function CreatePage() {
   }, [writeError]);
 
   useEffect(() => {
-    if (isConfirmed && hash) {
+    if (isConfirmed && hash && createdNFT) {
       console.log('Transaction confirmed:', hash);
-      // Reset form after successful confirmation
-      setTimeout(() => {
-        setNftName('');
-        setNftDescription('');
-        setAudioFile(null);
-        setImageFile(null);
-        setAudioPreview('');
-        setImagePreview('');
-      }, 3000);
+      setShowCreatedModal(true);
+      setIsMinting(false);
     }
-  }, [isConfirmed, hash]);
+  }, [isConfirmed, hash, createdNFT]);
 
   const handleAudioUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -129,6 +129,13 @@ export default function CreatePage() {
       
       console.log('✅ Metadata uploaded:', metadataURI);
 
+      // Store NFT details for the success modal
+      setCreatedNFT({
+        imageURI,
+        name: nftName,
+        description: nftDescription
+      });
+
       // Mint using Wagmi - this will work with Farcaster connector
       writeContract({
         address: CONTRACT_ADDRESS as `0x${string}`,
@@ -150,6 +157,18 @@ export default function CreatePage() {
       setMintError(errorMessage);
       setIsMinting(false);
     }
+  };
+
+  const handleCloseCreatedModal = () => {
+    setShowCreatedModal(false);
+    setCreatedNFT(null);
+    // Reset form after modal is closed
+    setNftName('');
+    setNftDescription('');
+    setAudioFile(null);
+    setImageFile(null);
+    setAudioPreview('');
+    setImagePreview('');
   };
 
   return (
@@ -311,6 +330,15 @@ export default function CreatePage() {
           </div>
         )}
       </div>
+      
+      {/* Success Modal */}
+      {showCreatedModal && createdNFT && hash && (
+        <CreatedModal
+          nft={createdNFT}
+          txHash={hash}
+          onClose={handleCloseCreatedModal}
+        />
+      )}
     </main>
   );
 } 
