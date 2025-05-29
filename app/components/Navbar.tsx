@@ -1,22 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { usePrivy } from '@privy-io/react-auth';
 import { useEffect, useRef, useState } from 'react';
-import useConnectedWallet from "@/hooks/useConnectedWallet";
+import { useAccount, useDisconnect } from 'wagmi';
+import { useFarcaster } from '../context/FarcasterContext';
+import Image from 'next/image';
 
 export default function Navbar() {
-  const { login, logout } = usePrivy();
-  const { 
-    connectedWallet,
-    isReady,
-    isAuthenticated,
-    isConnecting,
-    connectWallet,
-    hasExternalWallet,
-    farcasterUsername,
-    farcasterPfpUrl
-  } = useConnectedWallet();
+  const { address, isConnected } = useAccount();
+  const { disconnect } = useDisconnect();
+  const { context } = useFarcaster();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -32,61 +25,69 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleConnect = async () => {
-    const result = await connectWallet();
-    if (result.needsLogin) {
-      await login();
-    }
-  };
-
   const handleDisconnect = async () => {
     try {
-      await logout();
+      disconnect();
       setIsDropdownOpen(false);
     } catch (error) {
-      console.error('Failed to logout:', error);
+      console.error('Failed to disconnect:', error);
     }
   };
 
-  if (!isReady) {
-    return null; // Don't render until Privy is ready
-  }
+  // Get user info from Farcaster context
+  const farcasterUsername = context?.user?.username;
+  const farcasterPfpUrl = context?.user?.pfpUrl;
+  const farcasterDisplayName = context?.user?.displayName;
 
   return (
     <nav className="w-full bg-black/20 backdrop-blur-sm border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo/Brand */}
+          {/* Logo/Brand with Shine logo */}
           <Link 
             href="/" 
-            className="text-xl font-bold text-white hover:text-gray-200 transition-colors"
+            className="flex items-center space-x-3 text-xl font-bold text-white hover:text-gray-200 transition-colors"
           >
-            Shine
+            <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+              <span className="text-white text-sm font-bold">✨</span>
+            </div>
+            <span>Shine</span>
           </Link>
 
-          {/* Wallet Connection */}
+          {/* User Profile */}
           <div className="relative" ref={dropdownRef}>
-            {isAuthenticated && (farcasterUsername || connectedWallet) ? (
+            {isConnected && address ? (
               <div>
                 <button
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-black transition-colors text-white"
+                  className="flex items-center space-x-3 px-4 py-2 rounded-lg bg-black/40 backdrop-blur-sm border border-white/10 transition-colors text-white hover:bg-black/60"
                 >
-                  {/* Prioritize Farcaster avatar and username when available */}
+                  {/* Farcaster Profile Picture */}
                   {farcasterPfpUrl ? (
-                    <>
-                      <img src={farcasterPfpUrl} alt={farcasterUsername || 'Farcaster User'} className="w-6 h-6 rounded-full" />
-                      {farcasterUsername && <span className="text-sm">{farcasterUsername}</span>}
-                    </>
+                    <Image 
+                      src={farcasterPfpUrl} 
+                      alt={farcasterDisplayName || farcasterUsername || 'User'} 
+                      width={24}
+                      height={24}
+                      className="w-6 h-6 rounded-full"
+                    />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
+                      <span className="text-xs text-white">👤</span>
+                    </div>
+                  )}
+                  
+                  {/* Username or Display Name */}
+                  {farcasterDisplayName ? (
+                    <span className="text-sm font-medium">{farcasterDisplayName}</span>
                   ) : farcasterUsername ? (
-                    /* Show username even without avatar */
-                    <span className="text-sm">{farcasterUsername}</span>
-                  ) : connectedWallet ? (
-                    /* Fallback to wallet address only when no Farcaster data */
+                    <span className="text-sm">@{farcasterUsername}</span>
+                  ) : (
                     <span className="text-sm">
-                      {connectedWallet.slice(0, 6)}...{connectedWallet.slice(-4)}
+                      {address.slice(0, 6)}...{address.slice(-4)}
                     </span>
-                  ) : null}
+                  )}
+                  
                   <svg 
                     className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} 
                     fill="none" 
@@ -99,47 +100,44 @@ export default function Navbar() {
 
                 {/* Dropdown Menu */}
                 {isDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 rounded-lg bg-black backdrop-blur-sm border border-white/10 shadow-lg py-1 z-50">
+                  <div className="absolute right-0 mt-2 w-48 rounded-lg bg-black/80 backdrop-blur-sm border border-white/10 shadow-lg py-1 z-50">
                     <Link
                       href="/create"
-                      className="block px-4 py-2 text-sm text-white hover:bg-white/10 transition-colors"
+                      className="block px-4 py-3 text-sm text-white hover:bg-white/10 transition-colors"
                       onClick={() => setIsDropdownOpen(false)}
                     >
-                      Create
+                      <div className="flex items-center space-x-2">
+                        <span>🎵</span>
+                        <span>Create Music</span>
+                      </div>
                     </Link>
                     <Link
-                      href={connectedWallet ? `/profile/${connectedWallet}` : farcasterUsername ? `/profile/@${farcasterUsername}` : '/profile'}
-                      className="block px-4 py-2 text-sm text-white hover:bg-white/10 transition-colors"
+                      href={`/profile/${address}`}
+                      className="block px-4 py-3 text-sm text-white hover:bg-white/10 transition-colors"
                       onClick={() => setIsDropdownOpen(false)}
                     >
-                      Profile
+                      <div className="flex items-center space-x-2">
+                        <span>👤</span>
+                        <span>Profile</span>
+                      </div>
                     </Link>
+                    <div className="border-t border-white/10 my-1"></div>
                     <button
                       onClick={handleDisconnect}
-                      className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-white/10 transition-colors"
+                      className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-white/10 transition-colors"
                     >
-                      Disconnect Wallet
+                      <div className="flex items-center space-x-2">
+                        <span>🚪</span>
+                        <span>Disconnect</span>
+                      </div>
                     </button>
                   </div>
                 )}
               </div>
             ) : (
-              <button
-                onClick={handleConnect}
-                disabled={isConnecting}
-                className={`px-4 py-2 rounded-lg transition-colors text-white font-medium ${
-                  isConnecting 
-                    ? 'bg-blue-400 cursor-not-allowed' 
-                    : 'bg-blue-600 hover:bg-blue-700'
-                }`}
-              >
-                {isConnecting 
-                  ? 'Connecting...' 
-                  : isAuthenticated
-                    ? 'Link Wallet'
-                    : 'Connect Wallet'
-                }
-              </button>
+              <div className="text-sm text-gray-400">
+                Connect via Farcaster
+              </div>
             )}
           </div>
         </div>
