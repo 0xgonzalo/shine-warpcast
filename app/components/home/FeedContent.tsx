@@ -112,26 +112,6 @@ export default function FeedContent({ mobileColumns, setMobileColumns }: FeedCon
     <>
       <div className="flex justify-between items-center mb-8">
         <h1 className="md:text-4xl text-2xl font-bold text-center">New Releases</h1>
-        
-        <div className="flex space-x-2 md:hidden">
-          <button 
-            onClick={() => setMobileColumns(1)}
-            className={`p-1.5 border ${mobileColumns === 1 ? 'bg-[#5D2DA0] text-white' : ''} rounded flex items-center justify-center w-8 h-8`}
-            aria-label="Single column view"
-          >
-            <div className="w-4 h-4 border-2 border-current"></div>
-          </button>
-          <button 
-            onClick={() => setMobileColumns(2)}
-            className={`p-1.5 border ${mobileColumns === 2 ? 'bg-[#5D2DA0] text-white' : ''} rounded flex items-center justify-center w-8 h-8`}
-            aria-label="Double column view"
-          >
-            <div className="flex space-x-0.5">
-              <div className="w-3 h-3 border-2 border-current"></div>
-              <div className="w-3 h-3 border-2 border-current"></div>
-            </div>
-          </button>
-        </div>
       </div>
       
       {/* NFTExists Cards as a horizontal slider */}
@@ -272,7 +252,6 @@ export default function FeedContent({ mobileColumns, setMobileColumns }: FeedCon
 
 function KeenNFTSlider({ tokenIds }: { tokenIds: bigint[] }) {
   const [availableTokenIds, setAvailableTokenIds] = useState<bigint[]>([]);
-
   useEffect(() => {
     let isMounted = true;
     async function checkExists() {
@@ -293,18 +272,26 @@ function KeenNFTSlider({ tokenIds }: { tokenIds: bigint[] }) {
     return () => { isMounted = false; };
   }, [tokenIds]);
 
-  const [sliderRef] = useKeenSlider<HTMLDivElement>({
+  const [sliderRef, slider] = useKeenSlider<HTMLDivElement>({
     mode: 'free-snap',
-    slides: { perView: 2.2, spacing: 16 },
+    slides: { perView: 1.2, spacing: 12, origin: 'center' },
     breakpoints: {
       '(min-width: 640px)': { slides: { perView: 3.2, spacing: 20 } },
       '(min-width: 1024px)': { slides: { perView: 4.2, spacing: 24 } },
     },
   });
+
+  // Refresh slider when availableTokenIds change
+  useEffect(() => {
+    if (slider.current) {
+      slider.current.update();
+    }
+  }, [availableTokenIds, slider]);
+
   return (
     <div ref={sliderRef} className="keen-slider py-2">
       {availableTokenIds.map((tokenId) => (
-        <div key={tokenId.toString()} className="keen-slider__slide px-1">
+        <div key={tokenId.toString()} className="keen-slider__slide min-w-[180px]">
           <NFTExists tokenId={tokenId} />
         </div>
       ))}

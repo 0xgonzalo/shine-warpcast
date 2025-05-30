@@ -81,7 +81,7 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
 
   return (
     <>
-      <div className="bg-gradient-to-r from-[#323232] to-[#232323] text-white rounded-lg shadow-lg overflow-hidden p-4 transition-all duration-300 hover:shadow-2xl w-full max-w-xs mx-auto">
+      <div className="bg-gradient-to-r from-[#323232] to-[#232323] text-white rounded-lg shadow-lg overflow-hidden p-4 transition-all duration-300 hover:shadow-2xl w-full">
         <div
           className="aspect-square bg-gradient-to-r from-[#282828] to-[#232323] rounded-md mb-3 relative cursor-pointer group flex items-center justify-center"
           onClick={isAudioAvailable ? handlePlayAudio : undefined}
