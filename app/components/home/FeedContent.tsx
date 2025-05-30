@@ -5,6 +5,8 @@ import { getRecentlyCollectedNFTs } from '../../utils/contract';
 import { getIPFSGatewayURL } from '../../utils/pinata';
 import { useAudio } from '../../context/AudioContext';
 import Image from 'next/image';
+import { useKeenSlider } from 'keen-slider/react'
+import 'keen-slider/keen-slider.min.css'
 
 interface FeedContentProps {
   mobileColumns: number;
@@ -132,10 +134,9 @@ export default function FeedContent({ mobileColumns, setMobileColumns }: FeedCon
         </div>
       </div>
       
-      <div className={`grid ${mobileColumns === 1 ? 'grid-cols-1' : 'grid-cols-2'} md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12`}>
-        {tokenIds.map((tokenId) => (
-          <NFTExists key={tokenId.toString()} tokenId={tokenId} />
-        ))}
+      {/* NFTExists Cards as a horizontal slider */}
+      <div className="mb-12">
+        <KeenNFTSlider tokenIds={tokenIds} />
       </div>
 
       {/* Recently Collected Songs Section */}
@@ -266,5 +267,47 @@ export default function FeedContent({ mobileColumns, setMobileColumns }: FeedCon
         )}
       </div>
     </>
+  );
+}
+
+function KeenNFTSlider({ tokenIds }: { tokenIds: bigint[] }) {
+  const [availableTokenIds, setAvailableTokenIds] = useState<bigint[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function checkExists() {
+      const { checkNFTExists } = await import('../../utils/contract');
+      const checks = await Promise.all(
+        tokenIds.map(async (tokenId) => {
+          try {
+            const exists = await checkNFTExists(tokenId);
+            return exists ? tokenId : null;
+          } catch {
+            return null;
+          }
+        })
+      );
+      if (isMounted) setAvailableTokenIds(checks.filter(Boolean) as bigint[]);
+    }
+    checkExists();
+    return () => { isMounted = false; };
+  }, [tokenIds]);
+
+  const [sliderRef] = useKeenSlider<HTMLDivElement>({
+    mode: 'free-snap',
+    slides: { perView: 2.2, spacing: 16 },
+    breakpoints: {
+      '(min-width: 640px)': { slides: { perView: 3.2, spacing: 20 } },
+      '(min-width: 1024px)': { slides: { perView: 4.2, spacing: 24 } },
+    },
+  });
+  return (
+    <div ref={sliderRef} className="keen-slider py-2">
+      {availableTokenIds.map((tokenId) => (
+        <div key={tokenId.toString()} className="keen-slider__slide px-1">
+          <NFTExists tokenId={tokenId} />
+        </div>
+      ))}
+    </div>
   );
 } 
