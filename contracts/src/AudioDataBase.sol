@@ -12,6 +12,7 @@ contract AudioDataBase {
         string[] tags;
         uint256 pricePerMint; // Price per mint in wei
         uint256 maxSupply;
+        uint256 currentSupply; // Current supply of the audio
     }
 
     struct AddressTypeProposal {
@@ -28,6 +29,7 @@ contract AudioDataBase {
 
     mapping(uint256 audioId => AudioMetadata metadata) private audio;
     mapping(uint256 farcasterId => uint256[] audioIds) private userCollection;
+    mapping(uint256 farcasterId => mapping(uint256 audioId => bool isOwned)) private userAudioOwnership;
 
     constructor(address _admin) {
         admin.current = _admin;
@@ -65,7 +67,41 @@ contract AudioDataBase {
             tags: tags,
             pricePerMint: pricePerMint,
             maxSupply: maxSupply
+            currentSupply: 0
         });
+    }
+
+    function buy(
+        uint256[] memory audioIds,
+        uint256 farcasterId
+    ) external payable {
+        if (audioIds.length == 0) revert();
+
+        uint256 totalCost = OPERATION_FEE;
+
+        for (uint256 i = 0; i < audioIds.length; i++) {
+            uint256 audioId = audioIds[i];
+
+            if (!audioIdExists(audioId)) revert();
+
+            if (userAudioOwnership[farcasterId][audioId]) revert();
+
+            if (audio[audioId].currentSupply >= audio[audioId].maxSupply) revert();
+
+            userCollection[farcasterId].push(audioId);
+            userAudioOwnership[farcasterId][audioId] = true;
+            audio[audioId].currentSupply++;
+            totalCost += audio[audioId].pricePerMint;
+        }
+
+        if (msg.value < totalCost) revert();
+
+        if (msg.value > totalCost) {
+            (bool sent, ) = payable(msg.sender).call{value: msg.value - totalCost}("");
+            if(!sent) revert("Failed to refund excess payment");
+        }
+
+
     }
 
     function audioIdExists(uint256 audioId) public view returns (bool) {
