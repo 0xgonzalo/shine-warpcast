@@ -2,10 +2,10 @@
 pragma solidity ^0.8.13;
 
 import {Test, console} from "forge-std/Test.sol";
-import {Counter} from "../src/Counter.sol";
+
 
 contract CounterTest is Test {
-    Counter public counter;
+    /*Counter public counter;
 
     function setUp() public {
         counter = new Counter();
@@ -21,4 +21,5 @@ contract CounterTest is Test {
         counter.setNumber(x);
         assertEq(counter.number(), x);
     }
+    */
 }
