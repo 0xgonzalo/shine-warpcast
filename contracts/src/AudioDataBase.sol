@@ -66,6 +66,18 @@ contract AudioDataBase {
 
     // 🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮶 Music functions 🮵🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙
 
+    /**
+     * @notice Creates a new audio drop.
+     * @dev This function allows an artist to create a new audio drop with metadata.
+     * @param title The title of the audio.
+     * @param artistName The name of the artist.
+     * @param mediaURI The URI of the audio media.
+     * @param metadataURI The URI of the audio metadata.
+     * @param artistAddress The address of the artist.
+     * @param tags An array of tags associated with the audio.
+     * @param pricePerMint The price per mint in wei.
+     * @param maxSupply The maximum supply of the audio.
+     */
     function newAudio(
         string memory title,
         string memory artistName,
@@ -111,6 +123,13 @@ contract AudioDataBase {
         );
     }
 
+    /**
+     * @notice Allows users to buy multiple audio drops and pay only once for the operation fee.
+     * @dev This function checks if the user owns the audio,
+     *      if the audio exists, and if the max supply is reached.
+     * @param audioIds An array of audio IDs to purchase.
+     * @param farcasterId The ID of the user making the purchase.
+     */
     function buy(
         uint256[] memory audioIds,
         uint256 farcasterId
@@ -146,6 +165,13 @@ contract AudioDataBase {
         emit EventsLib.UserBuy(audioIds, farcasterId);
     }
 
+    /**
+     * @notice Allows users to instantly buy an audio drop.
+     * @dev This function checks if the user owns the audio, if the audio exists, and if the max supply is reached.
+     * @notice This function is designed for single audio purchases and requires the user to pay the operation fee.
+     * @param audioId The ID of the audio to purchase.
+     * @param farcasterId The ID of the user making the purchase.
+     */
     function instaBuy(uint256 audioId, uint256 farcasterId) external payable {
         if (!audioIdExists(audioId)) revert ErrorsLib.InvalidAudioId();
 
