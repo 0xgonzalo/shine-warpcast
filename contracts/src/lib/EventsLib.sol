@@ -12,15 +12,7 @@ library EventsLib {
         uint256 pricePerMint,
         uint256 maxSupply
     );
-    event UserBuy(
-        uint256[] indexed audioIds,
-        uint256 indexed farcasterId
-    );
+    event UserBuy(uint256[] indexed audioIds, uint256 indexed farcasterId);
 
-    event UserInstaBuy(
-        uint256 indexed audioId,
-        uint256 indexed farcasterId
-    );
-
-    
+    event UserInstaBuy(uint256 indexed audioId, uint256 indexed farcasterId);
 }
