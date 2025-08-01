@@ -19,7 +19,7 @@ pragma solidity ^0.8.13;
  */
 
 library EventsLib {
-    event NewAudioDrop(
+    event NewSongDrop(
         uint256 indexed audioId,
         string indexed title,
         string indexed artistName,

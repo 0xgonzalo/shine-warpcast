@@ -22,9 +22,9 @@ library ErrorsLib {
     error SenderIsNotAuthorized();
     error InvalidMetadataInput();
     error ListIsEmpty();
-    error InvalidAudioId();
-    error UserOwnsAudio();
-    error AudioMaxSupplyReached();
+    error InvalidSongId();
+    error UserOwnsSong();
+    error SongMaxSupplyReached();
     error NewAdminAddressCannotBeZero();
     error NewAdminNotProposed();
     error TimeToExecuteProposalNotReached();
