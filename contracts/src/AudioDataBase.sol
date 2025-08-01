@@ -1,12 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+/**
+    ___ _ _____  _____ シ
+  ,' _//// / / |/ / _/ ャ
+ _\ `./ ` / / || / _/  イ
+/___,/_n_/_/_/|_/___/  ヌ
+                      
+                                                            
+ * @title Shine Audio DataBase
+ * @author 11:11 Labs 
+ * @notice This contract manages audio metadata, user purchases, 
+ *         and admin functionalities for the Shine platform.
+ */
+
 import {ErrorsLib} from "@shine/lib/ErrorsLib.sol";
 import {EventsLib} from "@shine/lib/EventsLib.sol";
 import {SafeTransferLib} from "@solady/utils/SafeTransferLib.sol";
 
 contract AudioDataBase {
-    // Mapping from token ID to audio metadata
+    // 🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮶 Structs 🮵🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙
+
     struct AudioMetadata {
         string title;
         string artistName;
@@ -25,26 +39,32 @@ contract AudioDataBase {
         uint256 timeToExecuteProposal;
     }
 
+    // 🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮶 State Variables 🮵🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙
+
     uint256 private _nextTokenId;
-
     uint256 private constant OPERATION_FEE = 0.0000555 ether;
-
     AddressTypeProposal private admin;
+
+    // 🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮶 Mappings 🮵🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙
 
     mapping(uint256 audioId => AudioMetadata metadata) private audio;
     mapping(uint256 farcasterId => uint256[] audioIds) private userCollection;
     mapping(uint256 farcasterId => mapping(uint256 audioId => bool isOwned))
         private userAudioOwnership;
 
+    // 🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮶 Modifiers 🮵🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙
     modifier onlyAdmin() {
         if (msg.sender != admin.current)
             revert ErrorsLib.SenderIsNotAuthorized();
         _;
     }
 
+    // 🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮶 Constructor 🮵🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙
     constructor(address _admin) {
         admin.current = _admin;
     }
+
+    // 🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮶 Music functions 🮵🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙
 
     function newAudio(
         string memory title,
@@ -144,6 +164,7 @@ contract AudioDataBase {
         emit EventsLib.UserInstaBuy(audioId, farcasterId);
     }
 
+    // 🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮶 Admin functions 🮵🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙
     function proposeNewAdminAddress(address newAdmin) external onlyAdmin {
         if (newAdmin == address(0))
             revert ErrorsLib.NewAdminAddressCannotBeZero();
@@ -178,16 +199,7 @@ contract AudioDataBase {
         SafeTransferLib.safeTransferETH(to, amount);
     }
 
-    function audioIdExists(uint256 audioId) public view returns (bool) {
-        return audio[audioId].artistAddress != address(0);
-    }
-
-    function userOwnsAudio(
-        uint256 farcasterId,
-        uint256 audioId
-    ) public view returns (bool) {
-        return userAudioOwnership[farcasterId][audioId];
-    }
+    // 🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮶 Getters 🮵🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙
 
     function getTotalAudioCount() external view returns (uint256) {
         return _nextTokenId;
@@ -213,6 +225,18 @@ contract AudioDataBase {
         return userCollection[farcasterId].length;
     }
 
+    function audioIdExists(uint256 audioId) public view returns (bool) {
+        return audio[audioId].artistAddress != address(0);
+    }
+
+    function userOwnsAudio(
+        uint256 farcasterId,
+        uint256 audioId
+    ) public view returns (bool) {
+        return userAudioOwnership[farcasterId][audioId];
+    }
+
+    // 🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮶 Internal functions 🮵🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙
     function updateUserCollection(
         uint256 farcasterId,
         uint256 audioId
