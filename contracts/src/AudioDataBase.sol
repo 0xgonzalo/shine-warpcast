@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import {ErrorsLib} from "@shine/lib/ErrorsLib.sol";
 import {EventsLib} from "@shine/lib/EventsLib.sol";
 import {SafeTransferLib} from "@solady/utils/SafeTransferLib.sol";
 
@@ -36,7 +37,8 @@ contract AudioDataBase {
         private userAudioOwnership;
 
     modifier onlyAdmin() {
-        if (msg.sender != admin.current) revert();
+        if (msg.sender != admin.current)
+            revert ErrorsLib.SenderIsNotAuthorized();
         _;
     }
 
@@ -54,16 +56,14 @@ contract AudioDataBase {
         uint256 pricePerMint,
         uint256 maxSupply
     ) public returns (uint256 audioId) {
-        if (artistAddress == address(0)) revert();
-
         if (
+            artistAddress == address(0) ||
             bytes(title).length == 0 ||
             bytes(artistName).length == 0 ||
             bytes(mediaURI).length == 0 ||
-            bytes(metadataURI).length == 0
-        ) revert();
-
-        if (maxSupply == 0) revert();
+            bytes(metadataURI).length == 0 ||
+            maxSupply == 0
+        ) revert ErrorsLib.InvalidMetadataInput();
 
         audioId = _nextTokenId++;
 
@@ -95,7 +95,7 @@ contract AudioDataBase {
         uint256[] memory audioIds,
         uint256 farcasterId
     ) external payable {
-        if (audioIds.length == 0) revert();
+        if (audioIds.length == 0) revert ErrorsLib.ListIsEmpty();
 
         uint256 totalCost;
         uint256 audioId;
@@ -103,12 +103,13 @@ contract AudioDataBase {
         for (uint256 i = 0; i < audioIds.length; i++) {
             audioId = audioIds[i];
 
-            if (!audioIdExists(audioId)) revert();
+            if (!audioIdExists(audioId)) revert ErrorsLib.InvalidAudioId();
 
-            if (userOwnsAudio(farcasterId, audioId)) revert();
+            if (userOwnsAudio(farcasterId, audioId))
+                revert ErrorsLib.UserOwnsAudio();
 
             if (audio[audioId].currentSupply >= audio[audioId].maxSupply)
-                revert();
+                revert ErrorsLib.AudioMaxSupplyReached();
 
             updateUserCollection(farcasterId, audioId);
 
@@ -126,11 +127,13 @@ contract AudioDataBase {
     }
 
     function instaBuy(uint256 audioId, uint256 farcasterId) external payable {
-        if (!audioIdExists(audioId)) revert();
+        if (!audioIdExists(audioId)) revert ErrorsLib.InvalidAudioId();
 
-        if (userOwnsAudio(farcasterId, audioId)) revert();
+        if (userOwnsAudio(farcasterId, audioId))
+            revert ErrorsLib.UserOwnsAudio();
 
-        if (audio[audioId].currentSupply >= audio[audioId].maxSupply) revert();
+        if (audio[audioId].currentSupply >= audio[audioId].maxSupply)
+            revert ErrorsLib.AudioMaxSupplyReached();
 
         checkPayment(audio[audioId].pricePerMint);
 
@@ -142,7 +145,8 @@ contract AudioDataBase {
     }
 
     function proposeNewAdminAddress(address newAdmin) external onlyAdmin {
-        if (newAdmin == address(0)) revert();
+        if (newAdmin == address(0))
+            revert ErrorsLib.NewAdminAddressCannotBeZero();
 
         admin.proposed = newAdmin;
         admin.timeToExecuteProposal = block.timestamp + 1 days;
@@ -153,12 +157,12 @@ contract AudioDataBase {
         admin.timeToExecuteProposal = 0;
     }
 
-    function executeNewAdminAddress() external {
-        if (msg.sender != admin.current) revert();
+    function executeNewAdminAddress() external onlyAdmin {
+        if (admin.proposed == address(0))
+            revert ErrorsLib.NewAdminNotProposed();
 
-        if (admin.proposed == address(0)) revert();
-
-        if (block.timestamp < admin.timeToExecuteProposal) revert();
+        if (block.timestamp < admin.timeToExecuteProposal)
+            revert ErrorsLib.TimeToExecuteProposalNotReached();
 
         admin = AddressTypeProposal({
             current: admin.proposed,
@@ -168,8 +172,8 @@ contract AudioDataBase {
     }
 
     function withdraw(address to, uint256 amount) external onlyAdmin {
-        if (to == address(0)) revert();
-        if (amount == 0) revert();
+        if (to == address(0)) revert ErrorsLib.AdminCantBurnEth();
+        if (amount == 0) revert ErrorsLib.AmountCannotBeZero();
 
         SafeTransferLib.safeTransferETH(to, amount);
     }
@@ -192,7 +196,8 @@ contract AudioDataBase {
     function getAudioMetadata(
         uint256 audioId
     ) external view returns (AudioMetadata memory) {
-        if (!audioIdExists(audioId)) revert();
+        if (!audioIdExists(audioId)) revert ErrorsLib.InvalidAudioId();
+
         return audio[audioId];
     }
 
@@ -220,7 +225,7 @@ contract AudioDataBase {
     function checkPayment(uint256 totalCostOfAudio) internal {
         uint256 total = OPERATION_FEE + totalCostOfAudio;
 
-        if (msg.value < total) revert();
+        if (msg.value < total) revert ErrorsLib.AmountTooLow(msg.value, total);
 
         // le da el cambio al usuario si paga de más
         if (msg.value > total)
