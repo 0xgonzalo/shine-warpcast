@@ -20,5 +20,3 @@ Whether you're an artist looking to publish your music onchain, or a fan wanting
 
 ---
 
-*This project is not affiliated with Avalanche. Shine is built for the Farcaster and Base communities, leveraging the latest in onchain and social technology.*
-
