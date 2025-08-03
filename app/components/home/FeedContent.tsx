@@ -274,10 +274,10 @@ function KeenNFTSlider({ tokenIds }: { tokenIds: bigint[] }) {
 
   const [sliderRef, slider] = useKeenSlider<HTMLDivElement>({
     mode: 'free-snap',
-    slides: { perView: 1.2, spacing: 12, origin: 'center' },
+    slides: { perView: 2.2, spacing: 12, origin: 'auto' },
     breakpoints: {
-      '(min-width: 640px)': { slides: { perView: 3.2, spacing: 20 } },
-      '(min-width: 1024px)': { slides: { perView: 4.2, spacing: 24 } },
+      '(min-width: 640px)': { slides: { perView: 3.2, spacing: 20, origin: 'auto' } },
+      '(min-width: 1024px)': { slides: { perView: 4.2, spacing: 24, origin: 'auto' } },
     },
   });
 
@@ -291,7 +291,7 @@ function KeenNFTSlider({ tokenIds }: { tokenIds: bigint[] }) {
   return (
     <div ref={sliderRef} className="keen-slider py-2">
       {availableTokenIds.map((tokenId) => (
-        <div key={tokenId.toString()} className="keen-slider__slide min-w-[180px]">
+        <div key={tokenId.toString()} className="keen-slider__slide">
           <NFTExists tokenId={tokenId} />
         </div>
       ))}

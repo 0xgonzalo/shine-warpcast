@@ -81,9 +81,9 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
 
   return (
     <>
-      <div className="bg-gradient-to-r from-[#323232] to-[#232323] text-white rounded-lg shadow-lg overflow-hidden p-4 transition-all duration-300 hover:shadow-2xl w-full">
+      <div className="w-full bg-gradient-to-r from-[#323232] to-[#232323] text-white rounded-lg shadow-lg overflow-hidden p-2 transition-all duration-300 hover:shadow-2xl">
         <div
-          className="aspect-square bg-gradient-to-r from-[#282828] to-[#232323] rounded-md mb-3 relative cursor-pointer group flex items-center justify-center"
+          className="w-full aspect-square bg-gradient-to-r from-[#282828] to-[#232323] rounded-md mb-2 relative cursor-pointer group flex items-center justify-center"
           onClick={isAudioAvailable ? handlePlayAudio : undefined}
         >
           {data.imageURI && data.imageURI !== 'ipfs://placeholder-image-uri' ? (
