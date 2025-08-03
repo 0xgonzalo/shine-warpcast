@@ -143,7 +143,10 @@ contract SongDataBase {
             bytes(title).length == 0 ||
             bytes(artistName).length == 0 ||
             bytes(mediaURI).length == 0 ||
-            bytes(metadataURI).length == 0
+            bytes(metadataURI).length == 0 ||
+            (isAnSpecialEdition &&
+                (bytes(specialEditionName).length == 0 ||
+                    maxSupplySpecialEdition == 0))
         ) revert ErrorsLib.InvalidMetadataInput();
 
         _nextTokenId++;
@@ -213,12 +216,11 @@ contract SongDataBase {
             if (!songIdExists(songId)) revert ErrorsLib.InvalidSongId();
 
             if (song[songId].isAnSpecialEdition) {
-                if (!isSpecialEditionAvailable(songId))
-                    revert ErrorsLib.EspecialEditionMaxSupplyReached();
+                if (
+                    song[songId].timesBought ==
+                    song[songId].maxSupplySpecialEdition
+                ) revert ErrorsLib.EspecialEditionMaxSupplyReached();
             }
-
-            if (userOwnsSong(farcasterId, songId))
-                revert ErrorsLib.UserOwnsSong();
 
             updateUserCollection(farcasterId, songId);
 
@@ -246,15 +248,14 @@ contract SongDataBase {
         if (!songIdExists(songId)) revert ErrorsLib.InvalidSongId();
 
         if (song[songId].isAnSpecialEdition) {
-            if (!isSpecialEditionAvailable(songId))
-                revert ErrorsLib.EspecialEditionMaxSupplyReached();
+            if (
+                song[songId].timesBought == song[songId].maxSupplySpecialEdition
+            ) revert ErrorsLib.EspecialEditionMaxSupplyReached();
         }
 
-        if (userOwnsSong(farcasterId, songId)) revert ErrorsLib.UserOwnsSong();
+        updateUserCollection(farcasterId, songId);
 
         checkPayment(song[songId].price);
-
-        updateUserCollection(farcasterId, songId);
 
         giveAmountToArtist(songId);
 
@@ -317,21 +318,6 @@ contract SongDataBase {
     }
 
     // 🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮶 Getters 🮵🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙
-    /**
-     * @notice Checks if a special edition song is available for purchase
-     * @dev Returns false if the song is a special edition and its max supply has been reached
-     * @param songId The ID of the song to check availability for
-     * @return True if the special edition is available, false otherwise
-     */
-    function isSpecialEditionAvailable(
-        uint256 songId
-    ) public view returns (bool) {
-        if (
-            song[songId].isAnSpecialEdition &&
-            song[songId].timesBought >= song[songId].maxSupplySpecialEdition
-        ) return false;
-        else return true;
-    }
 
     /**
      * @notice Returns the current admin structure containing the admin address and proposal details
@@ -455,6 +441,7 @@ contract SongDataBase {
         uint256 farcasterId,
         uint256 songId
     ) internal {
+        if (userOwnsSong(farcasterId, songId)) revert ErrorsLib.UserOwnsSong();
         userCollection[farcasterId].push(songId);
         userSongOwnership[farcasterId][songId] = true;
         song[songId].timesBought++;
