@@ -20,9 +20,9 @@ import {SafeTransferLib} from "@solady/utils/SafeTransferLib.sol";
 
 contract SongDataBase {
     // 🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮶 Structs 🮵🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙
-    
+
     /**
-     * @notice Stores metadata information for an song 
+     * @notice Stores metadata information for an song
      * @dev Contains all necessary information to represent an song drop
      * @param title The title of the song track
      * @param artistName The name of the artist who created the song
@@ -30,9 +30,11 @@ contract SongDataBase {
      * @param metadataURI The URI pointing to the song metadata (JSON)
      * @param artistAddress The Ethereum address of the artist who will receive payments
      * @param tags An array of string tags categorizing the song
-     * @param pricePerMint The price in wei that users must pay to purchase this song
-     * @param maxSupply The maximum number of copies that can be minted
-     * @param currentSupply The current number of copies that have been minted
+     * @param price The price in wei that users must pay to purchase this song
+     * @param timesBought The total number of times this song has been bought
+     * @param isAnSpecialEdition Flag indicating if this song is a special edition
+     * @param specialEditionName The name of the special edition, if applicable
+     * @param maxSupplySpecialEdition The maximum supply for special edition songs
      */
     struct SongMetadata {
         string title;
@@ -41,9 +43,11 @@ contract SongDataBase {
         string metadataURI;
         address artistAddress;
         string[] tags;
-        uint256 pricePerMint; // Price per mint in wei
-        uint256 maxSupply;
-        uint256 currentSupply; // Current supply of the song
+        uint256 price;
+        uint256 timesBought;
+        bool isAnSpecialEdition;
+        string specialEditionName;
+        uint256 maxSupplySpecialEdition;
     }
 
     /**
@@ -63,10 +67,10 @@ contract SongDataBase {
 
     /// @notice Counter for generating unique song IDs, starts at 0 and increments with each new song
     uint256 private _nextTokenId;
-    
+
     /// @notice Fixed operation fee charged for each transaction in addition to the song price
     uint256 private constant OPERATION_FEE = 0.0000555 ether;
-    
+
     /// @notice Admin management struct with time-lock functionality for secure admin transfers
     AddressTypeProposal private admin;
 
@@ -74,16 +78,16 @@ contract SongDataBase {
 
     /// @notice Maps song IDs to their complete metadata information
     mapping(uint256 songId => SongMetadata metadata) private song;
-    
+
     /// @notice Maps Farcaster user IDs to arrays of song IDs they own
     mapping(uint256 farcasterId => uint256[] songIds) private userCollection;
-    
+
     /// @notice Maps Farcaster user IDs to song IDs to check ownership status efficiently
     mapping(uint256 farcasterId => mapping(uint256 songId => bool isOwned))
         private userSongOwnership;
 
     // 🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮶 Modifiers 🮵🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙
-    
+
     /**
      * @notice Restricts function access to the current admin address only
      * @dev Reverts with SenderIsNotAuthorized error if caller is not the current admin
@@ -95,7 +99,7 @@ contract SongDataBase {
     }
 
     // 🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮶 Constructor 🮵🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙
-    
+
     /**
      * @notice Initializes the contract with the initial admin address
      * @dev Sets the initial admin and initializes the admin proposal struct
@@ -116,8 +120,10 @@ contract SongDataBase {
      * @param metadataURI The URI of the song metadata.
      * @param artistAddress The address of the artist.
      * @param tags An array of tags associated with the song.
-     * @param pricePerMint The price per mint in wei.
-     * @param maxSupply The maximum supply of the song.
+     * @param price The price per mint in wei.
+     * @param isAnSpecialEdition Indicates if this song is a special edition.
+     * @param specialEditionName The name of the special edition, if applicable.
+     * @param maxSupplySpecialEdition The maximum supply for special edition songs.
      * @return songId The unique identifier assigned to the newly created song
      */
     function newSong(
@@ -127,42 +133,62 @@ contract SongDataBase {
         string memory metadataURI,
         address artistAddress,
         string[] memory tags,
-        uint256 pricePerMint,
-        uint256 maxSupply
+        uint256 price,
+        bool isAnSpecialEdition,
+        string memory specialEditionName,
+        uint256 maxSupplySpecialEdition
     ) public returns (uint256 songId) {
         if (
             artistAddress == address(0) ||
             bytes(title).length == 0 ||
             bytes(artistName).length == 0 ||
             bytes(mediaURI).length == 0 ||
-            bytes(metadataURI).length == 0 ||
-            maxSupply == 0
+            bytes(metadataURI).length == 0
         ) revert ErrorsLib.InvalidMetadataInput();
 
-        songId = _nextTokenId++;
+        _nextTokenId++;
 
-        song[songId] = SongMetadata({
+        song[_nextTokenId] = SongMetadata({
             title: title,
             artistName: artistName,
             mediaURI: mediaURI,
             metadataURI: metadataURI,
             artistAddress: artistAddress,
             tags: tags,
-            pricePerMint: pricePerMint,
-            maxSupply: maxSupply,
-            currentSupply: 0
+            price: price,
+            timesBought: 0,
+            isAnSpecialEdition: isAnSpecialEdition,
+            specialEditionName: isAnSpecialEdition ? specialEditionName : "",
+            maxSupplySpecialEdition: isAnSpecialEdition
+                ? maxSupplySpecialEdition
+                : 0
         });
 
-        emit EventsLib.NewSongDrop(
-            songId,
-            title,
-            artistName,
-            mediaURI,
-            metadataURI,
-            artistAddress,
-            pricePerMint,
-            maxSupply
-        );
+        if (isAnSpecialEdition) {
+            emit EventsLib.NewSpecialEditionSongDrop(
+                _nextTokenId,
+                title,
+                artistName,
+                mediaURI,
+                metadataURI,
+                artistAddress,
+                price,
+                specialEditionName,
+                maxSupplySpecialEdition
+            );
+        } else {
+            emit EventsLib.NewSongDrop(
+                _nextTokenId,
+                title,
+                artistName,
+                mediaURI,
+                metadataURI,
+                artistAddress,
+                price
+            );
+        }
+
+        return _nextTokenId;
     }
 
     /**
@@ -186,15 +212,17 @@ contract SongDataBase {
 
             if (!songIdExists(songId)) revert ErrorsLib.InvalidSongId();
 
+            if (song[songId].isAnSpecialEdition) {
+                if (!isSpecialEditionAvailable(songId))
+                    revert ErrorsLib.EspecialEditionMaxSupplyReached();
+            }
+
             if (userOwnsSong(farcasterId, songId))
                 revert ErrorsLib.UserOwnsSong();
 
-            if (song[songId].currentSupply >= song[songId].maxSupply)
-                revert ErrorsLib.SongMaxSupplyReached();
-
             updateUserCollection(farcasterId, songId);
 
-            totalCost += song[songId].pricePerMint;
+            totalCost += song[songId].price;
         }
 
         checkPayment(totalCost);
@@ -217,13 +245,14 @@ contract SongDataBase {
     function instaBuy(uint256 songId, uint256 farcasterId) external payable {
         if (!songIdExists(songId)) revert ErrorsLib.InvalidSongId();
 
-        if (userOwnsSong(farcasterId, songId))
-            revert ErrorsLib.UserOwnsSong();
+        if (song[songId].isAnSpecialEdition) {
+            if (!isSpecialEditionAvailable(songId))
+                revert ErrorsLib.EspecialEditionMaxSupplyReached();
+        }
 
-        if (song[songId].currentSupply >= song[songId].maxSupply)
-            revert ErrorsLib.SongMaxSupplyReached();
+        if (userOwnsSong(farcasterId, songId)) revert ErrorsLib.UserOwnsSong();
 
-        checkPayment(song[songId].pricePerMint);
+        checkPayment(song[songId].price);
 
         updateUserCollection(farcasterId, songId);
 
@@ -233,7 +262,7 @@ contract SongDataBase {
     }
 
     // 🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮶 Admin functions 🮵🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙
-    
+
     /**
      * @notice Proposes a new admin address with a time-lock mechanism
      * @dev Initiates the admin change process with a 1-day waiting period before execution
@@ -288,6 +317,60 @@ contract SongDataBase {
     }
 
     // 🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮶 Getters 🮵🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙
+    /**
+     * @notice Checks if a special edition song is available for purchase
+     * @dev Returns false if the song is a special edition and its max supply has been reached
+     * @param songId The ID of the song to check availability for
+     * @return True if the special edition is available, false otherwise
+     */
+    function isSpecialEditionAvailable(
+        uint256 songId
+    ) public view returns (bool) {
+        if (
+            song[songId].isAnSpecialEdition &&
+            song[songId].timesBought >= song[songId].maxSupplySpecialEdition
+        ) return false;
+        else return true;
+    }
+
+    /**
+     * @notice Returns the current admin structure containing the admin address and proposal details
+     * @dev Provides access to the current admin and any pending proposals for admin changes
+     * @return The current admin structure with address and proposal details
+     */
+    function getAdminStructure()
+        external
+        view
+        returns (AddressTypeProposal memory)
+    {
+        return admin;
+    }
+
+    /**
+     * @notice Returns the current operation fee charged for each transaction
+     * @dev This fee is added to the total cost of song purchases
+     * @return The current operation fee in wei
+     */
+    function getOperationFee() external pure returns (uint256) {
+        return OPERATION_FEE;
+    }
+
+    /**
+     * @notice Calculates the total price for purchasing multiple song tracks
+     * @dev Iterates through song IDs, sums their prices, and adds the operation fee
+     * @param songIds An array of song IDs to calculate the total price for
+     * @return totalPrice The total cost including operation fee
+     */
+    function getTotalPriceForBuy(
+        uint256[] memory songIds
+    ) external view returns (uint256 totalPrice) {
+        for (uint256 i = 0; i < songIds.length; i++) {
+            uint256 songId = songIds[i];
+            if (!songIdExists(songId)) revert ErrorsLib.InvalidSongId();
+            totalPrice += song[songId].price;
+        }
+        return totalPrice + OPERATION_FEE;
+    }
 
     /**
      * @notice Returns the total number of song tracks created
@@ -361,7 +444,7 @@ contract SongDataBase {
     }
 
     // 🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮶 Internal functions 🮵🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙🮙
-    
+
     /**
      * @notice Updates user's collection and ownership records when purchasing song
      * @dev Adds song to user's collection, marks ownership, and increments supply
@@ -374,7 +457,7 @@ contract SongDataBase {
     ) internal {
         userCollection[farcasterId].push(songId);
         userSongOwnership[farcasterId][songId] = true;
-        song[songId].currentSupply++;
+        song[songId].timesBought++;
     }
 
     /**
@@ -400,7 +483,7 @@ contract SongDataBase {
     function giveAmountToArtist(uint256 songId) internal {
         SafeTransferLib.safeTransferETH(
             song[songId].artistAddress,
-            song[songId].pricePerMint
+            song[songId].price
         );
     }
 }
