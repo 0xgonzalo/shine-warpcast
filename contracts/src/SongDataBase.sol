@@ -126,9 +126,10 @@ contract SongDataBase {
      * @param maxSupplySpecialEdition The maximum supply for special edition songs.
      * @return songId The unique identifier assigned to the newly created song
      *
-     * @notice  songId, title, artistName, mediaURI, metadataURI, 
-     *          artistAddress, tags, price can be edited later be carful
-     *          with isAnSpecialEdition, specialEditionName,
+     * @notice  songId, title, artistName, mediaURI, metadataURI, artistAddress, 
+     *          tags, price can be edited later 
+     * 
+     *          IMPORTANT: be careful with isAnSpecialEdition, specialEditionName,
      *          maxSupplySpecialEdition, they can't be changed after creation.
      */
     function newSong(
