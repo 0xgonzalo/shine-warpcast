@@ -196,6 +196,252 @@ contract SongDataBaseTest is Test, Constants {
         _;
     }
 
+    function test_unitCorrect_editSongMetadata_InvalidSongId() public setSongs {
+        string[] memory newTags = new string[](1);
+        newTags[0] = "editedTag";
+
+        vm.startPrank(CREATOR1.Address);
+
+        vm.expectRevert(ErrorsLib.InvalidSongId.selector);
+        songDataBase.editSongMetadata(
+            999, // Invalid song ID
+            "Edited Song Title",
+            "Edited Artist Name",
+            "editedMediaURI",
+            "editedMetadataURI",
+            CREATOR2.Address,
+            newTags,
+            150
+        );
+
+        vm.stopPrank();
+    }
+
+    function test_unitCorrect_editSongMetadata_SenderIsNotAuthorized()
+        public
+        setSongs
+    {
+        string[] memory newTags = new string[](1);
+        newTags[0] = "editedTag";
+
+        vm.startPrank(CREATOR2.Address);
+        vm.expectRevert(ErrorsLib.SenderIsNotAuthorized.selector);
+        songDataBase.editSongMetadata(
+            1,
+            "Edited Song Title",
+            "Edited Artist Name",
+            "editedMediaURI",
+            "editedMetadataURI",
+            CREATOR2.Address,
+            newTags,
+            150
+        );
+        vm.stopPrank();
+
+        SongDataBase.SongMetadata memory song = songDataBase.getSongMetadata(1);
+        assertEq(song.title, "Test Song Number 1");
+        assertEq(song.artistName, "Creator one");
+        assertEq(song.mediaURI, "testMediaURIForSong1");
+        assertEq(song.metadataURI, "testMetadataURI1");
+        assertEq(song.artistAddress, CREATOR1.Address);
+        assertEq(song.price, 100);
+        assertEq(song.timesBought, 0);
+        assertEq(song.tags.length, 0);
+        assert(song.isAnSpecialEdition);
+        assertEq(
+            song.specialEditionName,
+            "Super omega ultra special remake and Knuckles edition (new funky mode)"
+        );
+        assertEq(song.maxSupplySpecialEdition, 1);
+    }
+
+    function test_unitCorrect_editSongMetadata_InvalidMetadataInput_title()
+        public
+        setSongs
+    {
+        string[] memory newTags = new string[](1);
+        newTags[0] = "editedTag";
+
+        vm.startPrank(CREATOR1.Address);
+        vm.expectRevert(ErrorsLib.InvalidMetadataInput.selector);
+        songDataBase.editSongMetadata(
+            1,
+            "",
+            "Edited Artist Name",
+            "editedMediaURI",
+            "editedMetadataURI",
+            CREATOR2.Address,
+            newTags,
+            150
+        );
+        vm.stopPrank();
+
+        SongDataBase.SongMetadata memory song = songDataBase.getSongMetadata(1);
+        assertEq(song.title, "Test Song Number 1");
+        assertEq(song.artistName, "Creator one");
+        assertEq(song.mediaURI, "testMediaURIForSong1");
+        assertEq(song.metadataURI, "testMetadataURI1");
+        assertEq(song.artistAddress, CREATOR1.Address);
+        assertEq(song.price, 100);
+        assertEq(song.tags.length, 0);
+        assert(song.isAnSpecialEdition);
+        assertEq(
+            song.specialEditionName,
+            "Super omega ultra special remake and Knuckles edition (new funky mode)"
+        );
+        assertEq(song.maxSupplySpecialEdition, 1);
+    }
+
+    function test_unitCorrect_editSongMetadata_InvalidMetadataInput_artistName()
+        public
+        setSongs
+    {
+        string[] memory newTags = new string[](1);
+        newTags[0] = "editedTag";
+
+        vm.startPrank(CREATOR1.Address);
+        vm.expectRevert(ErrorsLib.InvalidMetadataInput.selector);
+        songDataBase.editSongMetadata(
+            1,
+            "Edited Song Title",
+            "",
+            "editedMediaURI",
+            "editedMetadataURI",
+            CREATOR2.Address,
+            newTags,
+            150
+        );
+        vm.stopPrank();
+
+        SongDataBase.SongMetadata memory song = songDataBase.getSongMetadata(1);
+        assertEq(song.title, "Test Song Number 1");
+        assertEq(song.artistName, "Creator one");
+        assertEq(song.mediaURI, "testMediaURIForSong1");
+        assertEq(song.metadataURI, "testMetadataURI1");
+        assertEq(song.artistAddress, CREATOR1.Address);
+        assertEq(song.price, 100);
+        assertEq(song.tags.length, 0);
+        assert(song.isAnSpecialEdition);
+        assertEq(
+            song.specialEditionName,
+            "Super omega ultra special remake and Knuckles edition (new funky mode)"
+        );
+        assertEq(song.maxSupplySpecialEdition, 1);
+    }
+
+    function test_unitCorrect_editSongMetadata_InvalidMetadataInput_mediaURI()
+        public
+        setSongs
+    {
+        string[] memory newTags = new string[](1);
+        newTags[0] = "editedTag";
+
+        vm.startPrank(CREATOR1.Address);
+        vm.expectRevert(ErrorsLib.InvalidMetadataInput.selector);
+        songDataBase.editSongMetadata(
+            1,
+            "Edited Song Title",
+            "Edited Artist Name",
+            "",
+            "editedMetadataURI",
+            CREATOR2.Address,
+            newTags,
+            150
+        );
+        vm.stopPrank();
+
+        SongDataBase.SongMetadata memory song = songDataBase.getSongMetadata(1);
+        assertEq(song.title, "Test Song Number 1");
+        assertEq(song.artistName, "Creator one");
+        assertEq(song.mediaURI, "testMediaURIForSong1");
+        assertEq(song.metadataURI, "testMetadataURI1");
+        assertEq(song.artistAddress, CREATOR1.Address);
+        assertEq(song.price, 100);
+        assertEq(song.tags.length, 0);
+        assert(song.isAnSpecialEdition);
+        assertEq(
+            song.specialEditionName,
+            "Super omega ultra special remake and Knuckles edition (new funky mode)"
+        );
+        assertEq(song.maxSupplySpecialEdition, 1);
+    }
+
+    function test_unitCorrect_editSongMetadata_InvalidMetadataInput_metadataURI()
+        public
+        setSongs
+    {
+        string[] memory newTags = new string[](1);
+        newTags[0] = "editedTag";
+
+        vm.startPrank(CREATOR1.Address);
+        vm.expectRevert(ErrorsLib.InvalidMetadataInput.selector);
+        songDataBase.editSongMetadata(
+            1,
+            "Edited Song Title",
+            "Edited Artist Name",
+            "editedMediaURI",
+            "",
+            CREATOR2.Address,
+            newTags,
+            150
+        );
+        vm.stopPrank();
+
+        SongDataBase.SongMetadata memory song = songDataBase.getSongMetadata(1);
+        assertEq(song.title, "Test Song Number 1");
+        assertEq(song.artistName, "Creator one");
+        assertEq(song.mediaURI, "testMediaURIForSong1");
+        assertEq(song.metadataURI, "testMetadataURI1");
+        assertEq(song.artistAddress, CREATOR1.Address);
+        assertEq(song.price, 100);
+        assertEq(song.tags.length, 0);
+        assert(song.isAnSpecialEdition);
+        assertEq(
+            song.specialEditionName,
+            "Super omega ultra special remake and Knuckles edition (new funky mode)"
+        );
+        assertEq(song.maxSupplySpecialEdition, 1);
+    }
+
+    function test_unitCorrect_editSongMetadata_InvalidMetadataInput_artistAddress()
+        public
+        setSongs
+    {
+        string[] memory newTags = new string[](1);
+        newTags[0] = "editedTag";
+
+        vm.startPrank(CREATOR1.Address);
+        vm.expectRevert(ErrorsLib.InvalidMetadataInput.selector);
+        songDataBase.editSongMetadata(
+            1,
+            "Edited Song Title",
+            "Edited Artist Name",
+            "editedMediaURI",
+            "editedMetadataURI",
+            address(0),
+            newTags,
+            150
+        );
+        vm.stopPrank();
+
+
+        SongDataBase.SongMetadata memory song = songDataBase.getSongMetadata(1);
+    
+        assertEq(song.title, "Test Song Number 1");
+        assertEq(song.artistName, "Creator one");
+        assertEq(song.mediaURI, "testMediaURIForSong1");
+        assertEq(song.metadataURI, "testMetadataURI1");
+        assertEq(song.artistAddress, CREATOR1.Address);
+        assertEq(song.price, 100);
+        assertEq(song.tags.length, 0);
+        assert(song.isAnSpecialEdition);
+        assertEq(
+            song.specialEditionName,
+            "Super omega ultra special remake and Knuckles edition (new funky mode)"
+        );
+        assertEq(song.maxSupplySpecialEdition, 1);
+    }
+
     function test_unitRevert_buy_ListIsEmpty() public setSongs {
         uint256[] memory songIds = new uint256[](2);
         songIds[0] = 1;

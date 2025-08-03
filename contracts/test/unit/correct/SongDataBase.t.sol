@@ -74,6 +74,41 @@ contract SongDataBaseTest is Test, Constants {
         _;
     }
 
+    function test_unitCorrect_editSongMetadata() public setSongs {
+        string[] memory newTags = new string[](1);
+        newTags[0] = "editedTag";
+
+        vm.startPrank(CREATOR1.Address);
+        songDataBase.editSongMetadata(
+            1,
+            "Edited Song Title",
+            "Edited Artist Name",
+            "editedMediaURI",
+            "editedMetadataURI",
+            CREATOR2.Address,
+            newTags,
+            150
+        );
+        vm.stopPrank();
+
+        SongDataBase.SongMetadata memory song = songDataBase.getSongMetadata(1);
+        assertEq(song.title, "Edited Song Title");
+        assertEq(song.artistName, "Edited Artist Name");
+        assertEq(song.mediaURI, "editedMediaURI");
+        assertEq(song.metadataURI, "editedMetadataURI");
+        assertEq(song.artistAddress, CREATOR2.Address);
+        assertEq(song.price, 150);
+        assertEq(song.timesBought, 0);
+        assertEq(song.tags.length, 1);
+        assertEq(song.tags[0], "editedTag");
+        assert(song.isAnSpecialEdition);
+        assertEq(
+            song.specialEditionName,
+            "Super omega ultra special remake and Knuckles edition (new funky mode)"
+        );
+        assertEq(song.maxSupplySpecialEdition, 1000);
+    }
+
     function test_unitCorrect_buy() public setSongs {
         uint256[] memory songIds = new uint256[](2);
         songIds[0] = 1;
