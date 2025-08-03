@@ -125,6 +125,11 @@ contract SongDataBase {
      * @param specialEditionName The name of the special edition, if applicable.
      * @param maxSupplySpecialEdition The maximum supply for special edition songs.
      * @return songId The unique identifier assigned to the newly created song
+     *
+     * @notice  songId, title, artistName, mediaURI, metadataURI, 
+     *          artistAddress, tags, price can be edited later be carful
+     *          with isAnSpecialEdition, specialEditionName,
+     *          maxSupplySpecialEdition, they can't be changed after creation.
      */
     function newSong(
         string memory title,
@@ -137,7 +142,7 @@ contract SongDataBase {
         bool isAnSpecialEdition,
         string memory specialEditionName,
         uint256 maxSupplySpecialEdition
-    ) public returns (uint256 songId) {
+    ) external returns (uint256 songId) {
         if (
             artistAddress == address(0) ||
             bytes(title).length == 0 ||
@@ -192,6 +197,50 @@ contract SongDataBase {
         }
 
         return _nextTokenId;
+    }
+
+    /**
+     * @notice Allows the artist to edit the metadata of their song.
+     * @dev This function allows the artist to update the song's title, artist name, media URI, metadata URI, tags, and price.
+     * @param songId The ID of the song to edit.
+     * @param title The new title of the song.
+     * @param artistName The new name of the artist.
+     * @param mediaURI The new URI of the song media.
+     * @param metadataURI The new URI of the song metadata.
+     * @param tags An array of new tags associated with the song.
+     * @param price The new price per mint in wei.
+     */
+    function editSongMetadata(
+        uint256 songId,
+        string memory title,
+        string memory artistName,
+        string memory mediaURI,
+        string memory metadataURI,
+        address artistAddress,
+        string[] memory tags,
+        uint256 price
+    ) external {
+        if (!songIdExists(songId)) revert ErrorsLib.InvalidSongId();
+        if (msg.sender != song[songId].artistAddress)
+            revert ErrorsLib.SenderIsNotAuthorized();
+
+        if (
+            bytes(title).length == 0 ||
+            bytes(artistName).length == 0 ||
+            bytes(mediaURI).length == 0 ||
+            bytes(metadataURI).length == 0 ||
+            artistAddress == address(0) 
+        ) revert ErrorsLib.InvalidMetadataInput();
+
+        song[songId].title = title;
+        song[songId].artistName = artistName;
+        song[songId].mediaURI = mediaURI;
+        song[songId].metadataURI = metadataURI;
+        song[songId].artistAddress = artistAddress;
+        song[songId].tags = tags;
+        song[songId].price = price;
+
+        emit EventsLib.SongMetadataEdited(songId);
     }
 
     /**
