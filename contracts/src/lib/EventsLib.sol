@@ -40,6 +40,14 @@ library EventsLib {
     );
 
     /**
+     * @notice Emitted when a song's metadata is edited
+     * @param audioId The unique identifier of the audio
+     */
+    event SongMetadataEdited(
+        uint256 indexed audioId
+    );
+
+    /**
      * @notice Emitted when a new special edition audio drop is created
      * @param audioId The unique identifier of the audio
      * @param title The title of the audio track
