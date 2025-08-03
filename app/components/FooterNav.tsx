@@ -3,21 +3,35 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import useConnectedWallet from '@/hooks/useConnectedWallet';
+import { useTheme } from '../context/ThemeContext';
 // Import icons later if needed, e.g., from 'lucide-react'
 // import { Home, Search, PlusSquare, User } from 'lucide-react';
 
 export default function FooterNav() {
   const pathname = usePathname();
+  const { isDarkMode } = useTheme();
   const { connectedWallet } = useConnectedWallet(); // connectedWallet is the address itself or undefined
 
   const navItems = [
-    { name: 'Home', href: '/home', iconSrc: '/home.svg' },
-    { name: 'Search', href: '', iconSrc: '/search.svg' },
-    { name: 'Create', href: '/create', iconSrc: '/create.svg' },
+    { 
+      name: 'Home', 
+      href: '/home', 
+      iconSrc: isDarkMode ? '/home.svg' : '/home-blue.svg' 
+    },
+    { 
+      name: 'Search', 
+      href: '', 
+      iconSrc: isDarkMode ? '/search.svg' : '/search-blue.svg' 
+    },
+    { 
+      name: 'Create', 
+      href: '/create', 
+      iconSrc: isDarkMode ? '/create.svg' : '/create-blue.svg' 
+    },
     {
       name: 'Profile',
       href: connectedWallet ? `/profile/${connectedWallet}` : '/profile',
-      iconSrc: '/profile.svg' 
+      iconSrc: isDarkMode ? '/profile.svg' : '/profile-blue.svg'
     },
   ];
 
@@ -43,7 +57,9 @@ export default function FooterNav() {
                               ${
                                 isActive
                                   ? 'text-foreground font-semibold'
-                                  : 'text-gray-400 hover:text-foreground'
+                                  : isDarkMode 
+                                    ? 'text-white hover:text-foreground'
+                                    : 'text-blue-800 hover:text-foreground'
                               }`}
                 >
                   {item.iconSrc && (

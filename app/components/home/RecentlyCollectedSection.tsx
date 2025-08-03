@@ -4,6 +4,7 @@ import { getIPFSGatewayURL } from '../../utils/pinata';
 import { useAudio } from '../../context/AudioContext';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useTheme } from '../../context/ThemeContext';
 
 interface CollectedNFT {
   tokenId: bigint;
@@ -30,6 +31,7 @@ function generateGradient(tokenId: bigint) {
 
 export default function RecentlyCollectedSection() {
   const router = useRouter();
+  const { isDarkMode } = useTheme();
   const { playAudio, currentAudio, isPlaying } = useAudio();
   const [recentlyCollected, setRecentlyCollected] = useState<CollectedNFT[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -81,11 +83,13 @@ export default function RecentlyCollectedSection() {
 
   return (
     <div className="mb-12">
-      <h2 className="text-2xl font-bold mb-6">Recently Collected</h2>
+      <h2 className={`text-2xl font-bold mb-6 ${
+        isDarkMode ? 'text-white' : 'text-[#0000FE]'
+      }`}>Recently Collected</h2>
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="flex items-center space-x-4 p-3 rounded-lg bg-gray-100 animate-pulse">
+            <div key={i} className="flex items-center space-x-4 p-3 rounded-lg bg-gray-100/20 animate-pulse">
               <div className="w-16 h-16 bg-gray-300 rounded-lg"></div>
               <div className="flex-1">
                 <div className="h-5 bg-gray-300 rounded mb-2"></div>
@@ -97,10 +101,14 @@ export default function RecentlyCollectedSection() {
       ) : recentlyCollected.length > 0 ? (
         <div className="space-y-3">
           {recentlyCollected.map((nft) => (
-            <div key={nft.tokenId.toString()} className="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-50 hover:bg-opacity-20 transition-colors relative">
+            <div key={nft.tokenId.toString()} className={`flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-50 hover:bg-opacity-20 transition-colors relative ${
+              isDarkMode ? '' : 'border border-[#0000FE]'
+            }`}>
               {/* Album artwork */}
               <div
-                className={`w-16 h-16 max-w-[64px] max-h-[64px] bg-gradient-to-br ${generateGradient(nft.tokenId)} rounded-lg flex-shrink-0 relative overflow-hidden cursor-pointer hover:scale-105 transition-transform`}
+                className={`w-16 h-16 max-w-[64px] max-h-[64px] bg-gradient-to-br ${generateGradient(nft.tokenId)} rounded-lg flex-shrink-0 relative overflow-hidden cursor-pointer hover:scale-105 transition-transform ${
+                  isDarkMode ? '' : 'border border-[#0000FE]'
+                }`}
                 onClick={() => handlePlaySong(nft)}
               >
                 {nft.metadata.imageURI && nft.metadata.imageURI !== 'ipfs://placeholder-image-uri' ? (
@@ -133,13 +141,17 @@ export default function RecentlyCollectedSection() {
               {/* Song info */}
               <div className="flex-1 min-w-0">
                 <h3
-                  className="font-semibold text-lg text-white truncate cursor-pointer hover:text-purple-300 transition-colors"
+                  className={`font-semibold text-lg truncate cursor-pointer hover:text-purple-300 transition-colors ${
+                    isDarkMode ? 'text-white' : 'text-[#0000FE]'
+                  }`}
                   onClick={() => handleViewToken(nft.tokenId)}
                 >
                   {nft.metadata.name}
                 </h3>
                 <p
-                  className="text-gray-300 text-sm cursor-pointer hover:text-purple-300 transition-colors"
+                  className={`text-sm cursor-pointer hover:text-purple-300 transition-colors ${
+                    isDarkMode ? 'text-gray-300' : 'text-[#0000FE]'
+                  }`}
                   onClick={() => handleViewArtistProfile(nft.metadata.creator)}
                 >
                   {nft.metadata.creator.slice(0, 6)}...{nft.metadata.creator.slice(-4)}
@@ -151,17 +163,21 @@ export default function RecentlyCollectedSection() {
                   onClick={() => handleMenuToggle(nft.tokenId)}
                   className="p-2 hover:bg-gray-200 rounded-full transition-colors"
                 >
-                  <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className={`w-5 h-5 ${
+                    isDarkMode ? 'text-gray-400' : 'text-[#0000FE]'
+                  }`} fill="currentColor" viewBox="0 0 20 20">
                     <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
                   </svg>
                 </button>
                 {openMenuId === Number(nft.tokenId) && (
                   <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border z-10">
                     <div className="py-1">
-                      <button
-                        onClick={() => handleAction('Add to queue', nft.metadata.name)}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
-                      >
+                                              <button
+                          onClick={() => handleAction('Add to queue', nft.metadata.name)}
+                          className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2 ${
+                            isDarkMode ? 'text-gray-700' : 'text-[#0000FE]'
+                          }`}
+                        >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
@@ -169,7 +185,9 @@ export default function RecentlyCollectedSection() {
                       </button>
                       <button
                         onClick={() => handleAction('Like', nft.metadata.name)}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2 ${
+                          isDarkMode ? 'text-gray-700' : 'text-[#0000FE]'
+                        }`}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -178,7 +196,9 @@ export default function RecentlyCollectedSection() {
                       </button>
                       <button
                         onClick={() => handleAction('Collect', nft.metadata.name)}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2 ${
+                          isDarkMode ? 'text-gray-700' : 'text-[#0000FE]'
+                        }`}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
@@ -193,7 +213,9 @@ export default function RecentlyCollectedSection() {
           ))}
         </div>
       ) : (
-        <div className="text-center text-gray-500 py-8">
+        <div className={`text-center py-8 ${
+          isDarkMode ? 'text-gray-500' : 'text-[#0000FE]'
+        }`}>
           <p>No recently collected songs found.</p>
           <p className="text-sm mt-2">Songs will appear here when users collect them!</p>
         </div>

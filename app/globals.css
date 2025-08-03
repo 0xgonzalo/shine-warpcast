@@ -3,23 +3,29 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark; /* Force dark mode */
+  color-scheme: light;
+  --background: #fff;
+  --foreground: #0000FE;
+}
+
+.dark {
+  color-scheme: dark;
   --background: #0a0a0a;
-  --foreground: #ededed;
+  --foreground: #ffffff;
 }
 
 @media (prefers-color-scheme: light) {
   :root {
-    /* Keep dark mode even when system prefers light */
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #fff;
+    --foreground: #0000FE;
   }
 }
 
 body {
   color: var(--foreground);
-  background: var(--background);
+  background: radial-gradient(circle,rgba(0, 0, 225, 0.1) 0%, rgba(204, 204, 254, 1) 50%, rgba(255, 255, 254, 1) 100%);
   font-family: Arial, Helvetica, sans-serif;
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 @layer utilities {

@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { useKeenSlider } from 'keen-slider/react'
 import 'keen-slider/keen-slider.min.css'
 import dynamic from 'next/dynamic';
+import { useTheme } from '../../context/ThemeContext';
 
 interface FeedContentProps {
   mobileColumns: number;
@@ -32,6 +33,7 @@ const RecentlyCollectedSection = dynamic(() => import('./RecentlyCollectedSectio
 
 export default function FeedContent({ mobileColumns, setMobileColumns }: FeedContentProps) {
   const router = useRouter();
+  const { isDarkMode } = useTheme();
   const { playAudio, currentAudio, isPlaying } = useAudio();
   const tokenIds = Array.from({ length: MAX_SCAN }, (_, i) => BigInt(i + 1)).slice(3);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
@@ -113,8 +115,10 @@ export default function FeedContent({ mobileColumns, setMobileColumns }: FeedCon
 
   return (
     <>
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="md:text-4xl text-2xl font-bold text-center">New Releases</h1>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className={`md:text-4xl text-2xl font-bold text-center ${
+          isDarkMode ? 'text-white' : 'text-[#0000FE]'
+        }`}>New Releases</h1>
       </div>
       
       {/* NFTExists Cards as a horizontal slider */}

@@ -6,9 +6,11 @@ interface AudioContextType {
   currentAudio: {
     src: string;
     name: string;
+    artist?: string;
+    image?: string;
   } | null;
   isPlaying: boolean;
-  queue: Array<{ src: string; name: string }>;
+  queue: Array<{ src: string; name: string; artist?: string; image?: string }>;
   currentTime: number;
   duration: number;
   setIsPlaying: (isPlaying: boolean) => void;
@@ -16,9 +18,9 @@ interface AudioContextType {
   setDuration: (duration: number) => void;
   setAudioElement: (element: HTMLAudioElement | null) => void;
   seekTo: (time: number) => void;
-  playAudio: (src: string, name: string) => void;
+  playAudio: (src: string, name: string, artist?: string, image?: string) => void;
   stopAudio: () => void;
-  addToQueue: (src: string, name: string) => void;
+  addToQueue: (src: string, name: string, artist?: string, image?: string) => void;
   removeFromQueue: (index: number) => void;
   playNext: () => void;
 }
@@ -26,9 +28,9 @@ interface AudioContextType {
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
 
 export function AudioProvider({ children }: { children: React.ReactNode }) {
-  const [currentAudio, setCurrentAudio] = useState<{ src: string; name: string } | null>(null);
+  const [currentAudio, setCurrentAudio] = useState<{ src: string; name: string; artist?: string; image?: string } | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [queue, setQueue] = useState<Array<{ src: string; name: string }>>([]);
+  const [queue, setQueue] = useState<Array<{ src: string; name: string; artist?: string; image?: string }>>([]);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
@@ -40,7 +42,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [audioElement]);
 
-  const playAudio = useCallback((src: string, name: string) => {
+  const playAudio = useCallback((src: string, name: string, artist?: string, image?: string) => {
     // If it's the same audio, just update the state
     if (currentAudio?.src === src) {
       setIsPlaying(!isPlaying);
@@ -48,7 +50,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
 
     // If it's a different audio, update the current audio and start playing
-    setCurrentAudio({ src, name });
+    setCurrentAudio({ src, name, artist, image });
     setIsPlaying(true);
   }, [currentAudio?.src, isPlaying]);
 
@@ -57,8 +59,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     setCurrentAudio(null);
   }, []);
 
-  const addToQueue = useCallback((src: string, name: string) => {
-    setQueue(prev => [...prev, { src, name }]);
+  const addToQueue = useCallback((src: string, name: string, artist?: string, image?: string) => {
+    setQueue(prev => [...prev, { src, name, artist, image }]);
   }, []);
 
   const removeFromQueue = useCallback((index: number) => {
