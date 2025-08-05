@@ -8,18 +8,36 @@ import { getIPFSGatewayURL } from '@/app/utils/pinata';
 import { useAudio } from '../../context/AudioContext';
 import Image from 'next/image';
 
+// This is the legacy format the component expects
+interface NFTMetadata {
+  name: string;
+  description: string;
+  audioURI: string;
+  imageURI: string;
+  creator: `0x${string}`;
+}
+
 export default function TokenPage() {
   const params = useParams();
   const tokenId = BigInt(params.tokenId as string);
   
-  const { data, isLoading, isError } = useReadContract({
+  const { data: rawData, isLoading, isError } = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: contractABI,
-    functionName: 'getMetadata',
+    functionName: 'getSongMetadata',
     args: [tokenId],
   });
 
-  const { currentAudio, isPlaying, playAudio, setIsPlaying, currentTime, duration, setCurrentTime, setDuration, seekTo } = useAudio();
+  // Adapt the new contract data to the legacy format used by this component
+  const data: NFTMetadata | undefined = rawData ? {
+    name: (rawData as any).title,
+    description: '', // Not available in new contract
+    audioURI: (rawData as any).mediaURI,
+    imageURI: (rawData as any).metadataURI, // Using metadataURI as a fallback for the image
+    creator: (rawData as any).artistAddress
+  } : undefined;
+
+  const { currentAudio, isPlaying, playAudio, setIsPlaying, currentTime, duration, seekTo } = useAudio();
   const [showLyrics, setShowLyrics] = useState(false);
 
 
@@ -123,7 +141,7 @@ export default function TokenPage() {
                 onChange={handleSeek}
                 className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer slider"
                 style={{
-                  background: `linear-gradient(to right, #ffffff 0%, #ffffff ${(currentTime / duration) * 100}%, #4a5568 ${(currentTime / duration) * 100}%, #4a5568 100%)`
+                  background: `linear-gradient(to right, #ffffff 0%, #ffffff ${(currentTime && duration ? (currentTime / duration) * 100 : 0)}%, #4a5568 ${(currentTime && duration ? (currentTime / duration) * 100 : 0)}%, #4a5568 100%)`
                 }}
               />
               <div className="flex justify-between text-xs text-gray-400 mt-1">
