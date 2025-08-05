@@ -11,6 +11,30 @@ import useConnectedWallet from '@/hooks/useConnectedWallet';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '../context/ThemeContext';
 
+// Types for the new contract
+interface SongMetadata {
+  title: string;
+  artistName: string;
+  mediaURI: string;
+  metadataURI: string;
+  artistAddress: `0x${string}`;
+  tags: string[];
+  price: bigint;
+  timesBought: bigint;
+  isAnSpecialEdition: boolean;
+  specialEditionName: string;
+  maxSupplySpecialEdition: bigint;
+}
+
+// Legacy metadata interface for backward compatibility
+interface LegacyMetadata {
+  name: string;
+  description: string;
+  audioURI: string;
+  imageURI: string;
+  creator: `0x${string}`;
+}
+
 interface NFTCardProps {
   tokenId: bigint;
 }
@@ -18,12 +42,21 @@ interface NFTCardProps {
 export default function NFTCard({ tokenId }: NFTCardProps) {
   const router = useRouter();
   const { isDarkMode } = useTheme();
-  const { data, isLoading, isError } = useReadContract({
+  const { data: rawData, isLoading, isError } = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: contractABI,
-    functionName: 'getMetadata',
+    functionName: 'getSongMetadata',
     args: [tokenId],
   });
+
+  // Convert new SongMetadata to legacy format for backward compatibility
+  const data: LegacyMetadata | undefined = rawData ? {
+    name: (rawData as SongMetadata).title,
+    description: '', // Not available in new contract
+    audioURI: (rawData as SongMetadata).mediaURI,
+    imageURI: (rawData as SongMetadata).metadataURI,
+    creator: (rawData as SongMetadata).artistAddress
+  } : undefined;
 
   const { writeContract, isPending, isSuccess, data: txData, error: txError } = useWriteContract();
   const [showModal, setShowModal] = useState(false);
@@ -66,8 +99,11 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
     writeContract({
       address: CONTRACT_ADDRESS,
       abi: contractABI,
-      functionName: 'buy',
-      args: [tokenId],
+      functionName: 'instaBuy',
+      args: [
+        tokenId, // songId
+        BigInt(1) // farcasterId - placeholder, should be replaced with actual Farcaster ID
+      ],
       value: BigInt(777000000000000), // 0.000777 ETH in wei
     });
   };

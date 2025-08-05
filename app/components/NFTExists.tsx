@@ -12,7 +12,7 @@ export default function NFTExists({ tokenId }: NFTExistsProps) {
   const { data: exists, isLoading, isError } = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: contractABI,
-    functionName: 'exists',
+    functionName: 'songIdExists',
     args: [tokenId],
   });
 

@@ -1,7 +1,7 @@
 import NFTExists from '../NFTExists';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getRecentlyCollectedNFTs } from '../../utils/contract';
+import { getRecentlyCollectedNFTs, getTotalSongCount } from '../../utils/contract';
 import { getIPFSGatewayURL } from '../../utils/pinata';
 import { useAudio } from '../../context/AudioContext';
 import Image from 'next/image';
@@ -27,7 +27,7 @@ interface CollectedNFT {
   collectedAt: bigint;
 }
 
-const MAX_SCAN = 20; // Scan token IDs 1 to 20
+const MAX_DISPLAY = 15; // Show last 15 songs
 
 const RecentlyCollectedSection = dynamic(() => import('./RecentlyCollectedSection'), { ssr: false, loading: () => <div>Loading recently collected...</div> });
 
@@ -35,10 +35,53 @@ export default function FeedContent({ mobileColumns, setMobileColumns }: FeedCon
   const router = useRouter();
   const { isDarkMode } = useTheme();
   const { playAudio, currentAudio, isPlaying } = useAudio();
-  const tokenIds = Array.from({ length: MAX_SCAN }, (_, i) => BigInt(i + 1)).slice(3);
+  const [tokenIds, setTokenIds] = useState<bigint[]>([]);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [recentlyCollected, setRecentlyCollected] = useState<CollectedNFT[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingTokens, setIsLoadingTokens] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Fetch latest token IDs dynamically
+  useEffect(() => {
+    const fetchLatestTokenIds = async () => {
+      try {
+        setIsLoadingTokens(true);
+        console.log('🔍 Fetching total song count...');
+        
+        const totalSongs = await getTotalSongCount();
+        console.log('📊 Total songs in contract:', totalSongs.toString());
+        
+        if (totalSongs === BigInt(0)) {
+          console.log('⚠️ No songs found in contract');
+          setTokenIds([]);
+          return;
+        }
+
+        // Generate token IDs for the latest songs (reverse order, newest first)
+        const latestTokenIds: bigint[] = [];
+        const startId = totalSongs;
+        const endId = totalSongs > BigInt(MAX_DISPLAY) ? totalSongs - BigInt(MAX_DISPLAY) + BigInt(1) : BigInt(1);
+        
+        // Add tokens from newest to oldest
+        for (let i = startId; i >= endId; i--) {
+          latestTokenIds.push(i);
+        }
+        
+        console.log('🎵 Latest token IDs:', latestTokenIds.map(id => id.toString()));
+        setTokenIds(latestTokenIds);
+        
+      } catch (error) {
+        console.error('❌ Error fetching latest token IDs:', error);
+        // Fallback to show at least some tokens if contract call fails
+        setTokenIds([BigInt(1), BigInt(2), BigInt(3)]);
+      } finally {
+        setIsLoadingTokens(false);
+      }
+    };
+
+    fetchLatestTokenIds();
+  }, [refreshKey]);
 
   useEffect(() => {
     const fetchRecentlyCollected = async () => {
@@ -55,6 +98,44 @@ export default function FeedContent({ mobileColumns, setMobileColumns }: FeedCon
 
     fetchRecentlyCollected();
   }, []);
+
+  const handleRefresh = () => {
+    console.log('🔄 Refreshing feed...');
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const handleTestContract = async () => {
+    console.log('🧪 Testing contract functions directly...');
+    try {
+      const { getTotalSongCount, checkSongExists, getSongMetadata } = await import('../../utils/contract');
+      
+      const total = await getTotalSongCount();
+      console.log('📊 Total songs from contract:', total.toString());
+      
+      for (let i = 1; i <= Number(total); i++) {
+        const songId = BigInt(i);
+        console.log(`\n🔍 Testing song ID ${i}:`);
+        
+        try {
+          const exists = await checkSongExists(songId);
+          console.log(`  ✅ Song ${i} exists:`, exists);
+          
+          if (exists) {
+            const metadata = await getSongMetadata(songId);
+            console.log(`  📝 Song ${i} metadata:`, {
+              title: metadata.title,
+              artistName: metadata.artistName,
+              artistAddress: metadata.artistAddress
+            });
+          }
+        } catch (error) {
+          console.log(`  ❌ Error with song ${i}:`, error);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Contract test failed:', error);
+    }
+  };
 
   const handleMenuToggle = (tokenId: bigint) => {
     const numericId = Number(tokenId);
@@ -119,11 +200,58 @@ export default function FeedContent({ mobileColumns, setMobileColumns }: FeedCon
         <h1 className={`md:text-4xl text-2xl font-bold text-center ${
           isDarkMode ? 'text-white' : 'text-[#0000FE]'
         }`}>New Releases</h1>
+        <div className="flex gap-2">
+          <button
+            onClick={handleTestContract}
+            className={`px-3 py-2 rounded-lg transition-colors text-sm ${
+              isDarkMode
+                ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                : 'bg-yellow-500 hover:bg-yellow-600 text-white'
+            }`}
+            title="Test contract functions"
+          >
+            🧪 Test
+          </button>
+          <button
+            onClick={handleRefresh}
+            className={`px-4 py-2 rounded-lg transition-colors ${
+              isDarkMode
+                ? 'bg-white/10 hover:bg-white/20 text-white'
+                : 'bg-[#0000FE]/10 hover:bg-[#0000FE]/20 text-[#0000FE]'
+            }`}
+            title="Refresh to show latest songs"
+          >
+            <svg
+              className={`w-5 h-5 ${isLoadingTokens ? 'animate-spin' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
       
       {/* NFTExists Cards as a horizontal slider */}
       <div className="mb-12">
-        <KeenNFTSlider tokenIds={tokenIds} />
+        {isLoadingTokens ? (
+          <div className={`text-center py-8 ${isDarkMode ? 'text-white' : 'text-[#0000FE]'}`}>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-current mx-auto mb-2"></div>
+            <p>Loading latest releases...</p>
+          </div>
+        ) : tokenIds.length > 0 ? (
+          <KeenNFTSlider tokenIds={tokenIds} />
+        ) : (
+          <div className={`text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+            <p>No songs available yet. Be the first to create one!</p>
+          </div>
+        )}
       </div>
 
       {/* Recently Collected Songs Section */}
@@ -134,46 +262,63 @@ export default function FeedContent({ mobileColumns, setMobileColumns }: FeedCon
 
 function KeenNFTSlider({ tokenIds }: { tokenIds: bigint[] }) {
   const [availableTokenIds, setAvailableTokenIds] = useState<bigint[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
     let isMounted = true;
     async function checkExists() {
+      setIsLoading(true);
       const { checkNFTExists } = await import('../../utils/contract');
       const checks = await Promise.all(
         tokenIds.map(async (tokenId) => {
           try {
             const exists = await checkNFTExists(tokenId);
             return exists ? tokenId : null;
-          } catch {
+          } catch (error) {
             return null;
           }
         })
       );
-      if (isMounted) setAvailableTokenIds(checks.filter(Boolean) as bigint[]);
+      if (isMounted) {
+        setAvailableTokenIds(checks.filter(Boolean) as bigint[]);
+        setIsLoading(false);
+      }
     }
-    checkExists();
+    if (tokenIds.length > 0) {
+      checkExists();
+    } else {
+      setAvailableTokenIds([]);
+      setIsLoading(false);
+    }
     return () => { isMounted = false; };
   }, [tokenIds]);
 
-  const [sliderRef, slider] = useKeenSlider<HTMLDivElement>({
+  const [sliderRef, instanceRef] = useKeenSlider<HTMLDivElement>({
     mode: 'free-snap',
-    slides: { perView: 2.2, spacing: 12, origin: 'auto' },
+    slides: { perView: 'auto', spacing: 12 },
     breakpoints: {
-      '(min-width: 640px)': { slides: { perView: 3.2, spacing: 20, origin: 'auto' } },
-      '(min-width: 1024px)': { slides: { perView: 4.2, spacing: 24, origin: 'auto' } },
+      '(min-width: 640px)': { slides: { perView: 'auto', spacing: 20 } },
+      '(min-width: 1024px)': { slides: { perView: 'auto', spacing: 24 } },
     },
   });
 
-  // Refresh slider when availableTokenIds change
   useEffect(() => {
-    if (slider.current) {
-      slider.current.update();
-    }
-  }, [availableTokenIds, slider]);
+    instanceRef.current?.update();
+  }, [availableTokenIds, instanceRef]);
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-current mx-auto mb-2"></div>
+        <p>Verifying new releases...</p>
+      </div>
+    );
+  }
 
   return (
     <div ref={sliderRef} className="keen-slider py-2">
       {availableTokenIds.map((tokenId) => (
-        <div key={tokenId.toString()} className="keen-slider__slide">
+        <div key={tokenId.toString()} className="keen-slider__slide" style={{ minWidth: '220px', maxWidth: '280px' }}>
           <NFTExists tokenId={tokenId} />
         </div>
       ))}
