@@ -1,68 +1,26 @@
 import { createPublicClient, http } from 'viem';
 import { baseSepolia } from 'viem/chains';
+import songDataBaseABI from '../../abi/SongDataBase.json';
 
-// Contract ABI - using explicit format
-const contractABI = [
-  {
-    name: 'mint',
-    type: 'function',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'to', type: 'address' },
-      { name: 'name', type: 'string' },
-      { name: 'description', type: 'string' },
-      { name: 'audioURI', type: 'string' },
-      { name: 'imageURI', type: 'string' },
-      { name: 'amount', type: 'uint256' }
-    ],
-    outputs: [{ name: '', type: 'uint256' }]
-  },
-  {
-    name: 'getMetadata',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [{ name: 'tokenId', type: 'uint256' }],
-    outputs: [{
-      type: 'tuple',
-      components: [
-        { name: 'name', type: 'string' },
-        { name: 'description', type: 'string' },
-        { name: 'audioURI', type: 'string' },
-        { name: 'imageURI', type: 'string' },
-        { name: 'creator', type: 'address' }
-      ]
-    }]
-  },
-  {
-    name: 'exists',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [{ name: 'tokenId', type: 'uint256' }],
-    outputs: [{ name: '', type: 'bool' }]
-  },
-  {
-    name: 'buy',
-    type: 'function',
-    stateMutability: 'payable',
-    inputs: [
-      { name: 'tokenId', type: 'uint256' }
-    ],
-    outputs: []
-  },
-  {
-    name: 'TransferSingle',
-    type: 'event',
-    inputs: [
-      { name: 'operator', type: 'address', indexed: true },
-      { name: 'from', type: 'address', indexed: true },
-      { name: 'to', type: 'address', indexed: true },
-      { name: 'id', type: 'uint256', indexed: false },
-      { name: 'value', type: 'uint256', indexed: false }
-    ]
-  }
-] as const;
+// Use the imported ABI from the generated file  
+const contractABI = songDataBaseABI as any;
 
-export const CONTRACT_ADDRESS = '0x3a1eEAa401F13Be2e30EB519Ed06b23f3Ff43BD6';
+// Define types for the contract metadata
+interface SongMetadata {
+  title: string;
+  artistName: string;
+  mediaURI: string;
+  metadataURI: string;
+  artistAddress: `0x${string}`;
+  tags: string[];
+  price: bigint;
+  timesBought: bigint;
+  isAnSpecialEdition: boolean;
+  specialEditionName: string;
+  maxSupplySpecialEdition: bigint;
+}
+
+export const CONTRACT_ADDRESS = '0xF66464ccf2d0e56DFA15572c122C6474B0A1c82C';
 
 // Create a public client for reading from the contract
 export const publicClient = createPublicClient({
@@ -71,40 +29,124 @@ export const publicClient = createPublicClient({
 });
 
 // Contract interaction functions
-export async function getNFTMetadata(tokenId: bigint) {
+export async function getSongMetadata(songId: bigint): Promise<SongMetadata> {
   try {
     const metadata = await publicClient.readContract({
       address: CONTRACT_ADDRESS as `0x${string}`,
       abi: contractABI,
-      functionName: 'getMetadata',
-      args: [tokenId],
+      functionName: 'getSongMetadata',
+      args: [songId],
     });
-    return metadata;
+    return metadata as SongMetadata;
   } catch (error) {
-    console.error('Error fetching NFT metadata:', error);
+    console.error('Error fetching song metadata:', error);
     throw error;
   }
 }
 
-export async function checkNFTExists(tokenId: bigint) {
+export async function checkSongExists(songId: bigint) {
   try {
+    console.log(`🔍 checkSongExists: Checking song ID ${songId}...`);
     const exists = await publicClient.readContract({
       address: CONTRACT_ADDRESS as `0x${string}`,
       abi: contractABI,
-      functionName: 'exists',
-      args: [tokenId],
+      functionName: 'songIdExists',
+      args: [songId],
     });
+    console.log(`✅ checkSongExists: Song ID ${songId} exists:`, exists);
     return exists;
   } catch (error) {
-    console.error('Error checking if NFT exists:', error);
+    console.error(`❌ checkSongExists: Error checking if song ${songId} exists:`, error);
     throw error;
   }
 }
 
-// Function to get recently collected NFTs
-export async function getRecentlyCollectedNFTs(limit: number = 10) {
+export async function getTotalSongCount(): Promise<bigint> {
   try {
-    console.log('🔍 Fetching recently collected NFTs...');
+    const count = await publicClient.readContract({
+      address: CONTRACT_ADDRESS as `0x${string}`,
+      abi: contractABI,
+      functionName: 'getTotalSongCount',
+      args: [],
+    });
+    return count as bigint;
+  } catch (error) {
+    console.error('Error fetching total song count:', error);
+    throw error;
+  }
+}
+
+// Function to test contract connection
+export async function testContractConnection() {
+  try {
+    console.log('🧪 Testing contract connection...');
+    console.log('📍 Contract Address:', CONTRACT_ADDRESS);
+    console.log('🌐 Network: Base Sepolia');
+    
+    // Try to get total song count as a simple test
+    const count = await getTotalSongCount();
+    console.log('✅ Contract connection successful! Total songs:', count.toString());
+    return { success: true, totalSongs: count };
+  } catch (error) {
+    console.error('❌ Contract connection failed:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+export async function getUserCollection(farcasterId: bigint) {
+  try {
+    const collection = await publicClient.readContract({
+      address: CONTRACT_ADDRESS as `0x${string}`,
+      abi: contractABI,
+      functionName: 'getUserCollection',
+      args: [farcasterId],
+    });
+    return collection;
+  } catch (error) {
+    console.error('Error fetching user collection:', error);
+    throw error;
+  }
+}
+
+export async function getTotalPriceForBuy(songIds: bigint[]) {
+  try {
+    const totalPrice = await publicClient.readContract({
+      address: CONTRACT_ADDRESS as `0x${string}`,
+      abi: contractABI,
+      functionName: 'getTotalPriceForBuy',
+      args: [songIds],
+    });
+    return totalPrice;
+  } catch (error) {
+    console.error('Error calculating total price:', error);
+    throw error;
+  }
+}
+
+// Adapter function to convert new SongMetadata to old NFT metadata format
+export function adaptSongMetadataToNFT(songMetadata: SongMetadata) {
+  return {
+    name: songMetadata.title,
+    description: '', // Not available in new contract, could be derived from metadataURI
+    audioURI: songMetadata.mediaURI,
+    imageURI: songMetadata.metadataURI, // Using metadataURI as imageURI fallback
+    creator: songMetadata.artistAddress
+  };
+}
+
+// Legacy function that returns adapted metadata for backward compatibility
+export async function getNFTMetadata(tokenId: bigint) {
+  const songMetadata = await getSongMetadata(tokenId);
+  return adaptSongMetadataToNFT(songMetadata);
+}
+
+// Legacy function names for backward compatibility
+export const checkNFTExists = checkSongExists;
+
+// Function to get recently collected songs using the new contract events
+export async function getRecentlyCollectedSongs(limit: number = 10) {
+  try {
+    console.log('🔍 Fetching recently collected songs...');
     
     // Get the latest block number
     const latestBlock = await publicClient.getBlockNumber();
@@ -114,78 +156,111 @@ export async function getRecentlyCollectedNFTs(limit: number = 10) {
     const fromBlock = latestBlock - BigInt(10000);
     console.log('📦 Searching from block:', fromBlock.toString(), 'to', latestBlock.toString());
     
-    // Get Transfer events (excluding mints - where from is zero address)
-    const logs = await publicClient.getLogs({
-      address: CONTRACT_ADDRESS as `0x${string}`,
-      event: {
-        type: 'event',
-        name: 'TransferSingle',
-        inputs: [
-          { name: 'operator', type: 'address', indexed: true },
-          { name: 'from', type: 'address', indexed: true },
-          { name: 'to', type: 'address', indexed: true },
-          { name: 'id', type: 'uint256', indexed: false },
-          { name: 'value', type: 'uint256', indexed: false }
-        ]
-      },
-      fromBlock,
-      toBlock: 'latest'
+    // Get UserBuy and UserInstaBuy events
+    const [userBuyLogs, userInstaBuyLogs] = await Promise.all([
+      publicClient.getLogs({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        event: {
+          type: 'event',
+          name: 'UserBuy',
+          inputs: [
+            { name: 'audioIds', type: 'uint256[]', indexed: true },
+            { name: 'farcasterId', type: 'uint256', indexed: true }
+          ]
+        },
+        fromBlock,
+        toBlock: 'latest'
+      }),
+      publicClient.getLogs({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        event: {
+          type: 'event',
+          name: 'UserInstaBuy',
+          inputs: [
+            { name: 'audioId', type: 'uint256', indexed: true },
+            { name: 'farcasterId', type: 'uint256', indexed: true }
+          ]
+        },
+        fromBlock,
+        toBlock: 'latest'
+      })
+    ]);
+
+    console.log('📋 UserBuy events found:', userBuyLogs.length);
+    console.log('📋 UserInstaBuy events found:', userInstaBuyLogs.length);
+
+    // Process events and extract song IDs
+    const collectedSongs = new Map<string, { songId: bigint, blockNumber: bigint, farcasterId: bigint }>();
+    
+    // Process UserBuy events (multiple songs)
+    userBuyLogs.forEach(log => {
+      const audioIds = log.args.audioIds;
+      const farcasterId = log.args.farcasterId;
+      const blockNumber = log.blockNumber;
+      
+      if (audioIds && farcasterId && blockNumber) {
+        audioIds.forEach(songId => {
+          const key = `${songId}_${blockNumber}`;
+          collectedSongs.set(key, { songId, blockNumber, farcasterId });
+        });
+      }
     });
 
-    console.log('📋 Total transfer events found:', logs.length);
+    // Process UserInstaBuy events (single songs)
+    userInstaBuyLogs.forEach(log => {
+      const audioId = log.args.audioId;
+      const farcasterId = log.args.farcasterId;
+      const blockNumber = log.blockNumber;
+      
+      if (audioId && farcasterId && blockNumber) {
+        const key = `${audioId}_${blockNumber}`;
+        collectedSongs.set(key, { songId: audioId, blockNumber, farcasterId });
+      }
+    });
 
-    // Filter out mints (where from is zero address) and get unique token IDs
-    const collectionEvents = logs
-      .filter(log => {
-        const isNotMint = log.args.from !== '0x0000000000000000000000000000000000000000';
-        if (isNotMint) {
-          console.log('✅ Collection event found:', {
-            tokenId: log.args.id?.toString(),
-            from: log.args.from,
-            to: log.args.to,
-            block: log.blockNumber?.toString()
-          });
-        }
-        return isNotMint;
-      })
-      .sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber)) // Sort by most recent first
+    // Convert to array and sort by most recent first
+    const sortedCollections = Array.from(collectedSongs.values())
+      .sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber))
       .slice(0, limit);
 
-    console.log('🎵 Collection events after filtering:', collectionEvents.length);
+    console.log('🎵 Collection events after processing:', sortedCollections.length);
 
-    // If no collection events found, let's try a fallback approach
-    if (collectionEvents.length === 0) {
+    // If no collection events found, use fallback
+    if (sortedCollections.length === 0) {
       console.log('⚠️ No collection events found, trying fallback approach...');
       return await getFallbackRecentSongs(limit);
     }
 
-    // Get metadata for each collected NFT
+    // Get metadata for each collected song
     const recentlyCollected = [];
-    for (const event of collectionEvents) {
+    for (const collection of sortedCollections) {
       try {
-        const tokenId = event.args.id;
-        if (tokenId !== undefined) {
-          console.log('📝 Fetching metadata for token:', tokenId.toString());
-          const metadata = await getNFTMetadata(tokenId);
-          recentlyCollected.push({
-            tokenId,
-            metadata,
-            collectedAt: event.blockNumber
-          });
-        }
+        console.log('📝 Fetching metadata for song:', collection.songId.toString());
+        const songMetadata = await getSongMetadata(collection.songId);
+        const metadata = adaptSongMetadataToNFT(songMetadata);
+        recentlyCollected.push({
+          songId: collection.songId,
+          tokenId: collection.songId, // For backward compatibility
+          metadata,
+          collectedAt: collection.blockNumber,
+          farcasterId: collection.farcasterId
+        });
       } catch (error) {
-        console.error(`❌ Error fetching metadata for token ${event.args.id}:`, error);
+        console.error(`❌ Error fetching metadata for song ${collection.songId}:`, error);
       }
     }
 
-    console.log('🎉 Successfully fetched', recentlyCollected.length, 'recently collected NFTs');
+    console.log('🎉 Successfully fetched', recentlyCollected.length, 'recently collected songs');
     return recentlyCollected;
   } catch (error) {
-    console.error('❌ Error fetching recently collected NFTs:', error);
+    console.error('❌ Error fetching recently collected songs:', error);
     // Try fallback approach
     return await getFallbackRecentSongs(limit);
   }
 }
+
+// Legacy function name for backward compatibility
+export const getRecentlyCollectedNFTs = getRecentlyCollectedSongs;
 
 // Fallback function to get existing songs (for when no recent collections are found)
 async function getFallbackRecentSongs(limit: number = 10) {
@@ -194,31 +269,43 @@ async function getFallbackRecentSongs(limit: number = 10) {
   try {
     const recentlyCollected = [];
     
-    // Skip the first 3 token IDs (0, 1, 2) and start from a higher token ID
-    // Scan in descending order to get most recent tokens first
-    for (let i = 50; i >= 3 && recentlyCollected.length < limit; i--) {
+    // Get total song count first to know the range
+    let totalSongs: bigint;
+    try {
+      totalSongs = await getTotalSongCount();
+      console.log('📊 Total songs in contract:', totalSongs.toString());
+    } catch (error) {
+      console.log('⚠️ Could not get total song count, using manual scan...');
+      totalSongs = BigInt(50); // Default fallback
+    }
+    
+    // Scan in descending order to get most recent songs first
+    const maxSongId = Math.min(Number(totalSongs), 50);
+    for (let i = maxSongId; i >= 1 && recentlyCollected.length < limit; i--) {
       try {
-        const tokenId = BigInt(i);
-        const exists = await checkNFTExists(tokenId);
+        const songId = BigInt(i);
+        const exists = await checkSongExists(songId);
         
         if (exists) {
-          console.log('✅ Found existing token:', tokenId.toString());
-          const metadata = await getNFTMetadata(tokenId);
+          console.log('✅ Found existing song:', songId.toString());
+          const songMetadata = await getSongMetadata(songId);
+          const metadata = adaptSongMetadataToNFT(songMetadata);
           recentlyCollected.push({
-            tokenId,
+            songId,
+            tokenId: songId, // For backward compatibility
             metadata,
             collectedAt: BigInt(0) // No specific collection block
           });
         } else {
-          console.log('❌ Token does not exist:', tokenId.toString());
+          console.log('❌ Song does not exist:', songId.toString());
         }
       } catch (error) {
-        console.error(`❌ Error checking token ${i}:`, error);
+        console.error(`❌ Error checking song ${i}:`, error);
         continue;
       }
     }
     
-    console.log('🎵 Fallback found', recentlyCollected.length, 'existing songs (excluding first 3 tokens, newest first)');
+    console.log('🎵 Fallback found', recentlyCollected.length, 'existing songs (newest first)');
     return recentlyCollected;
   } catch (error) {
     console.error('❌ Fallback approach failed:', error);
@@ -229,7 +316,7 @@ async function getFallbackRecentSongs(limit: number = 10) {
 // Export the contract ABI for use in the frontend
 export { contractABI };
 
-// Function to get most collected artists (optimized version)
+// Function to get most collected artists using the new contract events
 export async function getMostCollectedArtists(limit: number = 6) {
   try {
     console.log('🎨 Fetching most collected artists...');
@@ -242,109 +329,143 @@ export async function getMostCollectedArtists(limit: number = 6) {
     const fromBlock = latestBlock - BigInt(5000);
     console.log('📦 Searching from block:', fromBlock.toString(), 'to', latestBlock.toString());
     
-    // Get Transfer events with a smaller range
-    const logs = await publicClient.getLogs({
-      address: CONTRACT_ADDRESS as `0x${string}`,
-      event: {
-        type: 'event',
-        name: 'TransferSingle',
-        inputs: [
-          { name: 'operator', type: 'address', indexed: true },
-          { name: 'from', type: 'address', indexed: true },
-          { name: 'to', type: 'address', indexed: true },
-          { name: 'id', type: 'uint256', indexed: false },
-          { name: 'value', type: 'uint256', indexed: false }
-        ]
-      },
-      fromBlock,
-      toBlock: 'latest'
-    });
+    // Get UserBuy and UserInstaBuy events to analyze collections
+    const [userBuyLogs, userInstaBuyLogs] = await Promise.all([
+      publicClient.getLogs({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        event: {
+          type: 'event',
+          name: 'UserBuy',
+          inputs: [
+            { name: 'audioIds', type: 'uint256[]', indexed: true },
+            { name: 'farcasterId', type: 'uint256', indexed: true }
+          ]
+        },
+        fromBlock,
+        toBlock: 'latest'
+      }),
+      publicClient.getLogs({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        event: {
+          type: 'event',
+          name: 'UserInstaBuy',
+          inputs: [
+            { name: 'audioId', type: 'uint256', indexed: true },
+            { name: 'farcasterId', type: 'uint256', indexed: true }
+          ]
+        },
+        fromBlock,
+        toBlock: 'latest'
+      })
+    ]);
 
-    console.log('📋 Total transfer events found:', logs.length);
+    console.log('📋 UserBuy events found:', userBuyLogs.length);
+    console.log('📋 UserInstaBuy events found:', userInstaBuyLogs.length);
 
-    // If too many events, limit to recent ones to avoid performance issues
-    const recentLogs = logs.slice(0, 100); // Limit to 100 most recent events
-    
-    // Filter out mints
-    const collectionEvents = recentLogs.filter(log => 
-      log.args.from !== '0x0000000000000000000000000000000000000000'
-    );
-
-    // If no collections found, use fallback immediately
-    if (collectionEvents.length === 0) {
+    // If no events found, use fallback immediately
+    if (userBuyLogs.length === 0 && userInstaBuyLogs.length === 0) {
       console.log('⚠️ No collection events found, using fallback...');
       return await getFallbackMostActiveCreators(limit);
     }
 
-    // Get unique token IDs (limit to avoid too many calls)
-    const collectedTokenIds = Array.from(new Set(collectionEvents.map(log => log.args.id).filter((id): id is bigint => id !== undefined))).slice(0, 20);
-    console.log('🎵 Processing', collectedTokenIds.length, 'unique token IDs');
+    // Process events and count collections per song
+    const songCollectionCounts = new Map<string, number>();
+    
+    // Process UserBuy events (multiple songs)
+    userBuyLogs.forEach(log => {
+      const audioIds = log.args.audioIds;
+      if (audioIds) {
+        audioIds.forEach(songId => {
+          const key = songId.toString();
+          songCollectionCounts.set(key, (songCollectionCounts.get(key) || 0) + 1);
+        });
+      }
+    });
+
+    // Process UserInstaBuy events (single songs)
+    userInstaBuyLogs.forEach(log => {
+      const audioId = log.args.audioId;
+      if (audioId) {
+        const key = audioId.toString();
+        songCollectionCounts.set(key, (songCollectionCounts.get(key) || 0) + 1);
+      }
+    });
+
+    // Get unique song IDs (limit to avoid too many calls)
+    const collectedSongIds = Array.from(songCollectionCounts.keys())
+      .sort((a, b) => (songCollectionCounts.get(b) || 0) - (songCollectionCounts.get(a) || 0))
+      .slice(0, 20)
+      .map(id => BigInt(id));
+    
+    console.log('🎵 Processing', collectedSongIds.length, 'unique song IDs');
 
     // Batch metadata calls with error handling
-    const tokenMetadataMap = new Map();
-    const creatorCollectionCounts: { [creator: string]: number } = {};
-    const creatorTokens: { [creator: string]: bigint[] } = {};
+    const songMetadataMap = new Map();
+    const artistCollectionCounts: { [artist: string]: number } = {};
+    const artistSongs: { [artist: string]: bigint[] } = {};
 
-    // Process tokens in smaller batches to avoid overwhelming the RPC
+    // Process songs in smaller batches to avoid overwhelming the RPC
     const batchSize = 5;
-    for (let i = 0; i < collectedTokenIds.length; i += batchSize) {
-      const batch = collectedTokenIds.slice(i, i + batchSize);
+    for (let i = 0; i < collectedSongIds.length; i += batchSize) {
+      const batch = collectedSongIds.slice(i, i + batchSize);
       
       await Promise.all(
-        batch.map(async (tokenId) => {
+        batch.map(async (songId) => {
           try {
-            const metadata = await getNFTMetadata(tokenId);
-            tokenMetadataMap.set(tokenId, metadata);
+            const metadata = await getSongMetadata(songId);
+            songMetadataMap.set(songId, metadata);
             
-            const creator = metadata.creator.toLowerCase();
-            const tokenCollections = collectionEvents.filter(log => log.args.id === tokenId).length;
+            const artist = metadata.artistAddress.toLowerCase();
+            const songCollections = songCollectionCounts.get(songId.toString()) || 0;
             
-            if (!creatorCollectionCounts[creator]) {
-              creatorCollectionCounts[creator] = 0;
-              creatorTokens[creator] = [];
+            if (!artistCollectionCounts[artist]) {
+              artistCollectionCounts[artist] = 0;
+              artistSongs[artist] = [];
             }
             
-            creatorCollectionCounts[creator] += tokenCollections;
-            creatorTokens[creator].push(tokenId);
+            artistCollectionCounts[artist] += songCollections;
+            artistSongs[artist].push(songId);
           } catch (error) {
-            console.error(`❌ Error fetching metadata for token ${tokenId}:`, error);
+            console.error(`❌ Error fetching metadata for song ${songId}:`, error);
           }
         })
       );
       
       // Small delay between batches to avoid rate limiting
-      if (i + batchSize < collectedTokenIds.length) {
+      if (i + batchSize < collectedSongIds.length) {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
 
     // If still no data, use fallback
-    if (Object.keys(creatorCollectionCounts).length === 0) {
-      console.log('⚠️ No creator data found, using fallback...');
+    if (Object.keys(artistCollectionCounts).length === 0) {
+      console.log('⚠️ No artist data found, using fallback...');
       return await getFallbackMostActiveCreators(limit);
     }
 
     // Sort and limit results
-    const sortedCreators = Object.entries(creatorCollectionCounts)
+    const sortedArtists = Object.entries(artistCollectionCounts)
       .sort(([, a], [, b]) => b - a)
       .slice(0, limit);
 
-    console.log('🎨 Top creators by collections:', sortedCreators);
+    console.log('🎨 Top artists by collections:', sortedArtists);
 
     // Build final result
-    const topArtists = sortedCreators.map(([creator, collectionCount]) => {
-      const tokens = creatorTokens[creator];
-      const exampleTokenId = tokens[0];
-      const exampleMetadata = tokenMetadataMap.get(exampleTokenId);
+    const topArtists = sortedArtists.map(([artist, totalCollections]) => {
+      const songs = artistSongs[artist];
+      const exampleSongId = songs[0];
+      const exampleMetadata = songMetadataMap.get(exampleSongId);
       
       return {
-        address: creator as `0x${string}`,
-        collectionCount,
-        tokenCount: tokens.length,
+        artist: artist as `0x${string}`,
+        address: artist as `0x${string}`, // For backward compatibility
+        totalCollections,
+        collectionCount: totalCollections, // For backward compatibility
+        tokenCount: songs.length,
         exampleToken: exampleMetadata ? {
-          tokenId: exampleTokenId,
-          name: exampleMetadata.name,
-          imageURI: exampleMetadata.imageURI
+          tokenId: exampleSongId,
+          name: (exampleMetadata as SongMetadata).title,
+          imageURI: (exampleMetadata as SongMetadata).metadataURI // Using metadataURI as imageURI fallback
         } : null
       };
     });
@@ -358,28 +479,38 @@ export async function getMostCollectedArtists(limit: number = 6) {
   }
 }
 
-// Fallback function to get creators with most tokens (optimized)
+// Fallback function to get creators with most songs (optimized)
 async function getFallbackMostActiveCreators(limit: number = 6) {
   console.log('🔄 Using fallback approach to get most active creators...');
   
   try {
-    const creatorTokenCounts: { [creator: string]: bigint[] } = {};
+    const artistSongCounts: { [artist: string]: bigint[] } = {};
     
-    // Scan fewer tokens to reduce load (only scan 20 tokens instead of 50)
-    const maxTokensToScan = 20;
-    for (let i = 3; i <= maxTokensToScan && Object.keys(creatorTokenCounts).length < limit * 2; i++) {
+    // Get total song count first to know the range
+    let totalSongs: bigint;
+    try {
+      totalSongs = await getTotalSongCount();
+      console.log('📊 Total songs in contract:', totalSongs.toString());
+    } catch (error) {
+      console.log('⚠️ Could not get total song count, using manual scan...');
+      totalSongs = BigInt(20); // Default fallback
+    }
+    
+    // Scan fewer songs to reduce load
+    const maxSongsToScan = Math.min(Number(totalSongs), 20);
+    for (let i = 1; i <= maxSongsToScan && Object.keys(artistSongCounts).length < limit * 2; i++) {
       try {
-        const tokenId = BigInt(i);
-        const exists = await checkNFTExists(tokenId);
+        const songId = BigInt(i);
+        const exists = await checkSongExists(songId);
         
         if (exists) {
-          const metadata = await getNFTMetadata(tokenId);
-          const creator = metadata.creator.toLowerCase();
+          const metadata = await getSongMetadata(songId);
+          const artist = metadata.artistAddress.toLowerCase();
           
-          if (!creatorTokenCounts[creator]) {
-            creatorTokenCounts[creator] = [];
+          if (!artistSongCounts[artist]) {
+            artistSongCounts[artist] = [];
           }
-          creatorTokenCounts[creator].push(tokenId);
+          artistSongCounts[artist].push(songId);
         }
         
         // Add small delay to avoid overwhelming the RPC
@@ -387,42 +518,46 @@ async function getFallbackMostActiveCreators(limit: number = 6) {
           await new Promise(resolve => setTimeout(resolve, 50));
         }
       } catch (error) {
-        console.error(`❌ Error checking token ${i}:`, error);
+        console.error(`❌ Error checking song ${i}:`, error);
         continue;
       }
     }
     
-    // Sort creators by token count
-    const sortedCreators = Object.entries(creatorTokenCounts)
+    // Sort artists by song count
+    const sortedArtists = Object.entries(artistSongCounts)
       .sort(([, a], [, b]) => b.length - a.length)
       .slice(0, limit);
 
-    console.log('🎨 Top creators by token count:', sortedCreators.map(([creator, tokens]) => [creator, tokens.length]));
+    console.log('🎨 Top artists by song count:', sortedArtists.map(([artist, songs]) => [artist, songs.length]));
 
     // Build result without additional metadata calls
     const topArtists = await Promise.all(
-      sortedCreators.map(async ([creator, tokens]) => {
+      sortedArtists.map(async ([artist, songs]) => {
         try {
-          // Get metadata for the first token only
-          const exampleTokenId = tokens[0];
-          const exampleMetadata = await getNFTMetadata(exampleTokenId);
+          // Get metadata for the first song only
+          const exampleSongId = songs[0];
+          const exampleMetadata = await getSongMetadata(exampleSongId);
           
           return {
-            address: creator as `0x${string}`,
-            collectionCount: 0, // No collection data in fallback
-            tokenCount: tokens.length,
+            artist: artist as `0x${string}`,
+            address: artist as `0x${string}`, // For backward compatibility
+            totalCollections: 0, // No collection data in fallback
+            collectionCount: 0, // For backward compatibility
+            tokenCount: songs.length,
             exampleToken: {
-              tokenId: exampleTokenId,
-              name: exampleMetadata.name,
-              imageURI: exampleMetadata.imageURI
+              tokenId: exampleSongId,
+              name: exampleMetadata.title,
+              imageURI: exampleMetadata.metadataURI // Using metadataURI as imageURI fallback
             }
           };
         } catch (error) {
-          console.error(`❌ Error getting example token for creator ${creator}:`, error);
+          console.error(`❌ Error getting example song for artist ${artist}:`, error);
           return {
-            address: creator as `0x${string}`,
+            artist: artist as `0x${string}`,
+            address: artist as `0x${string}`, // For backward compatibility
+            totalCollections: 0,
             collectionCount: 0,
-            tokenCount: tokens.length,
+            tokenCount: songs.length,
             exampleToken: null
           };
         }

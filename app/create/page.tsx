@@ -107,9 +107,29 @@ export default function CreatePage() {
   };
 
   const handleMint = async () => {
-    if (!address || !nftName || !nftDescription || !audioFile || !imageFile) {
-      setMintError('Please fill in all fields and upload both audio and image files');
+    if (!address || !nftName || !nftDescription || !audioFile || !imageFile || !price) {
+      setMintError('Please fill in all fields, set a price, and upload both audio and image files');
       return;
+    }
+
+    // Validate price
+    const priceFloat = parseFloat(price);
+    if (isNaN(priceFloat) || priceFloat <= 0) {
+      setMintError('Please enter a valid price greater than 0');
+      return;
+    }
+
+    // Validate special edition fields if enabled
+    if (isSpecialEdition) {
+      if (!specialEditionName.trim()) {
+        setMintError('Please enter a special edition name');
+        return;
+      }
+      const editionsNum = parseInt(numberOfEditions);
+      if (isNaN(editionsNum) || editionsNum <= 0) {
+        setMintError('Please enter a valid number of editions greater than 0');
+        return;
+      }
     }
     
     setIsMinting(true);
@@ -143,18 +163,39 @@ export default function CreatePage() {
         description: nftDescription
       });
 
-      // Mint using Wagmi - this will work with Farcaster connector
+      // Prepare contract parameters with proper validation
+      const priceInWei = BigInt(Math.floor(priceFloat * 1e18));
+      const editionsCount = isSpecialEdition ? BigInt(parseInt(numberOfEditions)) : BigInt(0);
+      
+      console.log('📋 Contract parameters:', {
+        title: nftName,
+        artistName: 'Anonymous Artist', // Using a default name
+        mediaURI: audioURI,
+        metadataURI: imageURI,
+        artistAddress: address,
+        tags: [],
+        price: priceInWei.toString(),
+        isAnSpecialEdition: isSpecialEdition,
+        specialEditionName: isSpecialEdition ? specialEditionName : '',
+        maxSupplySpecialEdition: editionsCount.toString()
+      });
+
+      // Create new song using the SongDataBase contract
       writeContract({
         address: CONTRACT_ADDRESS as `0x${string}`,
         abi: contractABI,
-        functionName: 'mint',
+        functionName: 'newSong',
         args: [
-          address as `0x${string}`,
-          nftName,
-          nftDescription,
-          audioURI,
-          imageURI,
-          BigInt(1)
+          nftName.trim(), // title
+          'Anonymous Artist', // artistName - using a safe default
+          audioURI, // mediaURI  
+          imageURI, // metadataURI
+          address as `0x${string}`, // artistAddress
+          [], // tags - empty array for now
+          priceInWei, // price in wei
+          isSpecialEdition, // isAnSpecialEdition
+          isSpecialEdition ? specialEditionName.trim() : '', // specialEditionName
+          editionsCount // maxSupplySpecialEdition
         ],
       });
       
@@ -385,6 +426,7 @@ export default function CreatePage() {
             </div>
 
             <div className="space-y-4">
+              
               <div className="flex justify-center">
                 <button
                   onClick={handleMint}

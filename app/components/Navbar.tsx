@@ -93,8 +93,11 @@ export default function Navbar() {
     writeContract({
       address: CONTRACT_ADDRESS,
       abi: contractABI,
-      functionName: 'buy',
-      args: [collectToken.tokenId],
+      functionName: 'instaBuy',
+      args: [
+        collectToken.tokenId, // songId
+        BigInt(1) // farcasterId - placeholder, should be replaced with actual Farcaster ID
+      ],
       value: BigInt(777000000000000), // 0.000777 ETH in wei
     });
   };
