@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import ReactCanvasConfetti from 'react-canvas-confetti';
+import Image from 'next/image';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
 import { getCelebrationConfettiConfig } from '@/app/utils/confetti';
 
@@ -52,9 +53,11 @@ const CollectedModal: React.FC<CollectedModalProps> = ({ nft, txHash, onClose })
         </button>
         <h2 className="text-xl md:text-2xl font-bold mb-4">Collect Successful!</h2>
         {nft.imageURI && nft.imageURI !== 'ipfs://placeholder-image-uri' && (
-          <img
+          <Image
             src={getIPFSGatewayURL(nft.imageURI)}
             alt={nft.name}
+            width={400}
+            height={256}
             className="w-full h-48 md:h-64 object-cover rounded-lg mb-4"
           />
         )}

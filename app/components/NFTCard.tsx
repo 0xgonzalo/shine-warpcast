@@ -3,6 +3,7 @@
 import { useReadContract, useWriteContract } from 'wagmi';
 import { CONTRACT_ADDRESS, contractABI } from '../utils/contract';
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import CollectedModal from './CollectedModal';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
 import { useAudio } from '../context/AudioContext';
@@ -102,9 +103,11 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
           onClick={isAudioAvailable ? handlePlayAudio : undefined}
         >
           {data.imageURI && data.imageURI !== 'ipfs://placeholder-image-uri' ? (
-            <img
+            <Image
               src={getIPFSGatewayURL(data.imageURI)}
               alt={data.name}
+              width={300}
+              height={300}
               className="w-full h-full object-cover transition-opacity duration-300 group-hover:opacity-70"
             />
           ) : (

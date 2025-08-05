@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { getMostCollectedArtists } from '../../utils/contract';
 import { getFarcasterUserByAddress, getMockFarcasterUser, FarcasterUser } from '../../utils/farcaster';
 import { getIPFSGatewayURL } from '../../utils/pinata';
@@ -212,15 +213,19 @@ export default function ArtistsContent() {
             {/* Artist Avatar */}
             <div className="w-16 h-16 md:w-20 md:h-20 flex-shrink-0">
               {artist.farcasterUser?.pfpUrl ? (
-                <img 
+                <Image 
                   src={artist.farcasterUser.pfpUrl} 
                   alt={artist.farcasterUser.displayName || artist.farcasterUser.username || 'Artist'}
+                  width={80}
+                  height={80}
                   className="w-full h-full rounded-full object-cover"
                 />
               ) : artist.exampleToken?.imageURI ? (
-                <img 
+                <Image 
                   src={getIPFSGatewayURL(artist.exampleToken.imageURI)} 
                   alt={artist.exampleToken.name}
+                  width={80}
+                  height={80}
                   className="w-full h-full rounded-full object-cover"
                 />
               ) : (

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import useConnectedWallet from '@/hooks/useConnectedWallet';
 import { useTheme } from '../context/ThemeContext';
@@ -63,7 +64,7 @@ export default function FooterNav() {
                               }`}
                 >
                   {item.iconSrc && (
-                    <img src={item.iconSrc} alt={`${item.name} icon`} className="w-6 h-6 mb-0.5" />
+                    <Image src={item.iconSrc} alt={`${item.name} icon`} width={24} height={24} className="w-6 h-6 mb-0.5" />
                   )}
                   <span className="text-xs sm:text-sm">{item.name}</span>
                 </Link>

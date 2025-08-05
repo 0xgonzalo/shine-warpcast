@@ -2,6 +2,7 @@
 
 import { useAudio } from '../context/AudioContext';
 import { useRef, useEffect, useState } from 'react';
+import Image from 'next/image';
 import { useTheme } from '../context/ThemeContext';
 
 const FOOTER_NAV_HEIGHT_CLASS = 'bottom-[4rem]';
@@ -84,7 +85,7 @@ export default function GlobalAudioPlayer() {
       audio.removeEventListener('ended', handleEnded);
       setAudioElement(null);
     };
-  }, [currentAudio?.src, setCurrentTime, setDuration, setAudioElement, setIsPlaying, playNext]);
+  }, [currentAudio, setCurrentTime, setDuration, setAudioElement, setIsPlaying, playNext]);
 
   if (!currentAudio) return null;
 
@@ -133,9 +134,11 @@ export default function GlobalAudioPlayer() {
           {/* Album Art */}
           <div className="w-12 h-12 bg-gray-600 rounded flex-shrink-0 flex items-center justify-center overflow-hidden">
             {currentAudio.image ? (
-              <img 
+              <Image 
                 src={currentAudio.image} 
                 alt={currentAudio.name}
+                width={48}
+                height={48}
                 className="w-full h-full object-cover"
               />
             ) : (
