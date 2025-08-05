@@ -62,7 +62,7 @@ export default function Navbar() {
           });
         }
       } catch (e) {
-        setCollectError('Failed to load collectable song');
+        setCollectError("Failed to load collectable song");
       } finally {
         setCollectLoading(false);
       }
@@ -154,7 +154,7 @@ export default function Navbar() {
             <button
               onClick={toggleTheme}
               className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-              title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
             >
               {isDarkMode ? (
                 // Sun icon for light mode
@@ -239,10 +239,10 @@ export default function Navbar() {
                   }`}
                 >
                   {isConnecting 
-                    ? 'Connecting...' 
+                    ? "Connecting..." 
                     : isAuthenticated
-                      ? 'Link Wallet'
-                      : 'Connect Wallet'
+                      ? "Link Wallet"
+                      : "Connect Wallet"
                   }
                 </button>
               ) : null}
