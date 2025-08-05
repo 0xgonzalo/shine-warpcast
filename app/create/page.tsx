@@ -6,12 +6,14 @@ import { CONTRACT_ADDRESS, contractABI } from '../utils/contract';
 import { uploadToIPFS, uploadMetadataToIPFS } from '@/app/utils/pinata';
 import { useAudio } from '../context/AudioContext';
 import { useFarcaster } from '../context/FarcasterContext';
+import { useTheme } from '../context/ThemeContext';
 import CreatedModal from '../components/CreatedModal';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic' as const;
 
 export default function CreatePage() {
+  const { isDarkMode } = useTheme();
   const { address, isConnected, connector } = useAccount();
   const { connectors, connect } = useConnect();
   const { writeContract, data: hash, error: writeError, isPending } = useWriteContract();
@@ -30,6 +32,11 @@ export default function CreatePage() {
     name: string;
     description: string;
   } | null>(null);
+  const [price, setPrice] = useState('');
+  const [isSpecialEdition, setIsSpecialEdition] = useState(false);
+  const [specialEditionName, setSpecialEditionName] = useState('');
+  const [numberOfEditions, setNumberOfEditions] = useState('');
+  const [specialEditionPrice, setSpecialEditionPrice] = useState('');
   const { playAudio, currentAudio, isPlaying } = useAudio();
   const { isSDKLoaded } = useFarcaster();
 
@@ -169,6 +176,11 @@ export default function CreatePage() {
     setImageFile(null);
     setAudioPreview('');
     setImagePreview('');
+    setPrice('');
+    setIsSpecialEdition(false);
+    setSpecialEditionName('');
+    setSpecialEditionPrice('');
+    setNumberOfEditions('');
   };
 
   return (
@@ -211,7 +223,7 @@ export default function CreatePage() {
                 />
                 <label
                   htmlFor="audio-upload"
-                  className="block w-full p-4 border-2 border-dashed border-white/30 rounded-lg text-center cursor-pointer hover:border-white/50 transition-colors"
+                  className={`block w-full p-4 border-2 border-dashed ${isDarkMode ? 'border-white/30 hover:border-white/50' : 'border-[#0000FE] hover:border-[#0000FE]/70'} rounded-lg text-center cursor-pointer transition-colors`}
                 >
                   <div className="space-y-2">
                     <div className="text-4xl">🎵</div>
@@ -248,21 +260,38 @@ export default function CreatePage() {
             {/* Image Upload Section */}
             <div className="bg-white/5 p-6 rounded-lg">
               <h2 className="text-2xl font-semibold mb-4">Upload Cover Art</h2>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-              />
-              {imagePreview && (
-                <div className="mt-4">
-                  <img
-                    src={imagePreview}
-                    alt="Cover art preview"
-                    className="max-w-xs rounded-lg mx-auto"
-                  />
-                </div>
-              )}
+              <div className="space-y-4">
+                <input
+                  id="image-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="image-upload"
+                  className={`block w-full p-4 border-2 border-dashed ${isDarkMode ? 'border-white/30 hover:border-white/50' : 'border-[#0000FE] hover:border-[#0000FE]/70'} rounded-lg text-center cursor-pointer transition-colors`}
+                >
+                  <div className="space-y-2">
+                    <div className="text-4xl">🎨</div>
+                    <div className="text-lg font-medium">
+                      {imageFile ? imageFile.name : 'Choose Cover Art'}
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      Tap to select an image file from your device
+                    </div>
+                  </div>
+                </label>
+                {imagePreview && (
+                  <div className="mt-4">
+                    <img
+                      src={imagePreview}
+                      alt="Cover art preview"
+                      className="max-w-xs rounded-lg mx-auto"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Metadata Section */}
@@ -274,7 +303,7 @@ export default function CreatePage() {
                   type="text"
                   value={nftName}
                   onChange={(e) => setNftName(e.target.value)}
-                  className="w-full px-3 py-2 bg-white/10 text-white rounded-lg border border-white/20 focus:border-blue-500 focus:outline-none"
+                  className={`w-full px-3 py-2 bg-white/10 text-white rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-[#0000FE]'} focus:border-blue-500 focus:outline-none`}
                   placeholder="Enter song name"
                 />
               </div>
@@ -283,17 +312,93 @@ export default function CreatePage() {
                 <textarea
                   value={nftDescription}
                   onChange={(e) => setNftDescription(e.target.value)}
-                  className="w-full px-3 py-2 bg-white/10 text-white rounded-lg border border-white/20 focus:border-blue-500 focus:outline-none h-24"
+                  className={`w-full px-3 py-2 bg-white/10 text-white rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-[#0000FE]'} focus:border-blue-500 focus:outline-none h-24`}
                   placeholder="Enter song description"
                 />
               </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Price (ETH)</label>
+                <input
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  className={`w-full px-3 py-2 bg-white/10 text-white rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-[#0000FE]'} focus:border-blue-500 focus:outline-none`}
+                  placeholder="0.001"
+                />
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  id="special-edition"
+                  checked={isSpecialEdition}
+                  onChange={(e) => setIsSpecialEdition(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 bg-white/10 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                />
+                <label htmlFor="special-edition" className="text-sm font-medium cursor-pointer">
+                  Special Editions
+                </label>
+              </div>
+
+              {isSpecialEdition && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Special Edition Name</label>
+                    <input
+                      type="text"
+                      value={specialEditionName}
+                      onChange={(e) => setSpecialEditionName(e.target.value)}
+                      className={`w-full px-3 py-2 bg-white/10 text-white rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-[#0000FE]'} focus:border-blue-500 focus:outline-none`}
+                      placeholder="Enter special edition name"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Special Edition Price (ETH)</label>
+                    <input
+                      type="number"
+                      step="0.001"
+                      min="0"
+                      value={specialEditionPrice}
+                      onChange={(e) => setSpecialEditionPrice(e.target.value)}
+                      className={`w-full px-3 py-2 bg-white/10 text-white rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-[#0000FE]'} focus:border-blue-500 focus:outline-none`}
+                      placeholder="0.001"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Number of Editions</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={numberOfEditions}
+                      onChange={(e) => setNumberOfEditions(e.target.value)}
+                      className={`w-full px-3 py-2 bg-white/10 text-white rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-[#0000FE]'} focus:border-blue-500 focus:outline-none`}
+                      placeholder="Enter number of editions"
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="space-y-4">
               <div className="flex justify-center">
                 <button
                   onClick={handleMint}
-                  disabled={isMinting || isConfirming || isPending || !audioFile || !imageFile || !nftName || !nftDescription}
+                  disabled={
+                    isMinting || 
+                    isConfirming || 
+                    isPending || 
+                    !audioFile || 
+                    !imageFile || 
+                    !nftName || 
+                    !nftDescription || 
+                    !price ||
+                    (isSpecialEdition && (!specialEditionName || !specialEditionPrice || !numberOfEditions))
+                  }
                   className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isPending ? 'Waiting for Wallet...' :
