@@ -104,39 +104,6 @@ export default function FeedContent({ mobileColumns, setMobileColumns }: FeedCon
     setRefreshKey(prev => prev + 1);
   };
 
-  const handleTestContract = async () => {
-    console.log('🧪 Testing contract functions directly...');
-    try {
-      const { getTotalSongCount, checkSongExists, getSongMetadata } = await import('../../utils/contract');
-      
-      const total = await getTotalSongCount();
-      console.log('📊 Total songs from contract:', total.toString());
-      
-      for (let i = 1; i <= Number(total); i++) {
-        const songId = BigInt(i);
-        console.log(`\n🔍 Testing song ID ${i}:`);
-        
-        try {
-          const exists = await checkSongExists(songId);
-          console.log(`  ✅ Song ${i} exists:`, exists);
-          
-          if (exists) {
-            const metadata = await getSongMetadata(songId);
-            console.log(`  📝 Song ${i} metadata:`, {
-              title: metadata.title,
-              artistName: metadata.artistName,
-              artistAddress: metadata.artistAddress
-            });
-          }
-        } catch (error) {
-          console.log(`  ❌ Error with song ${i}:`, error);
-        }
-      }
-    } catch (error) {
-      console.error('❌ Contract test failed:', error);
-    }
-  };
-
   const handleMenuToggle = (tokenId: bigint) => {
     const numericId = Number(tokenId);
     setOpenMenuId(openMenuId === numericId ? null : numericId);
@@ -200,42 +167,29 @@ export default function FeedContent({ mobileColumns, setMobileColumns }: FeedCon
         <h1 className={`md:text-4xl text-2xl font-bold text-center ${
           isDarkMode ? 'text-white' : 'text-[#0000FE]'
         }`}>New Releases</h1>
-        <div className="flex gap-2">
-          <button
-            onClick={handleTestContract}
-            className={`px-3 py-2 rounded-lg transition-colors text-sm ${
-              isDarkMode
-                ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
-                : 'bg-yellow-500 hover:bg-yellow-600 text-white'
-            }`}
-            title="Test contract functions"
+        <button
+          onClick={handleRefresh}
+          className={`px-4 py-2 rounded-lg transition-colors ${
+            isDarkMode
+              ? 'bg-white/10 hover:bg-white/20 text-white'
+              : 'bg-[#0000FE]/10 hover:bg-[#0000FE]/20 text-[#0000FE]'
+          }`}
+          title="Refresh to show latest songs"
+        >
+          <svg
+            className={`w-5 h-5 ${isLoadingTokens ? 'animate-spin' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-            🧪 Test
-          </button>
-          <button
-            onClick={handleRefresh}
-            className={`px-4 py-2 rounded-lg transition-colors ${
-              isDarkMode
-                ? 'bg-white/10 hover:bg-white/20 text-white'
-                : 'bg-[#0000FE]/10 hover:bg-[#0000FE]/20 text-[#0000FE]'
-            }`}
-            title="Refresh to show latest songs"
-          >
-            <svg
-              className={`w-5 h-5 ${isLoadingTokens ? 'animate-spin' : ''}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-          </button>
-        </div>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+        </button>
       </div>
       
       {/* NFTExists Cards as a horizontal slider */}
