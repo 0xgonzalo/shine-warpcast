@@ -47,7 +47,7 @@ export default function LeaderboardPage() {
           <div className="text-2xl mb-2">✨</div>
           <h2 className="text-xl font-semibold mb-2">Points System Coming Soon!</h2>
           <p className={`${isDarkMode ? 'text-gray-300' : 'text-blue-800'} text-sm leading-relaxed`}>
-            We're building an exciting points and rewards system for the Shine platform. Soon you'll be able to:
+            We are building an exciting points and rewards system for the Shine platform. Soon you will be able to:
           </p>
           <div className={`mt-3 text-sm ${isDarkMode ? 'text-gray-400' : 'text-blue-800'} space-y-1`}>
             <div>🎵 Earn points for creating and sharing music</div>
