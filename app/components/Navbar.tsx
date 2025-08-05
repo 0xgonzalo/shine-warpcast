@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePrivy } from '@privy-io/react-auth';
 import { useEffect, useRef, useState } from 'react';
 import useConnectedWallet from "@/hooks/useConnectedWallet";
@@ -106,12 +107,12 @@ export default function Navbar() {
     }
   }, [isSuccess, txData, collectToken]);
 
-  if (!isReady) {
-    return null; // Don't render until Privy is ready
-  }
-
   return (
-    <nav className="w-full bg-white/10 backdrop-blur-sm border-b border-white/10">
+    <nav className={`w-full backdrop-blur-sm border-b ${
+      isDarkMode 
+        ? 'bg-black/20 border-white/10' 
+        : 'bg-white/80 border-gray-200'
+    }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo/Brand */}
@@ -128,6 +129,27 @@ export default function Navbar() {
 
           {/* Right Side Controls */}
           <div className="flex items-center gap-4">
+            {/* Leaderboard Trophy Icon */}
+            <Link
+              href="/leaderboard"
+              className="flex items-center space-x-2 py-2 rounded-lg hover:bg-white/10 transition-colors"
+              title="Leaderboard"
+            >
+              <Image 
+                src={isDarkMode ? '/trophy.svg' : '/trophy-blue.svg'} 
+                alt="Leaderboard" 
+                width={20}
+                height={20}
+                className="w-5 h-5" 
+              />
+              <span className={`text-sm font-medium hidden sm:block ${
+                isDarkMode 
+                  ? 'text-white' 
+                  : 'text-[#0000FE]'
+              }`}>
+                Leaderboard
+              </span>
+            </Link>
             {/* Theme Toggle Button */}
             <button
               onClick={toggleTheme}
@@ -149,7 +171,7 @@ export default function Navbar() {
             
             {/* Wallet Connection/Profile Dropdown */}
             <div className="relative" ref={dropdownRef}>
-              {isAuthenticated && (farcasterUsername || connectedWallet) ? (
+              {isReady && isAuthenticated && (farcasterUsername || connectedWallet) ? (
                 <div>
                   <button
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -158,7 +180,7 @@ export default function Navbar() {
                     {/* Prioritize Farcaster avatar and username when available */}
                     {farcasterPfpUrl ? (
                       <>
-                        <img src={farcasterPfpUrl} alt={farcasterUsername || 'Farcaster User'} className="w-6 h-6 rounded-full" />
+                        <Image src={farcasterPfpUrl} alt={farcasterUsername || "Farcaster User"} width={24} height={24} className="w-6 h-6 rounded-full" />
                         {farcasterUsername && <span className="text-sm">{farcasterUsername}</span>}
                       </>
                     ) : farcasterUsername ? (
@@ -206,7 +228,7 @@ export default function Navbar() {
                     </div>
                   )}
                 </div>
-              ) : (
+              ) : isReady ? (
                 <button
                   onClick={handleConnect}
                   disabled={isConnecting}
@@ -223,14 +245,14 @@ export default function Navbar() {
                       : 'Connect Wallet'
                   }
                 </button>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
       </div>
 
       {/* Collect Success Modal */}
-      {showCollectModal && collectToken && collectTxHash && (
+      {isReady && showCollectModal && collectToken && collectTxHash && (
         <CollectedModal
           nft={{ imageURI: collectToken.imageURI, name: collectToken.name }}
           txHash={collectTxHash}
