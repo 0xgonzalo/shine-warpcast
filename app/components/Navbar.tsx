@@ -111,10 +111,10 @@ export default function Navbar() {
   }, [isSuccess, txData, collectToken]);
 
   return (
-    <nav className={`w-full backdrop-blur-sm border-b ${
+    <nav className={`w-full border-b z-20 ${
       isDarkMode 
-        ? 'bg-black/20 border-white/10' 
-        : 'bg-white/80 border-gray-200'
+        ? 'bg-black border-white/10' 
+        : 'bg-white border-gray-200'
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
@@ -178,7 +178,7 @@ export default function Navbar() {
                 <div>
                   <button
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${isDarkMode ? 'bg-black' : 'bg-[#0000FE]'} transition-colors text-white`}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${isDarkMode ? 'bg-black' : 'bg-[#0000FE]'} transition-colors text-white z-10`}
                   >
                     {/* Prioritize Farcaster avatar and username when available */}
                     {farcasterPfpUrl ? (
@@ -207,24 +207,40 @@ export default function Navbar() {
 
                   {/* Dropdown Menu */}
                   {isDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-48 rounded-lg bg-black backdrop-blur-sm border border-white/10 shadow-lg py-1 z-50">
+                    <div className={`absolute right-0 mt-2 w-48 rounded-lg shadow-lg py-1 z-50 ${
+                      isDarkMode 
+                        ? 'bg-black border border-white/10' 
+                        : 'bg-white border border-gray-200'
+                    }`}>
                       <Link
                         href="/create"
-                        className="block px-4 py-2 text-sm text-white hover:bg-white/10 transition-colors"
+                        className={`block px-4 py-2 text-sm transition-colors ${
+                          isDarkMode 
+                            ? 'text-white hover:bg-white/10' 
+                            : 'text-[#0000FE] hover:bg-gray-100'
+                        }`}
                         onClick={() => setIsDropdownOpen(false)}
                       >
                         Create
                       </Link>
                       <Link
                         href={connectedWallet ? `/profile/${connectedWallet}` : farcasterUsername ? `/profile/@${farcasterUsername}` : '/profile'}
-                        className="block px-4 py-2 text-sm text-white hover:bg-white/10 transition-colors"
+                        className={`block px-4 py-2 text-sm transition-colors ${
+                          isDarkMode 
+                            ? 'text-white hover:bg-white/10' 
+                            : 'text-[#0000FE] hover:bg-gray-100'
+                        }`}
                         onClick={() => setIsDropdownOpen(false)}
                       >
                         Profile
                       </Link>
                       <button
                         onClick={handleDisconnect}
-                        className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-white/10 transition-colors"
+                        className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                          isDarkMode 
+                            ? 'text-red-400 hover:bg-white/10' 
+                            : 'text-red-500 hover:bg-gray-100'
+                        }`}
                       >
                         Disconnect Wallet
                       </button>

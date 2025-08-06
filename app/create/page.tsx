@@ -37,6 +37,8 @@ export default function CreatePage() {
   const [specialEditionName, setSpecialEditionName] = useState('');
   const [numberOfEditions, setNumberOfEditions] = useState('');
   const [specialEditionPrice, setSpecialEditionPrice] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
   const { playAudio, currentAudio, isPlaying } = useAudio();
   const { isSDKLoaded } = useFarcaster();
 
@@ -106,6 +108,36 @@ export default function CreatePage() {
     }
   };
 
+  // Predefined genre options
+  const genreOptions = [
+    'Pop', 'Rock', 'Hip Hop', 'Electronic', 'Jazz', 'Classical', 'Country', 'R&B', 'Reggae', 'Folk',
+    'Blues', 'Punk', 'Metal', 'Disco', 'Funk', 'Gospel', 'House', 'Techno', 'Dubstep', 'Ambient',
+    'Indie', 'Alternative', 'Experimental', 'Lo-fi', 'Trap', 'Drill', 'Afrobeat', 'Latin', 'K-pop', 'Anime'
+  ];
+
+  const addTag = (tag: string) => {
+    const trimmedTag = tag.trim();
+    if (trimmedTag && !tags.includes(trimmedTag) && tags.length < 5) {
+      setTags([...tags, trimmedTag]);
+      setTagInput('');
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  };
+
+  const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && tagInput.trim()) {
+      e.preventDefault();
+      addTag(tagInput);
+    }
+  };
+
+  const filteredGenres = genreOptions.filter(genre => 
+    genre.toLowerCase().includes(tagInput.toLowerCase()) && !tags.includes(genre)
+  );
+
   const handleMint = async () => {
     if (!address || !nftName || !nftDescription || !audioFile || !imageFile || !price) {
       setMintError('Please fill in all fields, set a price, and upload both audio and image files');
@@ -151,7 +183,8 @@ export default function CreatePage() {
         name: nftName,
         description: nftDescription,
         audioURI,
-        imageURI
+        imageURI,
+        tags
       });
       
       console.log('✅ Metadata uploaded:', metadataURI);
@@ -191,7 +224,7 @@ export default function CreatePage() {
           audioURI, // mediaURI  
           imageURI, // metadataURI
           address as `0x${string}`, // artistAddress
-          [], // tags - empty array for now
+          tags, // tags array
           priceInWei, // price in wei
           isSpecialEdition, // isAnSpecialEdition
           isSpecialEdition ? specialEditionName.trim() : '', // specialEditionName
@@ -222,6 +255,8 @@ export default function CreatePage() {
     setSpecialEditionName('');
     setSpecialEditionPrice('');
     setNumberOfEditions('');
+    setTags([]);
+    setTagInput('');
   };
 
   return (
@@ -356,6 +391,81 @@ export default function CreatePage() {
                   className={`w-full px-3 py-2 bg-white/10 text-white rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-[#0000FE]'} focus:border-blue-500 focus:outline-none h-24`}
                   placeholder="Enter song description"
                 />
+              </div>
+              
+              {/* Tags Section */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Tags (up to 5)</label>
+                <div className="space-y-3">
+                  {/* Selected Tags */}
+                  {tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm ${
+                            isDarkMode 
+                              ? 'bg-blue-600 text-white' 
+                              : 'bg-[#0000FE] text-white'
+                          }`}
+                        >
+                          {tag}
+                          <button
+                            type="button"
+                            onClick={() => removeTag(tag)}
+                            className="ml-1 hover:bg-white/20 rounded-full p-0.5 transition-colors"
+                          >
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Tag Input */}
+                  {tags.length < 5 && (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={tagInput}
+                        onChange={(e) => setTagInput(e.target.value)}
+                        onKeyDown={handleTagInputKeyDown}
+                        className={`w-full px-3 py-2 bg-white/10 text-white rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-[#0000FE]'} focus:border-blue-500 focus:outline-none`}
+                        placeholder="Type to search genres or add custom tags..."
+                      />
+                      
+                      {/* Dropdown suggestions */}
+                      {tagInput && filteredGenres.length > 0 && (
+                        <div className={`absolute top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded-lg border z-10 ${
+                          isDarkMode 
+                            ? 'bg-gray-800 border-white/20' 
+                            : 'bg-white border-gray-200'
+                        }`}>
+                          {filteredGenres.slice(0, 8).map((genre) => (
+                            <button
+                              key={genre}
+                              type="button"
+                              onClick={() => addTag(genre)}
+                              className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                                isDarkMode 
+                                  ? 'text-white hover:bg-white/10' 
+                                  : 'text-gray-800 hover:bg-gray-100'
+                              }`}
+                            >
+                              {genre}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  <div className="text-xs text-gray-400">
+                    {tags.length}/5 tags selected. Press Enter to add custom tags.
+                  </div>
+                </div>
               </div>
               
               <div>

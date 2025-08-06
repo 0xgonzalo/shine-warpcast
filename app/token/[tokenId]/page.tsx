@@ -1,12 +1,14 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useState } from 'react';
-import { useReadContract } from 'wagmi';
+import { useState, useEffect } from 'react';
+import { useReadContract, useWriteContract } from 'wagmi';
 import { CONTRACT_ADDRESS, contractABI } from '../../utils/contract';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
 import { useAudio } from '../../context/AudioContext';
 import { useTheme } from '../../context/ThemeContext';
+import useConnectedWallet from '@/hooks/useConnectedWallet';
+import CollectedModal from '../../components/CollectedModal';
 import Image from 'next/image';
 
 // This is the legacy format the component expects
@@ -22,6 +24,9 @@ export default function TokenPage() {
   const params = useParams();
   const tokenId = BigInt(params.tokenId as string);
   const { isDarkMode } = useTheme();
+  const { isAuthenticated } = useConnectedWallet();
+  const [showCollectModal, setShowCollectModal] = useState(false);
+  const [collectTxHash, setCollectTxHash] = useState<string | null>(null);
   
   const { data: rawData, isLoading, isError } = useReadContract({
     address: CONTRACT_ADDRESS,
@@ -39,7 +44,11 @@ export default function TokenPage() {
     creator: (rawData as any).artistAddress
   } : undefined;
 
+  // Extract price from raw data
+  const tokenPrice = rawData ? (rawData as any).price : BigInt(0);
+
   const { currentAudio, isPlaying, playAudio, setIsPlaying, currentTime, duration, seekTo } = useAudio();
+  const { writeContract, isPending: isCollectPending, isSuccess: isCollectSuccess, data: collectTxData, error: collectError } = useWriteContract();
 
 
   const handlePlayPause = () => {
@@ -63,6 +72,37 @@ export default function TokenPage() {
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
+
+  // Format price from wei to ETH for display
+  const formatPrice = (priceInWei: bigint) => {
+    const ethValue = Number(priceInWei) / 1e18;
+    return ethValue.toFixed(6).replace(/\.?0+$/, ''); // Remove trailing zeros
+  };
+
+  const handleCollect = () => {
+    if (!isAuthenticated) {
+      console.warn("Attempted to collect while not authenticated.");
+      return;
+    }
+    writeContract({
+      address: CONTRACT_ADDRESS,
+      abi: contractABI,
+      functionName: 'instaBuy',
+      args: [
+        tokenId, // songId
+        BigInt(1) // farcasterId - placeholder, should be replaced with actual Farcaster ID
+      ],
+      value: tokenPrice, // Use actual token price from contract
+    });
+  };
+
+  // Show modal on successful collect
+  useEffect(() => {
+    if (isCollectSuccess && collectTxData && data) {
+      setCollectTxHash(collectTxData as string);
+      setShowCollectModal(true);
+    }
+  }, [isCollectSuccess, collectTxData, data]);
 
   if (isLoading) {
     return (
@@ -230,6 +270,34 @@ export default function TokenPage() {
               </button>
 
             </div>
+
+            {/* Collect Button */}
+            <button
+              onClick={handleCollect}
+              disabled={!isAuthenticated || isCollectPending}
+              className={`px-8 py-3 rounded-full font-semibold transition-all duration-200 ${
+                !isAuthenticated
+                  ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                  : isCollectPending
+                  ? isDarkMode
+                    ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : isDarkMode
+                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 hover:scale-105 shadow-lg'
+                  : 'bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600 hover:scale-105 shadow-lg'
+              }`}
+            >
+              {isCollectPending ? (
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Collecting...</span>
+                </div>
+              ) : !isAuthenticated ? (
+                'Connect Wallet to Collect'
+              ) : (
+                `✨ Collect (${formatPrice(tokenPrice)} ETH)`
+              )}
+            </button>
           </>
         )}
 
@@ -256,6 +324,15 @@ export default function TokenPage() {
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
       `}</style>
+
+      {/* Collect Success Modal */}
+      {showCollectModal && data && collectTxHash && (
+        <CollectedModal
+          nft={{ imageURI: data.imageURI, name: data.name }}
+          txHash={collectTxHash}
+          onClose={() => setShowCollectModal(false)}
+        />
+      )}
     </div>
   );
 } 

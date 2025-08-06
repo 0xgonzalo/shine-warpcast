@@ -52,6 +52,7 @@ export async function uploadMetadataToIPFS(metadata: {
   description: string;
   audioURI: string;
   imageURI: string;
+  tags?: string[];
 }): Promise<string> {
   try {
     const headers: HeadersInit = {
