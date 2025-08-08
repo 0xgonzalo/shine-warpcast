@@ -1,5 +1,5 @@
 import { usePrivy, useWallets, User } from "@privy-io/react-auth";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Address } from "viem";
 
 // Import Farcaster Frame SDK
@@ -21,10 +21,11 @@ interface FarcasterUser {
 
 const useConnectedWallet = () => {
   const { wallets, ready: walletsReady } = useWallets();
-  const { user, logout, authenticated, ready: privyReady, linkWallet } = usePrivy();
+  const { user, logout, authenticated, ready: privyReady, linkWallet, login } = usePrivy();
   const [isConnecting, setIsConnecting] = useState(false);
   const [farcasterUser, setFarcasterUser] = useState<FarcasterUser | null>(null);
   const [isInFarcaster, setIsInFarcaster] = useState(false);
+  const [hasAttemptedAutoConnect, setHasAttemptedAutoConnect] = useState(false);
 
   // Find the active wallet - prefer external wallet over privy wallet
   const externalWallet = wallets?.find(
@@ -53,7 +54,8 @@ const useConnectedWallet = () => {
             pfpUrl: context.user.pfpUrl,
             bio: context.user.bio
           });
-          console.log('🎯 Farcaster user context:', context.user);
+          console.log('🎯 Farcaster user context detected:', context.user);
+          console.log('🔄 Auto-connect will be attempted...');
         } else {
           setIsInFarcaster(false);
           console.log('📱 Not running in Farcaster client');
@@ -98,6 +100,50 @@ const useConnectedWallet = () => {
     }
   };
 
+  // Auto-connect when running in Farcaster
+  const autoConnectInFarcaster = useCallback(async () => {
+    if (
+      !isInFarcaster || 
+      hasAttemptedAutoConnect || 
+      authenticated || 
+      !privyReady ||
+      !farcasterUser
+    ) {
+      return;
+    }
+
+    try {
+      setHasAttemptedAutoConnect(true);
+      setIsConnecting(true);
+      console.log('🎯 Auto-connecting Farcaster user:', farcasterUser.username);
+      
+      // Attempt to login with Farcaster as the preferred method
+      await login({
+        loginMethods: ['farcaster']
+      });
+      
+      console.log('✅ Auto-connect successful for Farcaster user!');
+      
+    } catch (error) {
+      console.error('❌ Auto-connect failed:', error);
+      // Reset the attempt flag so user can manually connect if needed
+      setHasAttemptedAutoConnect(false);
+    } finally {
+      setIsConnecting(false);
+    }
+  }, [isInFarcaster, hasAttemptedAutoConnect, authenticated, privyReady, farcasterUser, login]);
+
+  // Trigger auto-connect when Farcaster context is detected
+  useEffect(() => {
+    if (isInFarcaster && farcasterUser && !hasAttemptedAutoConnect) {
+      // Small delay to ensure all initialization is complete
+      const timer = setTimeout(() => {
+        autoConnectInFarcaster();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isInFarcaster, farcasterUser, hasAttemptedAutoConnect, autoConnectInFarcaster]);
+
   // Auto-logout if no wallets are connected after initialization
   useEffect(() => {
     if (privyReady && walletsReady && authenticated && !wallets.length) {
@@ -117,6 +163,7 @@ const useConnectedWallet = () => {
     farcasterUsername: finalFarcasterUsername,
     farcasterPfpUrl: finalFarcasterPfpUrl,
     isInFarcaster,
+    hasAttemptedAutoConnect,
     // Expose the whole farcaster profile if needed for other details later
     farcasterUser: farcasterUser || farcasterProfile 
   };

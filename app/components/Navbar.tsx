@@ -22,7 +22,9 @@ export default function Navbar() {
     connectWallet,
     hasExternalWallet,
     farcasterUsername,
-    farcasterPfpUrl
+    farcasterPfpUrl,
+    isInFarcaster,
+    hasAttemptedAutoConnect
   } = useConnectedWallet();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -250,15 +252,17 @@ export default function Navbar() {
               ) : isReady ? (
                 <button
                   onClick={handleConnect}
-                  disabled={isConnecting}
+                  disabled={isConnecting || (isInFarcaster && !hasAttemptedAutoConnect)}
                   className={`px-4 py-2 rounded-lg transition-colors text-white font-medium ${
-                    isConnecting 
+                    isConnecting || (isInFarcaster && !hasAttemptedAutoConnect)
                       ? 'bg-blue-400 cursor-not-allowed' 
                       : 'bg-blue-600 hover:bg-blue-700'
                   }`}
                 >
                   {isConnecting 
-                    ? "Connecting..." 
+                    ? (isInFarcaster && !hasAttemptedAutoConnect 
+                        ? "Auto-connecting..." 
+                        : "Connecting...")
                     : isAuthenticated
                       ? "Link Wallet"
                       : "Connect Wallet"
