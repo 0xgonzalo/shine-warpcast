@@ -63,6 +63,7 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
     hash: (txData as `0x${string}` | undefined),
   });
   const [showModal, setShowModal] = useState(false);
+  const [hasShownModal, setHasShownModal] = useState(false);
   const { playAudio, currentAudio, isPlaying, addToQueue } = useAudio();
   const { isAuthenticated, farcasterUser, connectedWallet } = useConnectedWallet();
 
@@ -142,10 +143,18 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
   };
 
   useEffect(() => {
-    if (isConfirmed && receipt && receipt.status === 'success' && data) {
+    if (isConfirmed && receipt && receipt.status === 'success' && data && !hasShownModal) {
       setShowModal(true);
+      setHasShownModal(true);
     }
-  }, [isConfirmed, receipt, data]);
+  }, [isConfirmed, receipt, data, hasShownModal]);
+
+  // Reset hasShownModal when a new transaction starts
+  useEffect(() => {
+    if (isPending) {
+      setHasShownModal(false);
+    }
+  }, [isPending]);
 
   if (isLoading) return <div className="p-4">Loading...</div>;
   if (isError || !data) return null;
@@ -264,7 +273,11 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
             name: data.name 
           }}
           txHash={txData}
-          onClose={() => setShowModal(false)}
+          onClose={() => {
+            setShowModal(false);
+            // Reset hasShownModal when user manually closes modal
+            setHasShownModal(false);
+          }}
         />
       )}
     </>
