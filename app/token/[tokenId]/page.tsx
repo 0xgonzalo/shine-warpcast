@@ -2,8 +2,8 @@
 
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { useReadContract, useWriteContract } from 'wagmi';
-import { CONTRACT_ADDRESS, contractABI } from '../../utils/contract';
+import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { CONTRACT_ADDRESS, contractABI, getTotalPriceForInstaBuy, userOwnsSong, generatePseudoFarcasterId } from '../../utils/contract';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
 import { useAudio } from '../../context/AudioContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -24,7 +24,7 @@ export default function TokenPage() {
   const params = useParams();
   const tokenId = BigInt(params.tokenId as string);
   const { isDarkMode } = useTheme();
-  const { isAuthenticated } = useConnectedWallet();
+  const { isAuthenticated, farcasterUser, connectedWallet } = useConnectedWallet();
   const [showCollectModal, setShowCollectModal] = useState(false);
   const [collectTxHash, setCollectTxHash] = useState<string | null>(null);
   
@@ -49,6 +49,9 @@ export default function TokenPage() {
 
   const { currentAudio, isPlaying, playAudio, setIsPlaying, currentTime, duration, seekTo } = useAudio();
   const { writeContract, isPending: isCollectPending, isSuccess: isCollectSuccess, data: collectTxData, error: collectError } = useWriteContract();
+  const { data: collectReceipt, isLoading: isCollectConfirming, isSuccess: isCollectConfirmed, isError: isCollectReceiptError } = useWaitForTransactionReceipt({
+    hash: (collectTxData as `0x${string}` | undefined),
+  });
 
 
   const handlePlayPause = () => {
@@ -79,30 +82,60 @@ export default function TokenPage() {
     return ethValue.toFixed(6).replace(/\.?0+$/, ''); // Remove trailing zeros
   };
 
-  const handleCollect = () => {
-    if (!isAuthenticated) {
-      console.warn("Attempted to collect while not authenticated.");
+  const handleCollect = async () => {
+    if (!isAuthenticated || !connectedWallet) {
+      console.warn("Attempted to collect while not authenticated or no wallet connected.");
       return;
     }
-    writeContract({
-      address: CONTRACT_ADDRESS,
-      abi: contractABI,
-      functionName: 'instaBuy',
-      args: [
-        tokenId, // songId
-        BigInt(1) // farcasterId - placeholder, should be replaced with actual Farcaster ID
-      ],
-      value: tokenPrice, // Use actual token price from contract
-    });
+
+    // Get Farcaster ID - use real FID if available, otherwise generate pseudo-FID from wallet
+    let farcasterId: bigint;
+    if (farcasterUser?.fid) {
+      farcasterId = BigInt(farcasterUser.fid);
+      console.log('🎯 [TokenPage] Using real Farcaster ID:', farcasterId.toString());
+    } else {
+      farcasterId = generatePseudoFarcasterId(connectedWallet);
+      console.log('🎯 [TokenPage] Using pseudo-Farcaster ID for wallet:', connectedWallet, '→', farcasterId.toString());
+    }
+    
+    try {
+      // Check if user already owns this song
+      const alreadyOwns = await userOwnsSong(farcasterId, tokenId);
+      if (alreadyOwns) {
+        console.warn('❌ [TokenPage] User already owns this song');
+        return;
+      }
+
+      // Get the correct total price (song price + operation fee)
+      const totalPrice = await getTotalPriceForInstaBuy(tokenId);
+      console.log('💰 [TokenPage] Total price (including fees):', totalPrice.toString(), 'wei');
+
+      writeContract({
+        address: CONTRACT_ADDRESS,
+        abi: contractABI,
+        functionName: 'instaBuy',
+        args: [
+          tokenId, // songId
+          farcasterId // Use actual or pseudo Farcaster ID
+        ],
+        value: totalPrice, // Use correct price including operation fee
+      });
+    } catch (error) {
+      console.error('❌ [TokenPage] Error preparing collect transaction:', error);
+    }
   };
 
-  // Show modal on successful collect
+  // Show modal on successful collect after confirmation
   useEffect(() => {
-    if (isCollectSuccess && collectTxData && data) {
-      setCollectTxHash(collectTxData as string);
+    if (isCollectConfirmed && collectReceipt && collectReceipt.status === 'success' && data) {
+      setCollectTxHash((collectTxData as string) || null);
       setShowCollectModal(true);
     }
-  }, [isCollectSuccess, collectTxData, data]);
+    if ((isCollectReceiptError || (isCollectConfirmed && collectReceipt && collectReceipt.status === 'reverted')) && collectTxData) {
+      setShowCollectModal(false);
+      setCollectTxHash(null);
+    }
+  }, [isCollectConfirmed, isCollectReceiptError, collectReceipt, collectTxData, data]);
 
   if (isLoading) {
     return (

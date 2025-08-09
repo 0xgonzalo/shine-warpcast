@@ -18,6 +18,9 @@ export const prideConfettiColors = [
   '#D946EF', // Fuchsia-500
 ];
 
+// Brand color palette (primary: #0000FE)
+export const brandConfettiColors = ['#0000FE'];
+
 export const defaultConfettiConfig = {
   startVelocity: 30,
   spread: 360,
@@ -44,11 +47,11 @@ export const getPrideConfettiConfig = (options: ConfettiOptions = {}) => {
   };
 };
 
-// Configuration for celebration confetti
+// Configuration for celebration confetti (brand color)
 export const getCelebrationConfettiConfig = () => {
   return getPrideConfettiConfig({
     duration: 3000,
-    colors: prideConfettiColors,
+    colors: brandConfettiColors,
     particleCount: 100
   });
 };
@@ -76,21 +79,23 @@ export const createMultipleBursts = (confettiFunction: any, options: ConfettiOpt
     confettiFunction({
       ...defaultConfettiConfig,
       particleCount: currentParticleCount,
-      origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+      origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+      colors: brandConfettiColors,
     });
 
     // Right side burst
     confettiFunction({
       ...defaultConfettiConfig,
       particleCount: currentParticleCount,
-      origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+      origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+      colors: brandConfettiColors,
     });
   }, 250);
 
   // Center burst
   confettiFunction({
     ...defaultConfettiConfig,
-    ...getPrideConfettiConfig(options)
+    ...getPrideConfettiConfig({ colors: brandConfettiColors, duration }),
   });
 
   return () => clearInterval(interval);

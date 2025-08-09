@@ -157,8 +157,18 @@ export default function FeedContent({ mobileColumns, setMobileColumns }: FeedCon
     if (!nft.metadata.audioURI || nft.metadata.audioURI === 'ipfs://placeholder-audio-uri') {
       return false;
     }
+    
+    // Extract IPFS hash for comparison
+    const getIPFSHash = (url: string): string | null => {
+      const match = url.match(/\/ipfs\/([^/?#]+)/);
+      return match ? match[1] : null;
+    };
+    
     const audioUrl = getIPFSGatewayURL(nft.metadata.audioURI);
-    return currentAudio?.src === audioUrl && isPlaying;
+    const newHash = getIPFSHash(audioUrl);
+    const currentHash = currentAudio?.src ? getIPFSHash(currentAudio.src) : null;
+    
+    return newHash && currentHash && newHash === currentHash && isPlaying;
   };
 
   return (

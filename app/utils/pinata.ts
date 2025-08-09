@@ -85,11 +85,30 @@ export async function uploadMetadataToIPFS(metadata: {
   }
 }
 
+// List of IPFS gateways to try (in order of preference)
+const IPFS_GATEWAYS = [
+  'https://ipfs.io/ipfs',
+  'https://cloudflare-ipfs.com/ipfs',
+  'https://gateway.pinata.cloud/ipfs',
+  'https://dweb.link/ipfs',
+  'https://ipfs.filebase.io/ipfs'
+];
+
 // Helper function to get IPFS gateway URL
-export function getIPFSGatewayURL(ipfsURI: string): string {
+export function getIPFSGatewayURL(ipfsURI: string, gatewayIndex: number = 0): string {
   if (!ipfsURI.startsWith('ipfs://')) {
     return ipfsURI;
   }
   const hash = ipfsURI.replace('ipfs://', '');
-  return `https://gateway.pinata.cloud/ipfs/${hash}`;
+  const gateway = IPFS_GATEWAYS[gatewayIndex] || IPFS_GATEWAYS[0];
+  return `${gateway}/${hash}`;
+}
+
+// Helper function to get all possible gateway URLs for an IPFS URI
+export function getAllIPFSGatewayURLs(ipfsURI: string): string[] {
+  if (!ipfsURI.startsWith('ipfs://')) {
+    return [ipfsURI];
+  }
+  const hash = ipfsURI.replace('ipfs://', '');
+  return IPFS_GATEWAYS.map(gateway => `${gateway}/${hash}`);
 } 

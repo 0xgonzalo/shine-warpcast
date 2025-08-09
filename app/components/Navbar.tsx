@@ -5,8 +5,8 @@ import Image from "next/image";
 import { usePrivy } from '@privy-io/react-auth';
 import { useEffect, useRef, useState } from 'react';
 import useConnectedWallet from "@/hooks/useConnectedWallet";
-import { useWriteContract } from 'wagmi';
-import { CONTRACT_ADDRESS, contractABI, getMostCollectedArtists } from '../utils/contract';
+import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { CONTRACT_ADDRESS, contractABI, getMostCollectedArtists, getTotalPriceForInstaBuy, userOwnsSong, generatePseudoFarcasterId } from '../utils/contract';
 import CollectedModal from './CollectedModal';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
 import { useTheme } from '../context/ThemeContext';
@@ -24,7 +24,8 @@ export default function Navbar() {
     farcasterUsername,
     farcasterPfpUrl,
     isInFarcaster,
-    hasAttemptedAutoConnect
+    hasAttemptedAutoConnect,
+    farcasterUser
   } = useConnectedWallet();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -35,6 +36,9 @@ export default function Navbar() {
   const [collectTxHash, setCollectTxHash] = useState<string | null>(null);
 
   const { writeContract, isPending, isSuccess, data: txData, error: txError } = useWriteContract();
+  const { data: receipt, isLoading: isConfirming, isSuccess: isConfirmed, isError: isReceiptError } = useWaitForTransactionReceipt({
+    hash: (txData as `0x${string}` | undefined),
+  });
 
   // Handle click outside dropdown
   useEffect(() => {
@@ -90,27 +94,59 @@ export default function Navbar() {
   };
 
   // Handle collect action
-  const handleNavbarCollect = () => {
-    if (!isAuthenticated || !collectToken) return;
-    writeContract({
-      address: CONTRACT_ADDRESS,
-      abi: contractABI,
-      functionName: 'instaBuy',
-      args: [
-        collectToken.tokenId, // songId
-        BigInt(1) // farcasterId - placeholder, should be replaced with actual Farcaster ID
-      ],
-      value: BigInt(777000000000000), // 0.000777 ETH in wei
-    });
+  const handleNavbarCollect = async () => {
+    if (!isAuthenticated || !collectToken || !connectedWallet) return;
+
+    // Get Farcaster ID - use real FID if available, otherwise generate pseudo-FID from wallet
+    let farcasterId: bigint;
+    if (farcasterUser?.fid) {
+      farcasterId = BigInt(farcasterUser.fid);
+      console.log('🎯 [Navbar] Using real Farcaster ID:', farcasterId.toString());
+    } else {
+      farcasterId = generatePseudoFarcasterId(connectedWallet);
+      console.log('🎯 [Navbar] Using pseudo-Farcaster ID for wallet:', connectedWallet, '→', farcasterId.toString());
+    }
+    
+    try {
+      // Check if user already owns this song
+      const alreadyOwns = await userOwnsSong(farcasterId, collectToken.tokenId);
+      if (alreadyOwns) {
+        setCollectError('You already own this song!');
+        return;
+      }
+
+      // Get the correct total price (song price + operation fee)
+      const totalPrice = await getTotalPriceForInstaBuy(collectToken.tokenId);
+      console.log('💰 [Navbar] Total price (including fees):', totalPrice.toString(), 'wei');
+
+      writeContract({
+        address: CONTRACT_ADDRESS,
+        abi: contractABI,
+        functionName: 'instaBuy',
+        args: [
+          collectToken.tokenId, // songId
+          farcasterId // Use actual or pseudo Farcaster ID
+        ],
+        value: totalPrice, // Use correct price including operation fee
+      });
+    } catch (error) {
+      console.error('❌ [Navbar] Error preparing collect transaction:', error);
+      setCollectError('Failed to prepare transaction. Please try again.');
+    }
   };
 
   // Show modal on success
   useEffect(() => {
-    if (isSuccess && txData && collectToken) {
-      setCollectTxHash(txData as string);
+    if (isConfirmed && receipt && receipt.status === 'success' && collectToken) {
+      setCollectTxHash((txData as string) || null);
       setShowCollectModal(true);
     }
-  }, [isSuccess, txData, collectToken]);
+    if ((isReceiptError || (isConfirmed && receipt && receipt.status === 'reverted')) && txData) {
+      setCollectError('Transaction failed or was reverted.');
+      setShowCollectModal(false);
+      setCollectTxHash(null);
+    }
+  }, [isConfirmed, isReceiptError, receipt, txData, collectToken]);
 
   return (
     <nav className={`w-full border-b z-20 ${

@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { useAccount } from 'wagmi';
-import { CONTRACT_ADDRESS, getNFTMetadata, publicClient } from '../../utils/contract';
+import { CONTRACT_ADDRESS, getNFTMetadata, publicClient, getTotalSongCount, checkSongExists, getUserCollection, generatePseudoFarcasterId } from '../../utils/contract';
 import { useParams } from 'next/navigation';
 import NFTCard from '@/app/components/NFTCard';
+import useConnectedWallet from '@/hooks/useConnectedWallet';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic' as const;
@@ -32,6 +33,7 @@ export default function ProfilePage() {
   const { address: connectedAddress } = useAccount();
   const { ready, authenticated } = usePrivy();
   const { wallets, ready: walletsReady } = useWallets();
+  const { farcasterUser } = useConnectedWallet();
   const [activeTab, setActiveTab] = useState<Tab>('Created');
   const [createdNFTs, setCreatedNFTs] = useState<NFT[]>([]);
   const [collectedNFTs, setCollectedNFTs] = useState<NFT[]>([]);
@@ -45,48 +47,83 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!walletAddress) return;
     setLoading(true);
+    
     (async () => {
-      // Get all token IDs (for demo, scan first 20)
-      const tokenIds = Array.from({ length: 20 }, (_, i) => BigInt(i.toString()));
-      const created: NFT[] = [];
-      const collected: NFT[] = [];
-      for (const tokenId of tokenIds) {
-        try {
-          const metadata = await getNFTMetadata(tokenId);
-          // Check if user is creator
-          if (metadata.creator?.toLowerCase() === walletAddress.toLowerCase()) {
-            created.push({ tokenId, metadata });
-          }
-          // Check if user owns this NFT
-          const balance = await publicClient.readContract({
-            address: CONTRACT_ADDRESS as `0x${string}`,
-            abi: [
-              {
-                name: 'balanceOf',
-                type: 'function',
-                stateMutability: 'view',
-                inputs: [
-                  { name: 'account', type: 'address' },
-                  { name: 'id', type: 'uint256' },
-                ],
-                outputs: [{ name: '', type: 'uint256' }],
-              },
-            ],
-            functionName: 'balanceOf',
-            args: [walletAddress, tokenId],
-          });
-          if (balance && typeof balance === 'bigint' && balance > BigInt(0)) {
-            collected.push({ tokenId, metadata });
-          }
-        } catch {
-          // Token may not exist, skip
+      try {
+        const created: NFT[] = [];
+        const collected: NFT[] = [];
+
+        // Get total song count to know the valid range
+        const totalSongs = await getTotalSongCount();
+        console.log('📊 Total songs in contract:', totalSongs.toString());
+
+        if (totalSongs === BigInt(0)) {
+          console.log('⚠️ No songs found in contract');
+          setCreatedNFTs([]);
+          setCollectedNFTs([]);
+          setLoading(false);
+          return;
         }
+
+        // For collected songs, use the new contract's getUserCollection function
+        // Get Farcaster ID - use real FID if available, otherwise generate pseudo-FID from wallet
+        let farcasterId: bigint;
+        if (farcasterUser?.fid) {
+          farcasterId = BigInt(farcasterUser.fid);
+        } else {
+          farcasterId = generatePseudoFarcasterId(walletAddress);
+        }
+
+        console.log('🔍 Fetching collection for Farcaster ID:', farcasterId.toString());
+        const userCollectionSongIds = await getUserCollection(farcasterId) as bigint[];
+        console.log('🎵 User owns songs:', userCollectionSongIds.map((id: bigint) => id.toString()));
+
+        // Get metadata for collected songs
+        for (const songId of userCollectionSongIds) {
+          try {
+            const exists = await checkSongExists(songId);
+            if (exists) {
+              const metadata = await getNFTMetadata(songId);
+              collected.push({ tokenId: songId, metadata });
+            }
+          } catch (error) {
+            console.error(`❌ Error fetching metadata for collected song ${songId}:`, error);
+          }
+        }
+
+        // For created songs, scan through existing songs and check creator
+        const maxScanRange = Math.min(Number(totalSongs), 50); // Limit scan to avoid too many calls
+        for (let i = 1; i <= maxScanRange; i++) {
+          const songId = BigInt(i);
+          try {
+            const exists = await checkSongExists(songId);
+            if (exists) {
+              const metadata = await getNFTMetadata(songId);
+              // Check if user is creator
+              if (metadata.creator?.toLowerCase() === walletAddress.toLowerCase()) {
+                created.push({ tokenId: songId, metadata });
+              }
+            }
+          } catch (error) {
+            console.error(`❌ Error checking song ${songId}:`, error);
+            // Continue with next song
+          }
+        }
+
+        console.log('🎨 Created NFTs found:', created.length);
+        console.log('🎵 Collected NFTs found:', collected.length);
+
+        setCreatedNFTs(created);
+        setCollectedNFTs(collected);
+      } catch (error) {
+        console.error('❌ Error fetching NFTs:', error);
+        setCreatedNFTs([]);
+        setCollectedNFTs([]);
+      } finally {
+        setLoading(false);
       }
-      setCreatedNFTs(created);
-      setCollectedNFTs(collected);
-      setLoading(false);
     })();
-  }, [walletAddress]);
+  }, [walletAddress, farcasterUser]);
 
   if (!ready || !walletsReady) {
     return (

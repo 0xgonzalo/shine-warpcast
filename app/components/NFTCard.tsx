@@ -1,7 +1,7 @@
 'use client';
 
-import { useReadContract, useWriteContract } from 'wagmi';
-import { CONTRACT_ADDRESS, contractABI } from '../utils/contract';
+import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { CONTRACT_ADDRESS, contractABI, getTotalPriceForInstaBuy, userOwnsSong, generatePseudoFarcasterId } from '../utils/contract';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import CollectedModal from './CollectedModal';
@@ -59,9 +59,12 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
   } : undefined;
 
   const { writeContract, isPending, isSuccess, data: txData, error: txError } = useWriteContract();
+  const { data: receipt, isLoading: isConfirming, isSuccess: isConfirmed, isError: isReceiptError } = useWaitForTransactionReceipt({
+    hash: (txData as `0x${string}` | undefined),
+  });
   const [showModal, setShowModal] = useState(false);
   const { playAudio, currentAudio, isPlaying, addToQueue } = useAudio();
-  const { isAuthenticated } = useConnectedWallet();
+  const { isAuthenticated, farcasterUser, connectedWallet } = useConnectedWallet();
 
   const handlePlayAudio = () => {
     if (data?.audioURI && data.audioURI !== 'ipfs://placeholder-audio-uri') {
@@ -71,11 +74,7 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
         : undefined;
       const artist = data.creator ? `${data.creator.slice(0, 6)}...${data.creator.slice(-4)}` : undefined;
       
-      if (currentAudio?.src === audioUrl) {
-        playAudio(audioUrl, data.name, artist, imageUrl);
-      } else {
-        playAudio(audioUrl, data.name, artist, imageUrl);
-      }
+      playAudio(audioUrl, data.name, artist, imageUrl);
     }
   };
 
@@ -91,21 +90,47 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
     }
   };
 
-  const handleCollect = () => {
-    if (!isAuthenticated) {
-      console.warn("Attempted to collect while not authenticated.");
+  const handleCollect = async () => {
+    if (!isAuthenticated || !connectedWallet) {
+      console.warn("Attempted to collect while not authenticated or no wallet connected.");
       return;
     }
-    writeContract({
-      address: CONTRACT_ADDRESS,
-      abi: contractABI,
-      functionName: 'instaBuy',
-      args: [
-        tokenId, // songId
-        BigInt(1) // farcasterId - placeholder, should be replaced with actual Farcaster ID
-      ],
-      value: BigInt(777000000000000), // 0.000777 ETH in wei
-    });
+
+    // Get Farcaster ID - use real FID if available, otherwise generate pseudo-FID from wallet
+    let farcasterId: bigint;
+    if (farcasterUser?.fid) {
+      farcasterId = BigInt(farcasterUser.fid);
+      console.log('🎯 [NFTCard] Using real Farcaster ID:', farcasterId.toString());
+    } else {
+      farcasterId = generatePseudoFarcasterId(connectedWallet);
+      console.log('🎯 [NFTCard] Using pseudo-Farcaster ID for wallet:', connectedWallet, '→', farcasterId.toString());
+    }
+    
+    try {
+      // Check if user already owns this song
+      const alreadyOwns = await userOwnsSong(farcasterId, tokenId);
+      if (alreadyOwns) {
+        console.warn('❌ [NFTCard] User already owns this song');
+        return;
+      }
+
+      // Get the correct total price (song price + operation fee)
+      const totalPrice = await getTotalPriceForInstaBuy(tokenId);
+      console.log('💰 [NFTCard] Total price (including fees):', totalPrice.toString(), 'wei');
+
+      writeContract({
+        address: CONTRACT_ADDRESS,
+        abi: contractABI,
+        functionName: 'instaBuy',
+        args: [
+          tokenId, // songId
+          farcasterId // Use actual or pseudo Farcaster ID
+        ],
+        value: totalPrice, // Use correct price including operation fee
+      });
+    } catch (error) {
+      console.error('❌ [NFTCard] Error preparing collect transaction:', error);
+    }
   };
 
   const handleCreatorClick = () => {
@@ -117,10 +142,10 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
   };
 
   useEffect(() => {
-    if (isSuccess && txData) {
+    if (isConfirmed && receipt && receipt.status === 'success' && data) {
       setShowModal(true);
     }
-  }, [isSuccess, txData]);
+  }, [isConfirmed, receipt, data]);
 
   if (isLoading) return <div className="p-4">Loading...</div>;
   if (isError || !data) return null;
@@ -156,11 +181,24 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
           {isAudioAvailable && (
             <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               <svg className="w-16 h-16 text-white" fill="currentColor" viewBox="0 0 24 24">
-                {isPlaying && currentAudio?.src === getIPFSGatewayURL(data.audioURI) ? (
-                  <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-                ) : (
-                  <path d="M8 5v14l11-7z" />
-                )}
+                {(() => {
+                  // Extract IPFS hash for comparison
+                  const getIPFSHash = (url: string): string | null => {
+                    const match = url.match(/\/ipfs\/([^/?#]+)/);
+                    return match ? match[1] : null;
+                  };
+                  
+                  const audioUrl = getIPFSGatewayURL(data.audioURI);
+                  const newHash = getIPFSHash(audioUrl);
+                  const currentHash = currentAudio?.src ? getIPFSHash(currentAudio.src) : null;
+                  const isSameContent = newHash && currentHash && newHash === currentHash;
+                  
+                  return isPlaying && isSameContent ? (
+                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                  ) : (
+                    <path d="M8 5v14l11-7z" />
+                  );
+                })()}
               </svg>
             </div>
           )}

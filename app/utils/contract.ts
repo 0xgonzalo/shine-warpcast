@@ -123,6 +123,66 @@ export async function getTotalPriceForBuy(songIds: bigint[]) {
   }
 }
 
+export async function userOwnsSong(farcasterId: bigint, songId: bigint) {
+  try {
+    const owns = await publicClient.readContract({
+      address: CONTRACT_ADDRESS as `0x${string}`,
+      abi: contractABI,
+      functionName: 'userOwnsSong',
+      args: [farcasterId, songId],
+    });
+    return owns;
+  } catch (error) {
+    console.error('Error checking song ownership:', error);
+    throw error;
+  }
+}
+
+export async function getOperationFee() {
+  try {
+    const fee = await publicClient.readContract({
+      address: CONTRACT_ADDRESS as `0x${string}`,
+      abi: contractABI,
+      functionName: 'getOperationFee',
+      args: [],
+    });
+    return fee;
+  } catch (error) {
+    console.error('Error getting operation fee:', error);
+    throw error;
+  }
+}
+
+// Helper function to calculate the total price for instaBuy (single song)
+export async function getTotalPriceForInstaBuy(songId: bigint): Promise<bigint> {
+  try {
+    const [songMetadata, operationFee] = await Promise.all([
+      getSongMetadata(songId),
+      getOperationFee()
+    ]);
+    
+    return songMetadata.price + (operationFee as bigint);
+  } catch (error) {
+    console.error('Error calculating instaBuy price:', error);
+    throw error;
+  }
+}
+
+// Helper function to generate a pseudo-Farcaster ID from wallet address
+// This ensures each wallet gets a unique ID while working with the contract
+export function generatePseudoFarcasterId(walletAddress: string): bigint {
+  // Convert wallet address to a number by taking the last 8 characters (32 bits)
+  // and adding a large offset to avoid conflicts with real Farcaster IDs
+  const addressSuffix = walletAddress.slice(-8);
+  const addressNumber = parseInt(addressSuffix, 16);
+  
+  // Add a large offset (10 billion) to avoid conflicts with real Farcaster IDs
+  // Real Farcaster IDs are typically much smaller numbers
+  const PSEUDO_FID_OFFSET = BigInt(10000000000); // 10 billion
+  
+  return PSEUDO_FID_OFFSET + BigInt(addressNumber);
+}
+
 // Adapter function to convert new SongMetadata to old NFT metadata format
 export function adaptSongMetadataToNFT(songMetadata: SongMetadata) {
   return {

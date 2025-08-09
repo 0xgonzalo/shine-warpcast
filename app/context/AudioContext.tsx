@@ -43,15 +43,49 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   }, [audioElement]);
 
   const playAudio = useCallback((src: string, name: string, artist?: string, image?: string) => {
-    // If it's the same audio, just update the state
-    if (currentAudio?.src === src) {
-      setIsPlaying(!isPlaying);
-      return;
+    // Helper function to extract IPFS hash from URL for comparison
+    const getIPFSHash = (url: string): string | null => {
+      const match = url.match(/\/ipfs\/([^/?#]+)/);
+      return match ? match[1] : null;
+    };
+
+    const newHash = getIPFSHash(src);
+    const currentHash = currentAudio?.src ? getIPFSHash(currentAudio.src) : null;
+    const isSameContent = newHash && currentHash && newHash === currentHash;
+
+    console.log('🎵 [AudioContext] playAudio called:', { 
+      newSrc: src, 
+      newName: name, 
+      currentSrc: currentAudio?.src, 
+      currentName: currentAudio?.name,
+      newHash,
+      currentHash,
+      isSameContent,
+      isPlaying
+    });
+    
+    // If it's the same IPFS content (same hash)
+    if (isSameContent) {
+      // Check if metadata is different (different NFT with same audio)
+      const isDifferentMetadata = currentAudio?.name !== name || currentAudio?.artist !== artist || currentAudio?.image !== image;
+      
+      if (isDifferentMetadata) {
+        console.log('🎵 [AudioContext] Same IPFS content but different metadata, updating metadata and continuing playback');
+        setCurrentAudio({ src, name, artist, image });
+        // Keep playing if already playing, otherwise keep paused
+        return;
+      } else {
+        console.log('🎵 [AudioContext] Same IPFS content and metadata, toggling play/pause only');
+        setIsPlaying(!isPlaying);
+        return;
+      }
     }
 
     // If it's a different audio, update the current audio and start playing
+    console.log('🎵 [AudioContext] Different IPFS content detected, switching songs');
     setCurrentAudio({ src, name, artist, image });
     setIsPlaying(true);
+    setCurrentTime(0); // Reset time for new audio
   }, [currentAudio?.src, isPlaying]);
 
   const stopAudio = useCallback(() => {
