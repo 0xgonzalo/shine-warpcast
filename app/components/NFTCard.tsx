@@ -64,6 +64,7 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
   });
   const [showModal, setShowModal] = useState(false);
   const [hasShownModal, setHasShownModal] = useState(false);
+  const [ownershipError, setOwnershipError] = useState<string | null>(null);
   const { playAudio, currentAudio, isPlaying, addToQueue } = useAudio();
   const { isAuthenticated, farcasterUser, connectedWallet } = useConnectedWallet();
 
@@ -108,10 +109,14 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
     }
     
     try {
+      // Clear any previous ownership error
+      setOwnershipError(null);
+      
       // Check if user already owns this song
       const alreadyOwns = await userOwnsSong(farcasterId, tokenId);
       if (alreadyOwns) {
         console.warn('❌ [NFTCard] User already owns this song');
+        setOwnershipError('You already own this song!');
         return;
       }
 
@@ -149,10 +154,11 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
     }
   }, [isConfirmed, receipt, data, hasShownModal]);
 
-  // Reset hasShownModal when a new transaction starts
+  // Reset hasShownModal and clear errors when a new transaction starts
   useEffect(() => {
     if (isPending) {
       setHasShownModal(false);
+      setOwnershipError(null);
     }
   }, [isPending]);
 
@@ -263,6 +269,12 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
         {txError && (
           <div className="mt-2 text-sm text-red-500 text-center px-2">
             {'Transaction failed. Please try again.'}
+          </div>
+        )}
+
+        {ownershipError && (
+          <div className="mt-2 text-sm text-orange-500 text-center px-2">
+            {ownershipError}
           </div>
         )}
       </div>

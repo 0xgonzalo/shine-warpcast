@@ -65,7 +65,7 @@ const CreatedModal: React.FC<CreatedModalProps> = ({ nft, txHash, onClose }) => 
           </div>
         </div>
         
-        <h2 className="text-xl md:text-2xl font-bold mb-4 text-green-400">Music Created Successfully! 🎵</h2>
+        <h2 className="text-xl md:text-2xl font-bold mb-4 text-green-400">Song Created Successfully! 🎵</h2>
         
         {nft.imageURI && nft.imageURI !== 'ipfs://placeholder-image-uri' && (
           <div className="mb-4">
