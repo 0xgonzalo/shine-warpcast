@@ -41,9 +41,8 @@ export function FarcasterProvider({ children }: { children: ReactNode }) {
         
         setIsSDKLoaded(true);
         
-        // Call ready to dismiss the splash screen
-        await sdk.actions.ready();
-        console.log('✅ Farcaster SDK ready');
+        // Don't call ready() here - let Quick Auth handle it after authentication
+        console.log('✅ Farcaster SDK loaded, waiting for authentication');
         setIsReady(true);
         
       } catch (error) {

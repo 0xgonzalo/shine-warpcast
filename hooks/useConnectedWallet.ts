@@ -92,8 +92,9 @@ const useConnectedWallet = () => {
                 setQuickAuthToken(token);
                 console.log('✅ Quick Auth token obtained successfully');
                 
-                // Automatically authenticate with Quick Auth
+                // Automatically authenticate with Quick Auth immediately
                 await authenticateWithQuickAuth(token, context.user.fid);
+                console.log('🔄 Quick Auth completed during context initialization');
               } else {
                 console.log('⚠️ Quick Auth token not available');
               }
@@ -196,16 +197,16 @@ const useConnectedWallet = () => {
 
   // Trigger auto-connect when Farcaster context is detected
   useEffect(() => {
-    if (isInFarcaster && farcasterUser && !hasAttemptedAutoConnect) {
+    if (isInFarcaster && farcasterUser && !hasAttemptedAutoConnect && !isQuickAuthAuthenticated) {
       // If Quick Auth is available, wait a bit longer for token to be ready
       // Otherwise, proceed with standard timing
-      const delay = quickAuthToken ? 300 : 500;
+      const delay = quickAuthToken ? 300 : 1000; // Longer delay for Privy fallback
       const timer = setTimeout(() => {
         autoConnectInFarcaster();
       }, delay);
       return () => clearTimeout(timer);
     }
-  }, [isInFarcaster, farcasterUser, hasAttemptedAutoConnect, quickAuthToken, autoConnectInFarcaster]);
+  }, [isInFarcaster, farcasterUser, hasAttemptedAutoConnect, quickAuthToken, isQuickAuthAuthenticated, autoConnectInFarcaster]);
 
   // Auto-logout if no wallets are connected after initialization
   useEffect(() => {

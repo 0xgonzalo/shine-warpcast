@@ -298,9 +298,9 @@ export default function Navbar() {
               ) : isReady ? (
                 <button
                   onClick={handleConnect}
-                  disabled={isConnecting || (isInFarcaster && !hasAttemptedAutoConnect)}
+                  disabled={isConnecting || (isInFarcaster && !hasAttemptedAutoConnect) || isQuickAuthAuthenticated}
                   className={`px-4 py-2 rounded-lg transition-colors text-white font-medium ${
-                    isConnecting || (isInFarcaster && !hasAttemptedAutoConnect)
+                    isConnecting || (isInFarcaster && !hasAttemptedAutoConnect) || isQuickAuthAuthenticated
                       ? 'bg-blue-400 cursor-not-allowed' 
                       : 'bg-blue-600 hover:bg-blue-700'
                   }`}
@@ -309,9 +309,11 @@ export default function Navbar() {
                     ? (isInFarcaster && !hasAttemptedAutoConnect 
                         ? "Auto-connecting..." 
                         : "Connecting...")
-                    : isAuthenticated
-                      ? "Link Wallet"
-                      : "Connect Wallet"
+                    : isQuickAuthAuthenticated
+                      ? "Connected via Farcaster"
+                      : isAuthenticated
+                        ? "Link Wallet"
+                        : "Connect Wallet"
                   }
                 </button>
               ) : null}
