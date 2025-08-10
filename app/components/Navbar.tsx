@@ -167,15 +167,15 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo/Brand */}
-          <Link 
-            href="/" 
-            className={`text-xl font-bold transition-colors ${
-              isDarkMode 
-                ? 'text-white hover:text-gray-200' 
-                : 'text-[#0000FE] hover:text-gray-600'
-            }`}
-          >
-            Shine
+          <Link href="/" className="inline-flex items-center">
+            <Image
+              src={isDarkMode ? '/logo.png' : '/logo-blue.png'}
+              alt="Shine logo"
+              width={120}
+              height={28}
+              priority
+              className="h-7 w-auto"
+            />
           </Link>
 
           {/* Right Side Controls */}
