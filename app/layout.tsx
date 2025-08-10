@@ -42,6 +42,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark bg-background">
+      <head>
+        <link rel="preconnect" href="https://auth.farcaster.xyz" />
+      </head>
       <body className="bg-background">
         <Providers>
           <ThemeProvider>

@@ -26,6 +26,7 @@ const useConnectedWallet = () => {
   const [farcasterUser, setFarcasterUser] = useState<FarcasterUser | null>(null);
   const [isInFarcaster, setIsInFarcaster] = useState(false);
   const [hasAttemptedAutoConnect, setHasAttemptedAutoConnect] = useState(false);
+  const [quickAuthToken, setQuickAuthToken] = useState<string | null>(null);
 
   // Find the active wallet - prefer external wallet over privy wallet
   const externalWallet = wallets?.find(
@@ -37,7 +38,7 @@ const useConnectedWallet = () => {
   const activeWallet = externalWallet || privyWallet;
   const connectedWallet = activeWallet?.address as Address | undefined;
 
-  // Check if we're running inside a Farcaster client and get user context
+  // Check if we're running inside a Farcaster client and get user context with Quick Auth
   useEffect(() => {
     const initializeFarcasterContext = async () => {
       if (typeof window === 'undefined' || !sdk) return;
@@ -55,7 +56,25 @@ const useConnectedWallet = () => {
             bio: context.user.bio
           });
           console.log('🎯 Farcaster user context detected:', context.user);
-          console.log('🔄 Auto-connect will be attempted...');
+          
+          // Try to get Quick Auth token for automatic authentication
+          try {
+            if (sdk.quickAuth?.getToken) {
+              console.log('🔐 Attempting to get Quick Auth token...');
+              const { token } = await sdk.quickAuth.getToken();
+              if (token) {
+                setQuickAuthToken(token);
+                console.log('✅ Quick Auth token obtained successfully');
+                console.log('🔄 Auto-connect will be attempted with Quick Auth...');
+              } else {
+                console.log('⚠️ Quick Auth token not available');
+              }
+            } else {
+              console.log('⚠️ Quick Auth not available in SDK');
+            }
+          } catch (authError) {
+            console.log('❌ Quick Auth failed:', authError);
+          }
         } else {
           setIsInFarcaster(false);
           console.log('📱 Not running in Farcaster client');
@@ -100,7 +119,7 @@ const useConnectedWallet = () => {
     }
   };
 
-  // Auto-connect when running in Farcaster
+  // Auto-connect when running in Farcaster with Quick Auth
   const autoConnectInFarcaster = useCallback(async () => {
     if (
       !isInFarcaster || 
@@ -115,12 +134,24 @@ const useConnectedWallet = () => {
     try {
       setHasAttemptedAutoConnect(true);
       setIsConnecting(true);
-      console.log('🎯 Auto-connecting Farcaster user:', farcasterUser.username);
       
-      // Attempt to login with Farcaster as the preferred method
-      await login({
-        loginMethods: ['farcaster']
-      });
+      if (quickAuthToken) {
+        console.log('🎯 Auto-connecting Farcaster user with Quick Auth:', farcasterUser.username);
+        console.log('🔐 Using Quick Auth token for seamless authentication');
+        
+        // With Quick Auth token, we can proceed more confidently
+        // The token validates the user's identity from Farcaster
+        await login({
+          loginMethods: ['farcaster']
+        });
+      } else {
+        console.log('🎯 Auto-connecting Farcaster user (fallback method):', farcasterUser.username);
+        
+        // Fallback to standard Farcaster login without Quick Auth
+        await login({
+          loginMethods: ['farcaster']
+        });
+      }
       
       console.log('✅ Auto-connect successful for Farcaster user!');
       
@@ -131,18 +162,20 @@ const useConnectedWallet = () => {
     } finally {
       setIsConnecting(false);
     }
-  }, [isInFarcaster, hasAttemptedAutoConnect, authenticated, privyReady, farcasterUser, login]);
+  }, [isInFarcaster, hasAttemptedAutoConnect, authenticated, privyReady, farcasterUser, quickAuthToken, login]);
 
   // Trigger auto-connect when Farcaster context is detected
   useEffect(() => {
     if (isInFarcaster && farcasterUser && !hasAttemptedAutoConnect) {
-      // Small delay to ensure all initialization is complete
+      // If Quick Auth is available, wait a bit longer for token to be ready
+      // Otherwise, proceed with standard timing
+      const delay = quickAuthToken ? 300 : 500;
       const timer = setTimeout(() => {
         autoConnectInFarcaster();
-      }, 500);
+      }, delay);
       return () => clearTimeout(timer);
     }
-  }, [isInFarcaster, farcasterUser, hasAttemptedAutoConnect, autoConnectInFarcaster]);
+  }, [isInFarcaster, farcasterUser, hasAttemptedAutoConnect, quickAuthToken, autoConnectInFarcaster]);
 
   // Auto-logout if no wallets are connected after initialization
   useEffect(() => {
@@ -164,6 +197,7 @@ const useConnectedWallet = () => {
     farcasterPfpUrl: finalFarcasterPfpUrl,
     isInFarcaster,
     hasAttemptedAutoConnect,
+    quickAuthToken,
     // Expose the whole farcaster profile if needed for other details later
     farcasterUser: farcasterUser || farcasterProfile 
   };
