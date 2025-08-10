@@ -25,7 +25,9 @@ export default function Navbar() {
     farcasterPfpUrl,
     isInFarcaster,
     hasAttemptedAutoConnect,
-    farcasterUser
+    farcasterUser,
+    isQuickAuthAuthenticated,
+    quickAuthToken
   } = useConnectedWallet();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -79,7 +81,15 @@ export default function Navbar() {
 
   const handleConnect = async () => {
     const result = await connectWallet();
-    if (result.needsLogin) {
+    
+    // If Quick Auth was used, no need for Privy login
+    if (result.quickAuth) {
+      console.log('✅ Connected with Quick Auth');
+      return;
+    }
+    
+    // Only use Privy login if not in Farcaster or Quick Auth failed
+    if (result.needsLogin && !isQuickAuthAuthenticated) {
       await login();
     }
   };

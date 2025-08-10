@@ -27,6 +27,8 @@ const useConnectedWallet = () => {
   const [isInFarcaster, setIsInFarcaster] = useState(false);
   const [hasAttemptedAutoConnect, setHasAttemptedAutoConnect] = useState(false);
   const [quickAuthToken, setQuickAuthToken] = useState<string | null>(null);
+  const [quickAuthUser, setQuickAuthUser] = useState<{ fid: number; primaryAddress?: string } | null>(null);
+  const [isQuickAuthAuthenticated, setIsQuickAuthAuthenticated] = useState(false);
 
   // Find the active wallet - prefer external wallet over privy wallet
   const externalWallet = wallets?.find(
@@ -37,6 +39,30 @@ const useConnectedWallet = () => {
   );
   const activeWallet = externalWallet || privyWallet;
   const connectedWallet = activeWallet?.address as Address | undefined;
+
+  // Quick Auth authentication function
+  const authenticateWithQuickAuth = async (token: string, fid: number) => {
+    try {
+      console.log('🔐 Authenticating with Quick Auth for FID:', fid);
+      
+      // Set Quick Auth user info
+      setQuickAuthUser({ fid });
+      setIsQuickAuthAuthenticated(true);
+      setHasAttemptedAutoConnect(true);
+      
+      console.log('✅ Quick Auth authentication successful!');
+      
+      // Call ready to dismiss splash screen
+      if (sdk?.actions?.ready) {
+        await sdk.actions.ready();
+      }
+      
+    } catch (error) {
+      console.error('❌ Quick Auth authentication failed:', error);
+      setIsQuickAuthAuthenticated(false);
+      setQuickAuthUser(null);
+    }
+  };
 
   // Check if we're running inside a Farcaster client and get user context with Quick Auth
   useEffect(() => {
@@ -65,7 +91,9 @@ const useConnectedWallet = () => {
               if (token) {
                 setQuickAuthToken(token);
                 console.log('✅ Quick Auth token obtained successfully');
-                console.log('🔄 Auto-connect will be attempted with Quick Auth...');
+                
+                // Automatically authenticate with Quick Auth
+                await authenticateWithQuickAuth(token, context.user.fid);
               } else {
                 console.log('⚠️ Quick Auth token not available');
               }
@@ -95,18 +123,24 @@ const useConnectedWallet = () => {
   const finalFarcasterUsername = farcasterUser?.username || farcasterProfile?.username;
   const finalFarcasterPfpUrl = farcasterUser?.pfpUrl || farcasterProfile?.pfp;
 
-  // Handle wallet connection
+  // Handle wallet connection - prioritize Quick Auth when in Farcaster
   const connectWallet = async () => {
     try {
       setIsConnecting(true);
+      
+      // If in Farcaster with Quick Auth, use that instead of Privy
+      if (isInFarcaster && quickAuthToken && farcasterUser) {
+        console.log('🔐 Using Quick Auth for wallet connection');
+        await authenticateWithQuickAuth(quickAuthToken, farcasterUser.fid);
+        return { success: true, quickAuth: true };
+      }
+      
+      // Fallback to Privy for non-Farcaster users
       if (!authenticated) {
-        // If not authenticated, we need to handle this in the component
-        // since login() is not available in this hook
         return { needsLogin: true };
       }
       
       if (wallets.length === 0) {
-        // If authenticated but no wallet, link a wallet
         await linkWallet();
       }
       
@@ -124,36 +158,32 @@ const useConnectedWallet = () => {
     if (
       !isInFarcaster || 
       hasAttemptedAutoConnect || 
-      authenticated || 
-      !privyReady ||
+      isQuickAuthAuthenticated ||
       !farcasterUser
     ) {
       return;
     }
 
     try {
-      setHasAttemptedAutoConnect(true);
       setIsConnecting(true);
       
       if (quickAuthToken) {
         console.log('🎯 Auto-connecting Farcaster user with Quick Auth:', farcasterUser.username);
-        console.log('🔐 Using Quick Auth token for seamless authentication');
         
-        // With Quick Auth token, we can proceed more confidently
-        // The token validates the user's identity from Farcaster
-        await login({
-          loginMethods: ['farcaster']
-        });
+        // Use Quick Auth - bypass Privy entirely
+        await authenticateWithQuickAuth(quickAuthToken, farcasterUser.fid);
+        console.log('✅ Quick Auth auto-connect successful!');
       } else {
-        console.log('🎯 Auto-connecting Farcaster user (fallback method):', farcasterUser.username);
+        console.log('🎯 Auto-connecting Farcaster user (Privy fallback):', farcasterUser.username);
         
-        // Fallback to standard Farcaster login without Quick Auth
-        await login({
-          loginMethods: ['farcaster']
-        });
+        // Only use Privy if Quick Auth is not available
+        if (privyReady && !authenticated) {
+          setHasAttemptedAutoConnect(true);
+          await login({
+            loginMethods: ['farcaster']
+          });
+        }
       }
-      
-      console.log('✅ Auto-connect successful for Farcaster user!');
       
     } catch (error) {
       console.error('❌ Auto-connect failed:', error);
@@ -162,7 +192,7 @@ const useConnectedWallet = () => {
     } finally {
       setIsConnecting(false);
     }
-  }, [isInFarcaster, hasAttemptedAutoConnect, authenticated, privyReady, farcasterUser, quickAuthToken, login]);
+  }, [isInFarcaster, hasAttemptedAutoConnect, isQuickAuthAuthenticated, farcasterUser, quickAuthToken, privyReady, authenticated, login]);
 
   // Trigger auto-connect when Farcaster context is detected
   useEffect(() => {
@@ -189,7 +219,8 @@ const useConnectedWallet = () => {
     activeWallet,
     isConnecting,
     isReady: privyReady && walletsReady,
-    isAuthenticated: authenticated,
+    // Prioritize Quick Auth authentication when available
+    isAuthenticated: isQuickAuthAuthenticated || authenticated,
     connectWallet,
     hasExternalWallet: !!externalWallet,
     hasPrivyWallet: !!privyWallet,
@@ -198,6 +229,8 @@ const useConnectedWallet = () => {
     isInFarcaster,
     hasAttemptedAutoConnect,
     quickAuthToken,
+    isQuickAuthAuthenticated,
+    quickAuthUser,
     // Expose the whole farcaster profile if needed for other details later
     farcasterUser: farcasterUser || farcasterProfile 
   };
