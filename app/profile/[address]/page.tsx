@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { useAccount } from 'wagmi';
 import { CONTRACT_ADDRESS, getNFTMetadata, publicClient, getTotalSongCount, checkSongExists, getUserCollection, generatePseudoFarcasterId } from '../../utils/contract';
 import { useParams } from 'next/navigation';
 import NFTCard from '@/app/components/NFTCard';
-import useConnectedWallet from '@/hooks/useConnectedWallet';
+// Removed useConnectedWallet - using useAccount instead
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic' as const;
@@ -31,9 +30,8 @@ export default function ProfilePage() {
   const params = useParams();
   const { address: paramAddress } = params;
   const { address: connectedAddress } = useAccount();
-  const { ready, authenticated } = usePrivy();
-  const { wallets, ready: walletsReady } = useWallets();
-  const { farcasterUser } = useConnectedWallet();
+  // Using OnchainKit wallet system now
+  // No longer using farcasterUser - using wallet address directly
   const [activeTab, setActiveTab] = useState<Tab>('Created');
   const [createdNFTs, setCreatedNFTs] = useState<NFT[]>([]);
   const [collectedNFTs, setCollectedNFTs] = useState<NFT[]>([]);
@@ -66,13 +64,8 @@ export default function ProfilePage() {
         }
 
         // For collected songs, use the new contract's getUserCollection function
-        // Get Farcaster ID - use real FID if available, otherwise generate pseudo-FID from wallet
-        let farcasterId: bigint;
-        if (farcasterUser?.fid) {
-          farcasterId = BigInt(farcasterUser.fid);
-        } else {
-          farcasterId = generatePseudoFarcasterId(walletAddress);
-        }
+        // Generate pseudo-FID from wallet address for collection lookup
+        const farcasterId = generatePseudoFarcasterId(walletAddress);
 
         console.log('🔍 Fetching collection for Farcaster ID:', farcasterId.toString());
         const userCollectionSongIds = await getUserCollection(farcasterId) as bigint[];
@@ -123,17 +116,9 @@ export default function ProfilePage() {
         setLoading(false);
       }
     })();
-  }, [walletAddress, farcasterUser]);
+  }, [walletAddress]);
 
-  if (!ready || !walletsReady) {
-    return (
-      <main className="min-h-screen p-8">
-        <div className="max-w-2xl mx-auto text-center text-gray-400">
-          Loading...
-        </div>
-      </main>
-    );
-  }
+  // No need for ready checks with OnchainKit
 
   return (
     <main className="min-h-screen p-8">

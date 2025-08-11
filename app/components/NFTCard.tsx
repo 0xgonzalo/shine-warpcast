@@ -7,7 +7,7 @@ import Image from 'next/image';
 import CollectedModal from './CollectedModal';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
 import { useAudio } from '../context/AudioContext';
-import useConnectedWallet from '@/hooks/useConnectedWallet';
+import { useAccount } from 'wagmi';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '../context/ThemeContext';
 
@@ -66,7 +66,7 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
   const [hasShownModal, setHasShownModal] = useState(false);
   const [ownershipError, setOwnershipError] = useState<string | null>(null);
   const { playAudio, currentAudio, isPlaying, addToQueue } = useAudio();
-  const { isAuthenticated, farcasterUser, connectedWallet } = useConnectedWallet();
+  const { address, isConnected } = useAccount();
 
   const handlePlayAudio = () => {
     if (data?.audioURI && data.audioURI !== 'ipfs://placeholder-audio-uri') {
@@ -93,20 +93,14 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
   };
 
   const handleCollect = async () => {
-    if (!isAuthenticated || !connectedWallet) {
-      console.warn("Attempted to collect while not authenticated or no wallet connected.");
+    if (!isConnected || !address) {
+      console.warn("Attempted to collect while not connected or no wallet address.");
       return;
     }
 
-    // Get Farcaster ID - use real FID if available, otherwise generate pseudo-FID from wallet
-    let farcasterId: bigint;
-    if (farcasterUser?.fid) {
-      farcasterId = BigInt(farcasterUser.fid);
-      console.log('🎯 [NFTCard] Using real Farcaster ID:', farcasterId.toString());
-    } else {
-      farcasterId = generatePseudoFarcasterId(connectedWallet);
-      console.log('🎯 [NFTCard] Using pseudo-Farcaster ID for wallet:', connectedWallet, '→', farcasterId.toString());
-    }
+    // Generate pseudo-FID from wallet address for collection
+    const farcasterId = generatePseudoFarcasterId(address);
+    console.log('🎯 [NFTCard] Using pseudo-Farcaster ID for wallet:', address, '→', farcasterId.toString());
     
     try {
       // Clear any previous ownership error
@@ -256,7 +250,7 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
         </div>
         <button
           onClick={handleCollect}
-          disabled={isPending || !isAuthenticated}
+          disabled={isPending || !isConnected}
           className={`w-full px-4 py-2 text-white rounded-lg transition-colors disabled:opacity-50 ${
             isDarkMode 
               ? 'bg-gradient-to-r from-[#5D2DA0] to-[#821FA5] hover:bg-purple-700' 

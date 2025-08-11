@@ -2,15 +2,19 @@
 
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import PrivyProvider from './PrivyProvider';
 import { WagmiProvider } from './WagmiProvider';
 import { AudioProvider } from '@/app/context/AudioContext';
+import { OnchainKitProvider } from '@coinbase/onchainkit';
+import { baseSepolia } from 'viem/chains';
 
 const queryClient = new QueryClient();
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <PrivyProvider>
+    <OnchainKitProvider
+      apiKey={process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY || ''} 
+      chain={baseSepolia}
+    >
       <QueryClientProvider client={queryClient}>
         <WagmiProvider>
           <AudioProvider>
@@ -18,6 +22,6 @@ export function Providers({ children }: { children: ReactNode }) {
           </AudioProvider>
         </WagmiProvider>
       </QueryClientProvider>
-    </PrivyProvider>
+    </OnchainKitProvider>
   );
 } 

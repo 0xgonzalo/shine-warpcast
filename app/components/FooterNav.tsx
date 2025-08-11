@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import useConnectedWallet from '@/hooks/useConnectedWallet';
+import { useAccount } from 'wagmi';
 import { useTheme } from '../context/ThemeContext';
 // Import icons later if needed, e.g., from 'lucide-react'
 // import { Home, Search, PlusSquare, User } from 'lucide-react';
@@ -11,7 +11,7 @@ import { useTheme } from '../context/ThemeContext';
 export default function FooterNav() {
   const pathname = usePathname();
   const { isDarkMode } = useTheme();
-  const { connectedWallet } = useConnectedWallet(); // connectedWallet is the address itself or undefined
+  const { address } = useAccount();
 
   const navItems = [
     { 
@@ -29,10 +29,10 @@ export default function FooterNav() {
       href: '/create', 
       iconSrc: isDarkMode ? '/create.svg' : '/create-blue.svg' 
     },
-    {
-      name: 'Profile',
-      href: connectedWallet ? `/profile/${connectedWallet}` : '/profile',
-      iconSrc: isDarkMode ? '/profile.svg' : '/profile-blue.svg'
+        { 
+      name: 'Profile', 
+      href: address ? `/profile/${address}` : '/profile', 
+      iconSrc: isDarkMode ? '/profile.svg' : '/profile-blue.svg' 
     },
   ];
 
@@ -43,8 +43,8 @@ export default function FooterNav() {
           {navItems.map((item) => {
             let isActive = pathname === item.href || (item.href === '/home' && pathname === '/');
             if (item.name === 'Profile') {
-              if (connectedWallet) {
-                isActive = pathname === `/profile/${connectedWallet}` || pathname?.startsWith(`/profile/${connectedWallet}/`);
+              if (address) {
+                isActive = pathname === `/profile/${address}` || pathname?.startsWith(`/profile/${address}/`);
               } else {
                 isActive = pathname === '/profile' || pathname?.startsWith('/profile/');
               }

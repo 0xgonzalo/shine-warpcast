@@ -7,7 +7,7 @@ import { CONTRACT_ADDRESS, contractABI, getTotalPriceForInstaBuy, userOwnsSong, 
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
 import { useAudio } from '../../context/AudioContext';
 import { useTheme } from '../../context/ThemeContext';
-import useConnectedWallet from '@/hooks/useConnectedWallet';
+import { useAccount } from 'wagmi';
 import CollectedModal from '../../components/CollectedModal';
 import Image from 'next/image';
 
@@ -24,7 +24,7 @@ export default function TokenPage() {
   const params = useParams();
   const tokenId = BigInt(params.tokenId as string);
   const { isDarkMode } = useTheme();
-  const { isAuthenticated, farcasterUser, connectedWallet } = useConnectedWallet();
+  const { address, isConnected } = useAccount();
   const [showCollectModal, setShowCollectModal] = useState(false);
   const [collectTxHash, setCollectTxHash] = useState<string | null>(null);
   
@@ -83,20 +83,14 @@ export default function TokenPage() {
   };
 
   const handleCollect = async () => {
-    if (!isAuthenticated || !connectedWallet) {
-      console.warn("Attempted to collect while not authenticated or no wallet connected.");
+    if (!isConnected || !address) {
+      console.warn("Attempted to collect while not connected or no wallet address.");
       return;
     }
 
-    // Get Farcaster ID - use real FID if available, otherwise generate pseudo-FID from wallet
-    let farcasterId: bigint;
-    if (farcasterUser?.fid) {
-      farcasterId = BigInt(farcasterUser.fid);
-      console.log('🎯 [TokenPage] Using real Farcaster ID:', farcasterId.toString());
-    } else {
-      farcasterId = generatePseudoFarcasterId(connectedWallet);
-      console.log('🎯 [TokenPage] Using pseudo-Farcaster ID for wallet:', connectedWallet, '→', farcasterId.toString());
-    }
+    // Generate pseudo-FID from wallet address for collection
+    const farcasterId = generatePseudoFarcasterId(address);
+    console.log('🎯 [TokenPage] Using pseudo-Farcaster ID for wallet:', address, '→', farcasterId.toString());
     
     try {
       // Check if user already owns this song
@@ -307,9 +301,9 @@ export default function TokenPage() {
             {/* Collect Button */}
             <button
               onClick={handleCollect}
-              disabled={!isAuthenticated || isCollectPending}
+              disabled={!isConnected || isCollectPending}
               className={`px-8 py-3 rounded-full font-semibold transition-all duration-200 ${
-                !isAuthenticated
+                !isConnected
                   ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
                   : isCollectPending
                   ? isDarkMode
@@ -325,7 +319,7 @@ export default function TokenPage() {
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   <span>Collecting...</span>
                 </div>
-              ) : !isAuthenticated ? (
+              ) : !isConnected ? (
                 'Connect Wallet to Collect'
               ) : (
                 `✨ Collect (${formatPrice(tokenPrice)} ETH)`
