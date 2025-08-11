@@ -2,18 +2,15 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { CONTRACT_ADDRESS, contractABI, getMostCollectedArtists, getTotalPriceForInstaBuy, userOwnsSong, generatePseudoFarcasterId } from '../utils/contract';
-import CollectedModal from './CollectedModal';
-import { getIPFSGatewayURL } from '@/app/utils/pinata';
+
 import { useTheme } from '../context/ThemeContext';
 import {
   ConnectWallet,
   Wallet,
   WalletDropdown,
-  WalletDropdownLink,
+
   WalletDropdownDisconnect,
 } from '@coinbase/onchainkit/wallet';
 import {
@@ -38,105 +35,14 @@ function ClientOnly({ children }: { children: React.ReactNode }) {
 export default function Navbar() {
   const { address, isConnected } = useAccount();
   const { isDarkMode, toggleTheme } = useTheme();
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const [collectToken, setCollectToken] = useState<{ tokenId: bigint, name: string, imageURI: string } | null>(null);
-  const [collectLoading, setCollectLoading] = useState(false);
-  const [collectError, setCollectError] = useState<string | null>(null);
-  const [showCollectModal, setShowCollectModal] = useState(false);
-  const [collectTxHash, setCollectTxHash] = useState<string | null>(null);
 
-  const { writeContract, isPending, isSuccess, data: txData, error: txError } = useWriteContract();
-  const { data: receipt, isLoading: isConfirming, isSuccess: isConfirmed, isError: isReceiptError } = useWaitForTransactionReceipt({
-    hash: (txData as `0x${string}` | undefined),
-  });
 
-  // Handle click outside dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
-  // Fetch the most collected token for the Collect button
-  useEffect(() => {
-    let mounted = true;
-    async function fetchToken() {
-      setCollectLoading(true);
-      setCollectError(null);
-      try {
-        const artists = await getMostCollectedArtists(1);
-        if (mounted && artists && artists.length > 0 && artists[0].exampleToken) {
-          setCollectToken({
-            tokenId: artists[0].exampleToken.tokenId,
-            name: artists[0].exampleToken.name,
-            imageURI: artists[0].exampleToken.imageURI,
-          });
-        }
-      } catch (e) {
-        setCollectError("Failed to load collectable song");
-      } finally {
-        setCollectLoading(false);
-      }
-    }
-    fetchToken();
-    return () => { mounted = false; };
-  }, []);
 
-  // Handle collect action
-  const handleNavbarCollect = async () => {
-    if (!isConnected || !collectToken || !address) return;
 
-    // Generate pseudo-FID from wallet address for collection
-    const farcasterId = generatePseudoFarcasterId(address);
-    console.log('🎯 [Navbar] Using pseudo-Farcaster ID for wallet:', address, '→', farcasterId.toString());
-    
-    try {
-      // Check if user already owns this song
-      const alreadyOwns = await userOwnsSong(farcasterId, collectToken.tokenId);
-      if (alreadyOwns) {
-        setCollectError('You already own this song!');
-        return;
-      }
 
-      // Get the total price for instant buy
-      const totalPrice = await getTotalPriceForInstaBuy(collectToken.tokenId);
-      
-      // Execute the transaction
-      writeContract({
-        address: CONTRACT_ADDRESS,
-        abi: contractABI,
-        functionName: 'instantBuy',
-        args: [collectToken.tokenId, farcasterId],
-        value: totalPrice,
-      });
 
-      setCollectError(null);
-    } catch (error) {
-      console.error('Error collecting song:', error);
-      setCollectError('Failed to collect song');
-    }
-  };
-
-  // Handle successful transaction
-  useEffect(() => {
-    if (isConfirmed && receipt && receipt.status === 'success' && txData && collectToken) {
-      setCollectTxHash(txData);
-      setShowCollectModal(true);
-    }
-  }, [isConfirmed, receipt, txData, collectToken]);
-
-  // Clear errors when starting new transaction
-  useEffect(() => {
-    if (isPending) {
-      setCollectError(null);
-    }
-  }, [isPending]);
 
   return (
     <>
@@ -159,45 +65,7 @@ export default function Navbar() {
               </Link>
             </div>
 
-            {/* Center - Collect Button */}
-            <div className="flex items-center">
-              {collectToken && (
-                <button
-                  onClick={handleNavbarCollect}
-                  disabled={!isConnected || isPending || isConfirming || collectLoading}
-                  className={`flex items-center space-x-2 px-6 py-2 rounded-lg transition-all transform hover:scale-105 ${
-                    !isConnected || isPending || isConfirming || collectLoading
-                      ? 'bg-gray-400 cursor-not-allowed' 
-                      : isDarkMode
-                        ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-lg'
-                        : 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-lg'
-                  } text-white font-medium`}
-                >
-                  {collectToken.imageURI && (
-                    <Image
-                      src={getIPFSGatewayURL(collectToken.imageURI)}
-                      alt={collectToken.name}
-                      width={24}
-                      height={24}
-                      className="w-6 h-6 rounded object-cover"
-                    />
-                  )}
-                  <span>
-                    {isPending || isConfirming 
-                      ? 'Collecting...' 
-                      : collectLoading 
-                        ? 'Loading...'
-                        : `Collect ${collectToken.name}`}
-                  </span>
-                </button>
-              )}
-              
-              {collectError && (
-                <div className="ml-2 text-sm text-red-500">
-                  {collectError}
-                </div>
-              )}
-            </div>
+            
 
             {/* Right side - OnchainKit Wallet */}
             <div className="flex items-center space-x-4">
@@ -277,20 +145,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Collect Success Modal */}
-      {showCollectModal && collectToken && collectTxHash && (
-        <CollectedModal
-          nft={{
-            imageURI: collectToken.imageURI,
-            name: collectToken.name,
-          }}
-          txHash={collectTxHash}
-          onClose={() => {
-            setShowCollectModal(false);
-            setCollectTxHash(null);
-          }}
-        />
-      )}
+
     </>
   );
 }
