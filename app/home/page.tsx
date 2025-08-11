@@ -10,7 +10,7 @@ import ArtistsContent from '../components/home/ArtistsContent';
 // Import Farcaster Frame SDK
 let sdk: any = null;
 if (typeof window !== 'undefined') {
-  import('@farcaster/frame-sdk').then((module) => {
+  import('@farcaster/miniapp-sdk').then((module) => {
     sdk = module.sdk;
   });
 }
