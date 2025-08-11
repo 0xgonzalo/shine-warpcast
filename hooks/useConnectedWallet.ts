@@ -85,9 +85,16 @@ const useConnectedWallet = () => {
           
           // Try to get Quick Auth token for automatic authentication
           try {
+            console.log('🔍 Checking Quick Auth availability:', {
+              hasQuickAuth: !!sdk.quickAuth,
+              hasGetToken: !!sdk.quickAuth?.getToken
+            });
+            
             if (sdk.quickAuth?.getToken) {
               console.log('🔐 Attempting to get Quick Auth token...');
               const { token } = await sdk.quickAuth.getToken();
+              console.log('🔍 Quick Auth token result:', { hasToken: !!token });
+              
               if (token) {
                 setQuickAuthToken(token);
                 console.log('✅ Quick Auth token obtained successfully');
@@ -156,12 +163,21 @@ const useConnectedWallet = () => {
 
   // Auto-connect when running in Farcaster with Quick Auth
   const autoConnectInFarcaster = useCallback(async () => {
+    console.log('🔍 Auto-connect check:', {
+      isInFarcaster,
+      hasAttemptedAutoConnect,
+      isQuickAuthAuthenticated,
+      farcasterUser: !!farcasterUser,
+      quickAuthToken: !!quickAuthToken
+    });
+
     if (
       !isInFarcaster || 
       hasAttemptedAutoConnect || 
       isQuickAuthAuthenticated ||
       !farcasterUser
     ) {
+      console.log('🚫 Auto-connect skipped - conditions not met');
       return;
     }
 
@@ -174,16 +190,11 @@ const useConnectedWallet = () => {
         // Use Quick Auth - bypass Privy entirely
         await authenticateWithQuickAuth(quickAuthToken, farcasterUser.fid);
         console.log('✅ Quick Auth auto-connect successful!');
+        return; // Exit early to prevent Privy fallback
       } else {
-        console.log('🎯 Auto-connecting Farcaster user (Privy fallback):', farcasterUser.username);
-        
-        // Only use Privy if Quick Auth is not available
-        if (privyReady && !authenticated) {
-          setHasAttemptedAutoConnect(true);
-          await login({
-            loginMethods: ['farcaster']
-          });
-        }
+        console.log('⚠️ Quick Auth token not available, skipping Privy fallback to prevent modal');
+        // Don't use Privy fallback - just mark as attempted to prevent loops
+        setHasAttemptedAutoConnect(true);
       }
       
     } catch (error) {
@@ -193,7 +204,7 @@ const useConnectedWallet = () => {
     } finally {
       setIsConnecting(false);
     }
-  }, [isInFarcaster, hasAttemptedAutoConnect, isQuickAuthAuthenticated, farcasterUser, quickAuthToken, privyReady, authenticated, login]);
+  }, [isInFarcaster, hasAttemptedAutoConnect, isQuickAuthAuthenticated, farcasterUser, quickAuthToken]);
 
   // Trigger auto-connect when Farcaster context is detected
   useEffect(() => {

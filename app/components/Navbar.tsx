@@ -80,17 +80,33 @@ export default function Navbar() {
   }, []);
 
   const handleConnect = async () => {
+    console.log('🔘 Manual connect triggered:', {
+      isInFarcaster,
+      isQuickAuthAuthenticated,
+      quickAuthToken: !!quickAuthToken,
+      isAuthenticated
+    });
+
+    // If already authenticated via Quick Auth, don't do anything
+    if (isQuickAuthAuthenticated) {
+      console.log('✅ Already authenticated via Quick Auth');
+      return;
+    }
+
     const result = await connectWallet();
     
     // If Quick Auth was used, no need for Privy login
-    if (result.quickAuth) {
+    if (result?.quickAuth) {
       console.log('✅ Connected with Quick Auth');
       return;
     }
     
     // Only use Privy login if not in Farcaster or Quick Auth failed
-    if (result.needsLogin && !isQuickAuthAuthenticated) {
+    if (result?.needsLogin && !isQuickAuthAuthenticated && !isInFarcaster) {
+      console.log('🔐 Using Privy login for non-Farcaster user');
       await login();
+    } else {
+      console.log('🚫 Skipping Privy login - in Farcaster or Quick Auth active');
     }
   };
 
