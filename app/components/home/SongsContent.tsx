@@ -1,107 +1,201 @@
-import { useState, useEffect } from 'react';
-import { getRecentlyCollectedNFTs } from '../../utils/contract';
-import { getIPFSGatewayURL } from '../../utils/pinata';
+import { useEffect, useMemo, useState } from 'react';
+import NFTExists from '../NFTExists';
+import { useTheme } from '../../context/ThemeContext';
+import { getSongMetadata, getTotalSongCount, checkNFTExists } from '../../utils/contract';
 
-interface CollectedNFT {
+interface SongWithTags {
   tokenId: bigint;
-  metadata: {
-    name: string;
-    description: string;
-    audioURI: string;
-    imageURI: string;
-    creator: string;
-  };
-  collectedAt: bigint;
+  tags: string[];
 }
 
 export default function SongsContent() {
-  const [recentlyCollected, setRecentlyCollected] = useState<CollectedNFT[]>([]);
+  const { isDarkMode } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
+  const [songs, setSongs] = useState<SongWithTags[]>([]);
+  const [selectedGenre, setSelectedGenre] = useState<string>('All');
+  const [genreQuery, setGenreQuery] = useState<string>('');
 
   useEffect(() => {
-    const fetchRecentlyCollected = async () => {
+    let isMounted = true;
+    async function loadSongs() {
       try {
         setIsLoading(true);
-        const collected = await getRecentlyCollectedNFTs(10); // Get top 10 recently collected
-        setRecentlyCollected(collected);
-      } catch (error) {
-        console.error('Error fetching recently collected NFTs:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
 
-    fetchRecentlyCollected();
+        const total = await getTotalSongCount();
+        // Limit how many we scan for performance
+        const maxToScan = Math.min(Number(total), 60);
+        const startId = Number(total);
+        const endId = Math.max(1, startId - maxToScan + 1);
+
+        const candidates: bigint[] = [];
+        for (let i = startId; i >= endId; i--) {
+          candidates.push(BigInt(i));
+        }
+
+        // Check existence in parallel (throttle if needed later)
+        const existence = await Promise.all(
+          candidates.map(async (id) => {
+            try {
+              const exists = await checkNFTExists(id);
+              return exists ? id : null;
+            } catch {
+              return null;
+            }
+          })
+        );
+
+        const existingIds = existence.filter(Boolean) as bigint[];
+
+        // Fetch metadata for tags
+        const withTags: SongWithTags[] = [];
+        for (const id of existingIds) {
+          try {
+            const meta = await getSongMetadata(id);
+            withTags.push({ tokenId: id, tags: Array.isArray(meta.tags) ? meta.tags : [] });
+          } catch {
+            // ignore failures for individual songs
+          }
+        }
+
+        if (isMounted) setSongs(withTags);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+
+    loadSongs();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const generateGradient = (tokenId: bigint) => {
-    const gradients = [
-      "from-blue-400 to-purple-600",
-      "from-green-400 to-blue-600",
-      "from-purple-400 to-pink-600",
-      "from-orange-400 to-red-600",
-      "from-teal-400 to-blue-600"
-    ];
-    return gradients[Number(tokenId) % gradients.length];
-  };
+  const genres = useMemo(() => {
+    const set = new Set<string>();
+    songs.forEach((s) => s.tags.forEach((t) => {
+      const normalized = (t || '').trim();
+      if (normalized) set.add(normalized);
+    }));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [songs]);
+
+  // Predefined genre options (aligned with create page)
+  const genreOptions = useMemo(
+    () => [
+      'Pop','Rock','Hip Hop','Electronic','Jazz','Classical','Country','R&B','Reggae','Folk',
+      'Blues','Punk','Metal','Disco','Funk','Gospel','House','Techno','Dubstep','Ambient',
+      'Indie','Alternative','Experimental','Lo-fi','Trap','Drill','Afrobeat','Latin','K-pop','Anime'
+    ],
+    []
+  );
+
+  // Merge discovered genres with predefined options
+  const allGenres = useMemo(() => {
+    const set = new Set<string>(['All']);
+    genreOptions.forEach((g) => set.add(g));
+    genres.forEach((g) => set.add(g));
+    return Array.from(set).filter(Boolean).sort((a, b) => (a === 'All' ? -1 : b === 'All' ? 1 : a.localeCompare(b)));
+  }, [genres, genreOptions]);
+
+  const filteredSuggestions = useMemo(() => {
+    const q = genreQuery.trim().toLowerCase();
+    if (!q) return [] as string[];
+    return allGenres.filter((g) => g.toLowerCase().includes(q) && g !== 'All').slice(0, 8);
+  }, [genreQuery, allGenres]);
+
+  const filteredTokenIds = useMemo(() => {
+    if (selectedGenre === 'All') return songs.map((s) => s.tokenId);
+    const sel = selectedGenre.toLowerCase();
+    return songs
+      .filter((s) => s.tags.some((t) => (t || '').toLowerCase() === sel))
+      .map((s) => s.tokenId);
+  }, [songs, selectedGenre]);
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6">Recently Collected Songs</h2>
-      {isLoading ? (
-        <div className="space-y-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="flex items-center space-x-4 p-4 rounded-lg bg-gray-100 animate-pulse">
-              <div className="w-12 h-12 bg-gray-300 rounded-lg"></div>
-              <div className="flex-1">
-                <div className="h-5 bg-gray-300 rounded mb-2"></div>
-                <div className="h-4 bg-gray-300 rounded w-1/2"></div>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-[#0000FE]'}`}>Browse Songs</h2>
+      </div>
+
+      <div className="mb-6">
+        <h3 className={`text-sm mb-2 ${isDarkMode ? 'text-gray-300' : 'text-blue-900'}`}>Filter by genre</h3>
+        <div className="flex flex-col gap-3">
+          <div className="relative">
+            <input
+              type="text"
+              value={genreQuery}
+              onChange={(e) => setGenreQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && genreQuery.trim()) {
+                  // Prefer first suggestion if available; otherwise use entered text
+                  const choice = filteredSuggestions[0] || genreQuery.trim();
+                  setSelectedGenre(choice);
+                  setGenreQuery('');
+                }
+              }}
+              placeholder="Search genres (e.g., Pop, Lo-fi, Afrobeat)"
+              className={`w-full px-3 py-2 rounded-lg border text-sm ${
+                isDarkMode ? 'bg-white/10 text-white border-white/20 placeholder-white/50' : 'bg-white text-[#0000FE] border-[#0000FE] placeholder-[#0000FE]/70'
+              }`}
+            />
+            {genreQuery && filteredSuggestions.length > 0 && (
+              <div className={`absolute top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded-lg border z-10 ${
+                isDarkMode ? 'bg-gray-800 border-white/20' : 'bg-white border-gray-200'
+              }`}>
+                {filteredSuggestions.map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => { setSelectedGenre(g); setGenreQuery(''); }}
+                    className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                      isDarkMode ? 'text-white hover:bg-white/10' : 'text-gray-800 hover:bg-gray-100'
+                    }`}
+                  >
+                    {g}
+                  </button>
+                ))}
               </div>
-              <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
-            </div>
-          ))}
-        </div>
-      ) : recentlyCollected.length > 0 ? (
-        <div className="space-y-4">
-          {recentlyCollected.map((nft) => (
-            <div key={nft.tokenId.toString()} className="flex items-center space-x-4 p-4 rounded-lg hover:bg-gray-50 transition-colors">
-              <div className={`w-12 h-12 bg-gradient-to-br ${generateGradient(nft.tokenId)} rounded-lg flex-shrink-0 relative overflow-hidden`}>
-                {nft.metadata.imageURI && nft.metadata.imageURI !== 'ipfs://placeholder-image-uri' ? (
-                  <img 
-                    src={getIPFSGatewayURL(nft.metadata.imageURI)} 
-                    alt={nft.metadata.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  /* Abstract art pattern fallback */
-                  <div className="absolute inset-0">
-                    <div className="absolute top-1 left-2 w-3 h-3 bg-white/30 rounded-full"></div>
-                    <div className="absolute top-2 right-1 w-4 h-4 bg-white/20 rounded-lg rotate-45"></div>
-                    <div className="absolute bottom-1 left-1 w-3 h-3 bg-white/25 rounded-full"></div>
-                    <div className="absolute bottom-1 right-1 w-2 h-6 bg-white/30 rounded-full rotate-12"></div>
-                  </div>
-                )}
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-lg">{nft.metadata.name}</h3>
-                <p className="text-gray-500">
-                  {nft.metadata.creator.slice(0, 6)}...{nft.metadata.creator.slice(-4)}
-                </p>
-              </div>
-              <button className="p-2 hover:bg-gray-200 rounded-full transition-colors">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                </svg>
+            )}
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+            {allGenres.map((genre) => (
+              <button
+                key={genre}
+                onClick={() => setSelectedGenre(genre)}
+                className={`px-3 py-1 rounded-full text-sm whitespace-nowrap border transition-colors ${
+                  selectedGenre === genre
+                    ? isDarkMode
+                      ? 'bg-white text-black border-white'
+                      : 'bg-[#0000FE] text-white border-[#0000FE]'
+                    : isDarkMode
+                      ? 'text-white border-white/30 hover:bg-white/10'
+                      : 'text-[#0000FE] border-[#0000FE] hover:bg-[#0000FE]/10'
+                }`}
+                title={genre}
+              >
+                {genre}
               </button>
-            </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className={`text-center py-8 ${isDarkMode ? 'text-white' : 'text-[#0000FE]'}`}>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-current mx-auto mb-2"></div>
+          <p>Loading songs...</p>
+        </div>
+      ) : filteredTokenIds.length > 0 ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {filteredTokenIds.map((id) => (
+            <NFTExists key={id.toString()} tokenId={id} />
           ))}
         </div>
       ) : (
-        <div className="text-center text-gray-500 py-8">
-          <p>No recently collected songs found.</p>
-          <p className="text-sm mt-2">Songs will appear here when users collect them!</p>
+        <div className={`text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+          <p>No songs found{selectedGenre !== 'All' ? ` for “${selectedGenre}”` : ''}.</p>
         </div>
       )}
     </div>
   );
-} 
+}

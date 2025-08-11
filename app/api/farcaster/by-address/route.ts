@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Ensure the route is always dynamic and not statically cached by the platform
+export const dynamic = 'force-dynamic';
+
 type NeynarUser = {
   fid: number;
   username?: string;
@@ -35,29 +38,98 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Missing address' }, { status: 400 });
     }
     const headers: Record<string, string> = { accept: 'application/json' };
-    if (apiKey) headers['x-api-key'] = apiKey;
+    if (apiKey) {
+      headers['x-api-key'] = apiKey; // newer header name
+      headers['api_key'] = apiKey;   // backward-compatible header name used in some examples
+    }
 
-    // Attempt bulk-by-address first
-    const bulkUrl = `https://api.neynar.com/v2/farcaster/user/bulk-by-address?addresses=${encodeURIComponent(
-      address
-    )}&address_type=eth`;
+    // Attempt multiple Neynar endpoints in order of most likely
     let user: NeynarUser | null = null;
-    try {
-      const r = await fetch(bulkUrl, { headers, cache: 'no-store' });
-      if (r.ok) {
+    const candidateRequests: Array<() => Promise<NeynarUser | null>> = [
+      // bulk-by-address
+      async () => {
+        const url = `https://api.neynar.com/v2/farcaster/user/bulk-by-address?addresses=${encodeURIComponent(
+          address
+        )}&address_type=eth`;
+        const r = await fetch(url, { headers, cache: 'no-store' });
+        if (!r.ok) return null;
         const j: any = await r.json();
         const uba: any = j?.users_by_address;
-        if (uba) {
-          if (Array.isArray(uba[address])) user = uba[address][0];
-          else if (uba.eth && Array.isArray(uba.eth[address])) user = uba.eth[address][0];
-          else if (Array.isArray(uba)) {
-            const match = uba.find((e: any) => (e?.address || '').toLowerCase() === address);
-            user = match?.user || null;
-          }
+        if (!uba) return null;
+        if (Array.isArray(uba[address])) return uba[address][0] || null;
+        if (uba.eth && Array.isArray(uba.eth[address])) return uba.eth[address][0] || null;
+        if (Array.isArray(uba)) {
+          const match = uba.find((e: any) => (e?.address || '').toLowerCase() === address);
+          return match?.user || null;
         }
+        return null;
+      },
+      // by-address
+      async () => {
+        const url = `https://api.neynar.com/v2/farcaster/user/by-address?address=${encodeURIComponent(
+          address
+        )}&address_type=eth`;
+        const r = await fetch(url, { headers, cache: 'no-store' });
+        if (!r.ok) return null;
+        const j: any = await r.json();
+        return j?.user || null;
+      },
+      // by-verification (address must be verified on Farcaster)
+      async () => {
+        const url = `https://api.neynar.com/v2/farcaster/user/by-verification?address=${encodeURIComponent(
+          address
+        )}&address_type=eth`;
+        const r = await fetch(url, { headers, cache: 'no-store' });
+        if (!r.ok) return null;
+        const j: any = await r.json();
+        return j?.user || null;
+      },
+      // bulk-by-verification as last resort
+      async () => {
+        const url = `https://api.neynar.com/v2/farcaster/user/bulk-by-verification?addresses=${encodeURIComponent(
+          address
+        )}&address_type=eth`;
+        const r = await fetch(url, { headers, cache: 'no-store' });
+        if (!r.ok) return null;
+        const j: any = await r.json();
+        const ubv: any = j?.users_by_verification;
+        if (!ubv) return null;
+        if (Array.isArray(ubv[address])) return ubv[address][0] || null;
+        if (ubv.eth && Array.isArray(ubv.eth[address])) return ubv.eth[address][0] || null;
+        return null;
+      },
+      // by-custody-address (some apps store custody address as wallet)
+      async () => {
+        const url = `https://api.neynar.com/v2/farcaster/user/by-custody-address?address=${encodeURIComponent(
+          address
+        )}`;
+        const r = await fetch(url, { headers, cache: 'no-store' });
+        if (!r.ok) return null;
+        const j: any = await r.json();
+        return j?.user || null;
+      },
+      // bulk-by-custody-address
+      async () => {
+        const url = `https://api.neynar.com/v2/farcaster/user/bulk-by-custody-address?addresses=${encodeURIComponent(
+          address
+        )}`;
+        const r = await fetch(url, { headers, cache: 'no-store' });
+        if (!r.ok) return null;
+        const j: any = await r.json();
+        const ubc: any = j?.users_by_address || j?.users_by_custody_address;
+        if (!ubc) return null;
+        if (Array.isArray(ubc[address])) return ubc[address][0] || null;
+        return null;
+      },
+    ];
+
+    for (const fn of candidateRequests) {
+      try {
+        user = await fn();
+        if (user) break;
+      } catch (_) {
+        // continue
       }
-    } catch (_) {
-      // ignore
     }
 
     // Fallback: single by-address endpoint
@@ -82,11 +154,12 @@ export async function GET(req: NextRequest) {
         // 1) Resolve FID(s) verified for this address
         const verifyUrl = `https://hub.pinata.cloud/v1/verificationsByAddress?address=${encodeURIComponent(
           address
-        )}&limit=10`;
+        )}&pageSize=10`;
         const vr = await fetch(verifyUrl, { headers: { accept: 'application/json' }, cache: 'no-store' });
         if (vr.ok) {
           const vj: any = await vr.json();
-          const verifications: any[] = vj?.verifications || [];
+          // Some hubs respond with { verifications: [...] }, others with { messages: [...] }
+          const verifications: any[] = vj?.verifications || vj?.messages || [];
           const firstVerification = Array.isArray(verifications) && verifications.length > 0 ? verifications[0] : null;
           const fid: number | null = firstVerification?.fid ?? null;
 
