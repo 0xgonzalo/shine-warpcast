@@ -82,31 +82,15 @@ export default function Navbar() {
   const handleConnect = async () => {
     console.log('🔘 Manual connect triggered:', {
       isInFarcaster,
-      isQuickAuthAuthenticated,
-      quickAuthToken: !!quickAuthToken,
-      isAuthenticated
+      isAuthenticated,
+      hasAttemptedAutoConnect
     });
-
-    // If already authenticated via Quick Auth, don't do anything
-    if (isQuickAuthAuthenticated) {
-      console.log('✅ Already authenticated via Quick Auth');
-      return;
-    }
 
     const result = await connectWallet();
     
-    // If Quick Auth was used, no need for Privy login
-    if (result?.quickAuth) {
-      console.log('✅ Connected with Quick Auth');
-      return;
-    }
-    
-    // Only use Privy login if not in Farcaster or Quick Auth failed
-    if (result?.needsLogin && !isQuickAuthAuthenticated && !isInFarcaster) {
-      console.log('🔐 Using Privy login for non-Farcaster user');
+    if (result?.needsLogin) {
+      console.log('🔐 Triggering Privy login');
       await login();
-    } else {
-      console.log('🚫 Skipping Privy login - in Farcaster or Quick Auth active');
     }
   };
 
@@ -314,9 +298,9 @@ export default function Navbar() {
               ) : isReady ? (
                 <button
                   onClick={handleConnect}
-                  disabled={isConnecting || (isInFarcaster && !hasAttemptedAutoConnect) || isQuickAuthAuthenticated}
+                  disabled={isConnecting || (isInFarcaster && !hasAttemptedAutoConnect)}
                   className={`px-4 py-2 rounded-lg transition-colors text-white font-medium ${
-                    isConnecting || (isInFarcaster && !hasAttemptedAutoConnect) || isQuickAuthAuthenticated
+                    isConnecting || (isInFarcaster && !hasAttemptedAutoConnect)
                       ? 'bg-blue-400 cursor-not-allowed' 
                       : 'bg-blue-600 hover:bg-blue-700'
                   }`}
@@ -325,11 +309,9 @@ export default function Navbar() {
                     ? (isInFarcaster && !hasAttemptedAutoConnect 
                         ? "Auto-connecting..." 
                         : "Connecting...")
-                    : isQuickAuthAuthenticated
-                      ? "Connected via Farcaster"
-                      : isAuthenticated
-                        ? "Link Wallet"
-                        : "Connect Wallet"
+                    : isAuthenticated
+                      ? "Link Wallet"
+                      : "Connect Wallet"
                   }
                 </button>
               ) : null}

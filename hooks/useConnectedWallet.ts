@@ -40,27 +40,16 @@ const useConnectedWallet = () => {
   const activeWallet = externalWallet || privyWallet;
   const connectedWallet = activeWallet?.address as Address | undefined;
 
-  // Quick Auth authentication function
-  const authenticateWithQuickAuth = async (token: string, fid: number) => {
+  // Simple function to store Quick Auth info for backend requests
+  const storeQuickAuthInfo = async (token: string, fid: number) => {
     try {
-      console.log('🔐 Authenticating with Quick Auth for FID:', fid);
-      
-      // Set Quick Auth user info
+      console.log('🔐 Storing Quick Auth info for FID:', fid);
+      setQuickAuthToken(token);
       setQuickAuthUser({ fid });
       setIsQuickAuthAuthenticated(true);
-      setHasAttemptedAutoConnect(true);
-      
-      console.log('✅ Quick Auth authentication successful!');
-      
-      // Call ready to dismiss splash screen
-      if (sdk?.actions?.ready) {
-        await sdk.actions.ready();
-      }
-      
+      console.log('✅ Quick Auth info stored - can be used for authenticated backend requests');
     } catch (error) {
-      console.error('❌ Quick Auth authentication failed:', error);
-      setIsQuickAuthAuthenticated(false);
-      setQuickAuthUser(null);
+      console.error('❌ Error storing Quick Auth info:', error);
     }
   };
 
@@ -99,9 +88,9 @@ const useConnectedWallet = () => {
                 setQuickAuthToken(token);
                 console.log('✅ Quick Auth token obtained successfully');
                 
-                // Automatically authenticate with Quick Auth immediately
-                await authenticateWithQuickAuth(token, context.user.fid);
-                console.log('🔄 Quick Auth completed during context initialization');
+                // Store Quick Auth info for later use
+                await storeQuickAuthInfo(token, context.user.fid);
+                console.log('🔄 Quick Auth info stored during context initialization');
               } else {
                 console.log('⚠️ Quick Auth token not available');
               }
@@ -131,19 +120,11 @@ const useConnectedWallet = () => {
   const finalFarcasterUsername = farcasterUser?.username || farcasterProfile?.username;
   const finalFarcasterPfpUrl = farcasterUser?.pfpUrl || farcasterProfile?.pfp;
 
-  // Handle wallet connection - prioritize Quick Auth when in Farcaster
+  // Handle wallet connection
   const connectWallet = async () => {
     try {
       setIsConnecting(true);
       
-      // If in Farcaster with Quick Auth, use that instead of Privy
-      if (isInFarcaster && quickAuthToken && farcasterUser) {
-        console.log('🔐 Using Quick Auth for wallet connection');
-        await authenticateWithQuickAuth(quickAuthToken, farcasterUser.fid);
-        return { success: true, quickAuth: true };
-      }
-      
-      // Fallback to Privy for non-Farcaster users
       if (!authenticated) {
         return { needsLogin: true };
       }
@@ -161,20 +142,21 @@ const useConnectedWallet = () => {
     }
   };
 
-  // Auto-connect when running in Farcaster with Quick Auth
+  // Auto-connect when running in Farcaster
   const autoConnectInFarcaster = useCallback(async () => {
     console.log('🔍 Auto-connect check:', {
       isInFarcaster,
       hasAttemptedAutoConnect,
-      isQuickAuthAuthenticated,
+      authenticated,
       farcasterUser: !!farcasterUser,
-      quickAuthToken: !!quickAuthToken
+      privyReady
     });
 
     if (
       !isInFarcaster || 
       hasAttemptedAutoConnect || 
-      isQuickAuthAuthenticated ||
+      authenticated ||
+      !privyReady ||
       !farcasterUser
     ) {
       console.log('🚫 Auto-connect skipped - conditions not met');
@@ -182,20 +164,17 @@ const useConnectedWallet = () => {
     }
 
     try {
+      setHasAttemptedAutoConnect(true);
       setIsConnecting(true);
       
-      if (quickAuthToken) {
-        console.log('🎯 Auto-connecting Farcaster user with Quick Auth:', farcasterUser.username);
-        
-        // Use Quick Auth - bypass Privy entirely
-        await authenticateWithQuickAuth(quickAuthToken, farcasterUser.fid);
-        console.log('✅ Quick Auth auto-connect successful!');
-        return; // Exit early to prevent Privy fallback
-      } else {
-        console.log('⚠️ Quick Auth token not available, skipping Privy fallback to prevent modal');
-        // Don't use Privy fallback - just mark as attempted to prevent loops
-        setHasAttemptedAutoConnect(true);
-      }
+      console.log('🎯 Auto-connecting Farcaster user:', farcasterUser.username);
+      
+      // Use Farcaster login method - this should use the farcasterFrame connector
+      await login({
+        loginMethods: ['farcaster']
+      });
+      
+      console.log('✅ Farcaster auto-connect successful!');
       
     } catch (error) {
       console.error('❌ Auto-connect failed:', error);
@@ -204,20 +183,18 @@ const useConnectedWallet = () => {
     } finally {
       setIsConnecting(false);
     }
-  }, [isInFarcaster, hasAttemptedAutoConnect, isQuickAuthAuthenticated, farcasterUser, quickAuthToken]);
+  }, [isInFarcaster, hasAttemptedAutoConnect, authenticated, privyReady, farcasterUser, login]);
 
   // Trigger auto-connect when Farcaster context is detected
   useEffect(() => {
-    if (isInFarcaster && farcasterUser && !hasAttemptedAutoConnect && !isQuickAuthAuthenticated) {
-      // If Quick Auth is available, wait a bit longer for token to be ready
-      // Otherwise, proceed with standard timing
-      const delay = quickAuthToken ? 300 : 1000; // Longer delay for Privy fallback
+    if (isInFarcaster && farcasterUser && !hasAttemptedAutoConnect && !authenticated) {
+      // Small delay to ensure SDK is fully loaded
       const timer = setTimeout(() => {
         autoConnectInFarcaster();
-      }, delay);
+      }, 500);
       return () => clearTimeout(timer);
     }
-  }, [isInFarcaster, farcasterUser, hasAttemptedAutoConnect, quickAuthToken, isQuickAuthAuthenticated, autoConnectInFarcaster]);
+  }, [isInFarcaster, farcasterUser, hasAttemptedAutoConnect, authenticated, autoConnectInFarcaster]);
 
   // Auto-logout if no wallets are connected after initialization
   useEffect(() => {
@@ -231,8 +208,7 @@ const useConnectedWallet = () => {
     activeWallet,
     isConnecting,
     isReady: privyReady && walletsReady,
-    // Prioritize Quick Auth authentication when available
-    isAuthenticated: isQuickAuthAuthenticated || authenticated,
+    isAuthenticated: authenticated, // Use Privy authentication state
     connectWallet,
     hasExternalWallet: !!externalWallet,
     hasPrivyWallet: !!privyWallet,
