@@ -13,12 +13,13 @@ export interface FarcasterUser {
 
 // Note: This is a simplified implementation. In a real app, you'd want to use
 // a proper Farcaster API service like Neynar, Airstack, or similar
-const farcasterUserCache: Record<string, FarcasterUser | null> = {};
+// Cache only successful lookups to avoid persisting nulls after API fixes
+const farcasterUserCache: Record<string, FarcasterUser> = {};
 
 export async function getFarcasterUserByAddress(address: string): Promise<FarcasterUser | null> {
   try {
     const lower = address.toLowerCase();
-    if (lower in farcasterUserCache) return farcasterUserCache[lower];
+    if (farcasterUserCache[lower]) return farcasterUserCache[lower];
 
     console.log(`🔍 Looking up Farcaster user for address: ${address}`);
 
@@ -28,15 +29,15 @@ export async function getFarcasterUserByAddress(address: string): Promise<Farcas
     });
     if (res.ok) {
       const { user } = await res.json();
-      farcasterUserCache[lower] = user || null;
-      return user || null;
+      if (user) {
+        farcasterUserCache[lower] = user;
+        return user;
+      }
+      return null;
     }
-
-    farcasterUserCache[lower] = null;
     return null;
   } catch (error) {
     console.error('Error fetching Farcaster user:', error);
-    farcasterUserCache[address.toLowerCase()] = null;
     return null;
   }
 }
