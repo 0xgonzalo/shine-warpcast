@@ -40,6 +40,44 @@ export default function Navbar() {
   
   // Extract Farcaster user data from context
   const farcasterUser = farcasterContext?.user;
+  const [farcasterProfile, setFarcasterProfile] = useState<any>(null);
+
+  // Try to get Farcaster profile data from context or fetch it
+  useEffect(() => {
+    // First check if we have user data in the context
+    if (farcasterContext?.user) {
+      console.log('📱 [Navbar] Using Farcaster user from context:', farcasterContext.user);
+      setFarcasterProfile(farcasterContext.user);
+      return;
+    }
+
+    // If not, try to fetch from API
+    const fetchFarcasterProfile = async () => {
+      const fid = farcasterContext?.client?.fid;
+      if (!fid) return;
+      
+      console.log('🔍 [Navbar] Fetching Farcaster profile for FID:', fid);
+      
+      try {
+        // Try without API key first (public endpoint)
+        const response = await fetch(`https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('📱 [Navbar] Neynar user data:', data);
+          if (data.users && data.users[0]) {
+            setFarcasterProfile(data.users[0]);
+          }
+        } else {
+          console.log('📱 [Navbar] Neynar API response not OK:', response.status);
+        }
+      } catch (error) {
+        console.error('❌ [Navbar] Error fetching Farcaster profile:', error);
+      }
+    };
+
+    fetchFarcasterProfile();
+  }, [farcasterContext]);
 
 
 
@@ -96,17 +134,17 @@ export default function Navbar() {
                 <Wallet>
                   <ConnectWallet className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors flex items-center space-x-2">
                     {/* Show Farcaster avatar if available */}
-                    {farcasterUser?.pfpUrl && (
+                    {farcasterProfile?.pfp_url && (
                       <Image
-                        src={farcasterUser.pfpUrl}
-                        alt={farcasterUser.username || "Farcaster User"}
+                        src={farcasterProfile.pfp_url}
+                        alt={farcasterProfile.username || "Farcaster User"}
                         width={24}
                         height={24}
                         className="w-6 h-6 rounded-full"
                       />
                     )}
                     <span className="text-white">
-                      {farcasterUser?.username || <Name address={address}/>}
+                      {farcasterProfile?.username || <Name address={address}/>}
                     </span>
                   </ConnectWallet>
                   <WalletDropdown>
@@ -123,10 +161,10 @@ export default function Navbar() {
                       <div>
                         <Identity className="px-2 py-2" hasCopyAddressOnClick>
                           {/* Show Farcaster avatar in dropdown too */}
-                          {farcasterUser?.pfpUrl ? (
+                          {farcasterProfile?.pfp_url ? (
                             <Image
-                              src={farcasterUser.pfpUrl}
-                              alt={farcasterUser.username || "Farcaster User"}
+                              src={farcasterProfile.pfp_url}
+                              alt={farcasterProfile.username || "Farcaster User"}
                               width={32}
                               height={32}
                               className="w-8 h-8 rounded-full"

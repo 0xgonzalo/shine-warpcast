@@ -8,6 +8,7 @@ import NFTCard from '@/app/components/NFTCard';
 import { useFarcaster } from '../../context/FarcasterContext';
 import { useTheme } from '../../context/ThemeContext';
 import Image from 'next/image';
+import { Avatar } from '@coinbase/onchainkit/identity';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic' as const;
@@ -45,6 +46,51 @@ export default function ProfilePage() {
   
   // Extract Farcaster user data from context
   const farcasterUser = farcasterContext?.user;
+  const [farcasterProfile, setFarcasterProfile] = useState<any>(null);
+  
+  // Debug: Log the Farcaster context to understand its structure
+  useEffect(() => {
+    console.log('🔍 Farcaster Context:', farcasterContext);
+    console.log('👤 Farcaster User:', farcasterUser);
+    console.log('👤 Farcaster Client:', farcasterContext?.client);
+  }, [farcasterContext, farcasterUser]);
+
+  // Try to get Farcaster profile data from context or fetch it
+  useEffect(() => {
+    // First check if we have user data in the context
+    if (farcasterContext?.user) {
+      console.log('📱 Using Farcaster user from context:', farcasterContext.user);
+      setFarcasterProfile(farcasterContext.user);
+      return;
+    }
+
+    // If not, try to fetch from API
+    const fetchFarcasterProfile = async () => {
+      const fid = farcasterContext?.client?.fid;
+      if (!fid) return;
+      
+      console.log('🔍 Fetching Farcaster profile for FID:', fid);
+      
+      try {
+        // Try without API key first (public endpoint)
+        const response = await fetch(`https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('📱 Neynar user data:', data);
+          if (data.users && data.users[0]) {
+            setFarcasterProfile(data.users[0]);
+          }
+        } else {
+          console.log('📱 Neynar API response not OK:', response.status);
+        }
+      } catch (error) {
+        console.error('❌ Error fetching Farcaster profile:', error);
+      }
+    };
+
+    fetchFarcasterProfile();
+  }, [farcasterContext]);
 
   // Fetch NFTs for both tabs
   useEffect(() => {
@@ -129,41 +175,50 @@ export default function ProfilePage() {
     <main className={`min-h-screen p-8 ${isDarkMode ? 'bg-black text-white' : 'bg-white text-black'}`}>
       <div className="max-w-2xl mx-auto">
         {/* Farcaster User Info Section */}
-        {isOwnProfile && farcasterUser ? (
+        {isOwnProfile && (farcasterProfile || farcasterContext) ? (
           <div className="flex flex-col items-center mb-8">
             {/* Farcaster Avatar */}
-            {farcasterUser.pfpUrl && (
-              <Image
-                src={farcasterUser.pfpUrl}
-                alt={farcasterUser.username || "Farcaster User"}
-                width={80}
-                height={80}
-                className="w-20 h-20 rounded-full mb-4 border-2 border-blue-500"
-              />
-            )}
+            <div className="mb-4">
+              {farcasterProfile?.pfp_url ? (
+                <Image
+                  src={farcasterProfile.pfp_url}
+                  alt={farcasterProfile.username || "Farcaster User"}
+                  width={80}
+                  height={80}
+                  className="w-20 h-20 rounded-full border-2 border-blue-500"
+                />
+              ) : (
+                <div className="w-20 h-20">
+                  <Avatar 
+                    address={walletAddress} 
+                    className="w-20 h-20 border-2 border-blue-500"
+                  />
+                </div>
+              )}
+            </div>
             
             {/* Farcaster Username */}
             <h1 className={`text-3xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>
-              @{farcasterUser.username || 'Unknown User'}
+              @{farcasterProfile?.username || farcasterContext?.client?.username || 'Unknown User'}
             </h1>
             
             {/* Farcaster Display Name */}
-            {farcasterUser.displayName && (
+            {farcasterProfile?.display_name && (
               <p className={`text-xl mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                {farcasterUser.displayName}
+                {farcasterProfile.display_name}
               </p>
             )}
             
             {/* Farcaster Bio */}
-            {farcasterUser.bio && (
+            {farcasterProfile?.profile?.bio?.text && (
               <p className={`text-center mb-4 max-w-md ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                {farcasterUser.bio}
+                {farcasterProfile.profile.bio.text}
               </p>
             )}
             
             {/* Farcaster ID */}
             <p className={`text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-              FID: {farcasterUser.fid}
+              FID: {farcasterProfile?.fid || farcasterContext?.client?.fid || 'Unknown'}
             </p>
             
             {/* Wallet Address */}

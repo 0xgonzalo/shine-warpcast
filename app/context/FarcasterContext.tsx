@@ -31,6 +31,8 @@ export function FarcasterProvider({ children }: { children: ReactNode }) {
         // Initialize the SDK
         const result = await sdk.context;
         console.log('📱 Farcaster context:', result);
+        console.log('👤 Farcaster context user:', result?.user);
+        console.log('🖼️ Farcaster context client:', result?.client);
         setContext(result);
         
         // Get the eth provider
