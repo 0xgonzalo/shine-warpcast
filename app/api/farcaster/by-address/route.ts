@@ -76,6 +76,66 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // If Neynar did not return a user, try resolving via a public Hubble (Pinata) fallback
+    if (!user) {
+      try {
+        // 1) Resolve FID(s) verified for this address
+        const verifyUrl = `https://hub.pinata.cloud/v1/verificationsByAddress?address=${encodeURIComponent(
+          address
+        )}&limit=10`;
+        const vr = await fetch(verifyUrl, { headers: { accept: 'application/json' }, cache: 'no-store' });
+        if (vr.ok) {
+          const vj: any = await vr.json();
+          const verifications: any[] = vj?.verifications || [];
+          const firstVerification = Array.isArray(verifications) && verifications.length > 0 ? verifications[0] : null;
+          const fid: number | null = firstVerification?.fid ?? null;
+
+          if (fid != null) {
+            // 2) Fetch user data entries for that FID
+            const userDataUrl = `https://hub.pinata.cloud/v1/userDataByFid?fid=${encodeURIComponent(String(fid))}`;
+            const ur = await fetch(userDataUrl, { headers: { accept: 'application/json' }, cache: 'no-store' });
+            if (ur.ok) {
+              const uj: any = await ur.json();
+              const messages: any[] = uj?.messages || [];
+
+              // Farcaster UserDataType mapping (best-effort):
+              // 1: PFP, 2: Display Name, 3: Bio, 5: Username
+              let username: string | undefined;
+              let displayName: string | undefined;
+              let pfpUrl: string | undefined;
+              let bio: string | undefined;
+
+              for (const m of messages) {
+                const type = m?.data?.userDataBody?.type;
+                const value = m?.data?.userDataBody?.value;
+                if (!type || typeof value !== 'string') continue;
+                if (type === 5 && !username) username = value; // username
+                if (type === 2 && !displayName) displayName = value; // display name
+                if (type === 1 && !pfpUrl) pfpUrl = value; // pfp url
+                if (type === 3 && !bio) bio = value; // bio
+              }
+
+              const fallbackUser = {
+                fid,
+                username,
+                display_name: displayName,
+                pfp_url: pfpUrl,
+                profile: { bio: { text: bio } },
+                follower_count: undefined,
+                following_count: undefined,
+                verified_addresses: { eth_addresses: [address] },
+              } as NeynarUser as any;
+
+              const normalizedFallback = normalizeUser(fallbackUser as NeynarUser);
+              return NextResponse.json({ user: normalizedFallback }, { status: 200 });
+            }
+          }
+        }
+      } catch (_) {
+        // ignore and continue to return null below
+      }
+    }
+
     const normalized = normalizeUser(user);
     return NextResponse.json({ user: normalized }, { status: 200 });
   } catch (err: any) {
