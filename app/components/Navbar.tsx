@@ -134,17 +134,28 @@ export default function Navbar() {
                 <Wallet>
                   <ConnectWallet className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors flex items-center space-x-2">
                     {/* Show Farcaster avatar if available */}
-                    {farcasterProfile?.pfp_url && (
-                      <Image
-                        src={farcasterProfile.pfp_url}
-                        alt={farcasterProfile.username || "Farcaster User"}
-                        width={24}
-                        height={24}
-                        className="w-6 h-6 rounded-full"
-                      />
-                    )}
+                    {(() => {
+                      const avatarUrl =
+                        (farcasterProfile as any)?.pfp_url ||
+                        (farcasterProfile as any)?.pfp?.url ||
+                        (farcasterContext as any)?.user?.pfpUrl ||
+                        (farcasterContext as any)?.user?.pfp?.url ||
+                        undefined;
+                      if (!avatarUrl) return null;
+                      return (
+                        <img
+                          src={avatarUrl}
+                          alt={(farcasterProfile as any)?.username || 'Farcaster User'}
+                          width={24}
+                          height={24}
+                          referrerPolicy="no-referrer"
+                          crossOrigin="anonymous"
+                          className="w-6 h-6 rounded-full object-cover"
+                        />
+                      );
+                    })()}
                     <span className="text-white">
-                      {farcasterProfile?.username || <Name address={address}/>}
+                      {(farcasterProfile as any)?.username || (farcasterContext as any)?.user?.username || <Name address={address}/>}
                     </span>
                   </ConnectWallet>
                   <WalletDropdown>
@@ -161,17 +172,28 @@ export default function Navbar() {
                       <div>
                         <Identity className="px-2 py-2" hasCopyAddressOnClick>
                           {/* Show Farcaster avatar in dropdown too */}
-                          {farcasterProfile?.pfp_url ? (
-                            <Image
-                              src={farcasterProfile.pfp_url}
-                              alt={farcasterProfile.username || "Farcaster User"}
-                              width={32}
-                              height={32}
-                              className="w-8 h-8 rounded-full"
-                            />
-                          ) : (
-                            <Avatar />
-                          )}
+                          {(() => {
+                            const avatarUrl =
+                              (farcasterProfile as any)?.pfp_url ||
+                              (farcasterProfile as any)?.pfp?.url ||
+                              (farcasterContext as any)?.user?.pfpUrl ||
+                              (farcasterContext as any)?.user?.pfp?.url ||
+                              undefined;
+                            if (avatarUrl) {
+                              return (
+                                <img
+                                  src={avatarUrl}
+                                  alt={(farcasterProfile as any)?.username || 'Farcaster User'}
+                                  width={32}
+                                  height={32}
+                                  referrerPolicy="no-referrer"
+                                  crossOrigin="anonymous"
+                                  className="w-8 h-8 rounded-full object-cover"
+                                />
+                              );
+                            }
+                            return <Avatar />;
+                          })()}
                           <Name address={address} className="text-white"/>
                           <Address className="text-white"/>
                           <EthBalance className="text-white"/>

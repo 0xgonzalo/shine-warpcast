@@ -179,27 +179,52 @@ export default function ProfilePage() {
           <div className="flex flex-col items-center mb-8">
             {/* Farcaster Avatar */}
             <div className="mb-4">
-              {farcasterProfile?.pfp_url ? (
-                <Image
-                  src={farcasterProfile.pfp_url}
-                  alt={farcasterProfile.username || "Farcaster User"}
-                  width={80}
-                  height={80}
-                  className="w-20 h-20 rounded-full border-2 border-blue-500"
-                />
-              ) : (
-                <div className="w-20 h-20">
-                  <Avatar 
-                    address={walletAddress} 
-                    className="w-20 h-20 border-2 border-blue-500"
-                  />
-                </div>
-              )}
+              {(() => {
+                const avatarUrl =
+                  // Neynar shape
+                  (farcasterProfile as any)?.pfp_url ||
+                  (farcasterProfile as any)?.pfp?.url ||
+                  // Context user possible shapes
+                  (farcasterContext as any)?.user?.pfpUrl ||
+                  (farcasterContext as any)?.user?.pfp?.url ||
+                  (farcasterUser as any)?.pfpUrl ||
+                  (farcasterUser as any)?.pfp?.url ||
+                  undefined;
+
+                if (avatarUrl) {
+                  return (
+                    // Use native img to avoid Next/Image optimization issues in mini apps
+                    <img
+                      src={avatarUrl}
+                      alt={(farcasterProfile as any)?.username || 'Farcaster User'}
+                      width={80}
+                      height={80}
+                      referrerPolicy="no-referrer"
+                      crossOrigin="anonymous"
+                      className="w-20 h-20 rounded-full border-2 border-blue-500 object-cover"
+                    />
+                  );
+                }
+
+                return (
+                  <div className="w-20 h-20">
+                    <Avatar
+                      address={walletAddress}
+                      className="w-20 h-20 border-2 border-blue-500"
+                    />
+                  </div>
+                );
+              })()}
             </div>
             
             {/* Farcaster Username */}
             <h1 className={`text-3xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>
-              @{farcasterProfile?.username || farcasterContext?.client?.username || 'Unknown User'}
+              @{
+                (farcasterProfile as any)?.username ||
+                (farcasterContext as any)?.client?.username ||
+                (farcasterContext as any)?.user?.username ||
+                'Unknown User'
+              }
             </h1>
             
             {/* Farcaster Display Name */}
