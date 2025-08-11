@@ -142,7 +142,7 @@ const useConnectedWallet = () => {
     }
   };
 
-  // Auto-connect when running in Farcaster
+  // Auto-connect when running in Farcaster - just use standard Farcaster login
   const autoConnectInFarcaster = useCallback(async () => {
     console.log('🔍 Auto-connect check:', {
       isInFarcaster,
@@ -169,7 +169,7 @@ const useConnectedWallet = () => {
       
       console.log('🎯 Auto-connecting Farcaster user:', farcasterUser.username);
       
-      // Use Farcaster login method - this should use the farcasterFrame connector
+      // Use standard Farcaster login - this should work with farcasterFrame connector
       await login({
         loginMethods: ['farcaster']
       });
