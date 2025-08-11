@@ -13,15 +13,50 @@ export interface FarcasterUser {
 
 // Note: This is a simplified implementation. In a real app, you'd want to use
 // a proper Farcaster API service like Neynar, Airstack, or similar
+const farcasterUserCache: Record<string, FarcasterUser | null> = {};
+
 export async function getFarcasterUserByAddress(address: string): Promise<FarcasterUser | null> {
   try {
+    const lower = address.toLowerCase();
+    if (lower in farcasterUserCache) return farcasterUserCache[lower];
 
     console.log(`🔍 Looking up Farcaster user for address: ${address}`);
 
-    
+    // Try Neynar bulk-by-address endpoint
+    const apiKey = process.env.NEXT_PUBLIC_NEYNAR_API_KEY;
+    const url = `https://api.neynar.com/v2/farcaster/user/bulk-by-address?addresses=${lower}&address_types=eth`;
+    const res = await fetch(url, {
+      headers: apiKey ? { 'accept': 'application/json', 'x-api-key': apiKey } : { 'accept': 'application/json' }
+    });
+
+    if (res.ok) {
+      const json = await res.json();
+      // Shape: { users_by_address: { [address]: [ { fid, username, pfp_url, display_name, profile: { bio: { text } }, verified_addresses: { eth_addresses: [] } } ] } }
+      const usersByAddr = (json as any)?.users_by_address || {};
+      const first = Array.isArray(usersByAddr[lower]) ? usersByAddr[lower][0] : null;
+      if (first) {
+        const user: FarcasterUser = {
+          fid: first.fid,
+          username: first.username,
+          displayName: first.display_name,
+          pfpUrl: first.pfp_url || first.pfp?.url,
+          bio: first?.profile?.bio?.text,
+          followerCount: first?.follower_count,
+          followingCount: first?.following_count,
+          verifiedAddresses: (first?.verified_addresses?.eth_addresses || []).map((a: string) => a.toLowerCase()),
+        };
+        farcasterUserCache[lower] = user;
+        return user;
+      }
+    } else {
+      console.warn('Neynar by address response not OK:', res.status);
+    }
+
+    farcasterUserCache[lower] = null;
     return null;
   } catch (error) {
     console.error('Error fetching Farcaster user:', error);
+    farcasterUserCache[address.toLowerCase()] = null;
     return null;
   }
 }

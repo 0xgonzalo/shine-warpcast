@@ -3,6 +3,7 @@
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { CONTRACT_ADDRESS, contractABI, getTotalPriceForInstaBuy, userOwnsSong, generatePseudoFarcasterId } from '../utils/contract';
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import CollectedModal from './CollectedModal';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
@@ -11,6 +12,7 @@ import { useAccount } from 'wagmi';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '../context/ThemeContext';
 import { shareOnFarcasterCast } from '@/app/utils/farcaster';
+import { getFarcasterUserByAddress } from '../utils/farcaster';
 
 // Types for the new contract
 interface SongMetadata {
@@ -70,10 +72,17 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
   const { address, isConnected } = useAccount();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const menuContainerRef = useRef<HTMLDivElement | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const [creatorHandle, setCreatorHandle] = useState<string | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const clickedButton = buttonRef.current && buttonRef.current.contains(target);
+      const clickedMenu = menuContainerRef.current && menuContainerRef.current.contains(target);
+      if (!clickedButton && !clickedMenu) {
         setIsMenuOpen(false);
       }
     };
@@ -81,6 +90,47 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
       document.addEventListener('click', handleClickOutside);
     }
     return () => document.removeEventListener('click', handleClickOutside);
+  }, [isMenuOpen]);
+
+  useEffect(() => {
+    const loadCreatorHandle = async () => {
+      try {
+        const addr = (rawData as any)?.artistAddress || (data?.creator as string | undefined);
+        if (!addr) return;
+        const user = await getFarcasterUserByAddress(addr);
+        if (user?.username) {
+          setCreatorHandle(user.username);
+        } else {
+          setCreatorHandle(null);
+        }
+      } catch {
+        setCreatorHandle(null);
+      }
+    };
+    loadCreatorHandle();
+  }, [rawData, data?.creator]);
+
+  useEffect(() => {
+    const updateMenuPosition = () => {
+      if (!buttonRef.current || typeof window === 'undefined') return;
+      const rect = buttonRef.current.getBoundingClientRect();
+      const MENU_WIDTH = 176; // w-44 in px
+      const margin = 8;
+      const top = rect.bottom + margin;
+      let left = rect.right - MENU_WIDTH;
+      left = Math.min(left, window.innerWidth - MENU_WIDTH - margin);
+      left = Math.max(left, margin);
+      setMenuPos({ top, left });
+    };
+    if (isMenuOpen) {
+      updateMenuPosition();
+      window.addEventListener('resize', updateMenuPosition);
+      window.addEventListener('scroll', updateMenuPosition, true);
+      return () => {
+        window.removeEventListener('resize', updateMenuPosition);
+        window.removeEventListener('scroll', updateMenuPosition, true);
+      };
+    }
   }, [isMenuOpen]);
 
   const handlePlayAudio = () => {
@@ -242,7 +292,7 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
               }`}
               onClick={handleCreatorClick}
             >
-              {data.creator?.slice(0, 6)}...{data.creator?.slice(-4)}
+              {creatorHandle ? `@${creatorHandle}` : `${data.creator?.slice(0, 6)}...${data.creator?.slice(-4)}`}
             </p>
           </div>
           {isAudioAvailable && (
@@ -258,6 +308,7 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
                     : 'bg-[#0000FE]/10 hover:bg-white/20'
                 }`}
                 title="Options"
+                ref={buttonRef}
               >
                 <svg className={`w-4 h-4 ${
                   isDarkMode ? 'text-white' : 'text-[#0000FE]'
@@ -266,8 +317,13 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
                 </svg>
               </button>
 
-              {isMenuOpen && (
-                <div className="absolute right-0 mt-2 w-44 bg-white rounded-lg shadow-lg border z-20 text-sm">
+              {isMenuOpen && typeof window !== 'undefined' && createPortal(
+                <div
+                  ref={menuContainerRef}
+                  className="w-44 bg-white rounded-lg shadow-lg border z-[9999] text-sm"
+                  style={{ position: 'fixed', top: menuPos.top, left: menuPos.left }}
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <button
                     onClick={(e) => {
                       handleAddToQueue(e);
@@ -294,7 +350,8 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
                     </svg>
                     Share on Farcaster
                   </button>
-                </div>
+                </div>,
+                document.body
               )}
             </div>
           )}

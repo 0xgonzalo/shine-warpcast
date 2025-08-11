@@ -9,6 +9,7 @@ import { useFarcaster } from '../../context/FarcasterContext';
 import { useTheme } from '../../context/ThemeContext';
 import Image from 'next/image';
 import { Avatar } from '@coinbase/onchainkit/identity';
+import { getFarcasterUserByAddress } from '../../utils/farcaster';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic' as const;
@@ -55,42 +56,38 @@ export default function ProfilePage() {
     console.log('👤 Farcaster Client:', farcasterContext?.client);
   }, [farcasterContext, farcasterUser]);
 
-  // Try to get Farcaster profile data from context or fetch it
+  // Load Farcaster profile for the viewed wallet address
   useEffect(() => {
-    // First check if we have user data in the context
-    if (farcasterContext?.user) {
-      console.log('📱 Using Farcaster user from context:', farcasterContext.user);
-      setFarcasterProfile(farcasterContext.user);
-      return;
-    }
-
-    // If not, try to fetch from API
-    const fetchFarcasterProfile = async () => {
-      const fid = farcasterContext?.client?.fid;
-      if (!fid) return;
-      
-      console.log('🔍 Fetching Farcaster profile for FID:', fid);
-      
+    let cancelled = false;
+    const loadProfile = async () => {
       try {
-        // Try without API key first (public endpoint)
-        const response = await fetch(`https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`);
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log('📱 Neynar user data:', data);
-          if (data.users && data.users[0]) {
-            setFarcasterProfile(data.users[0]);
-          }
-        } else {
-          console.log('📱 Neynar API response not OK:', response.status);
+        if (isOwnProfile && farcasterContext?.user) {
+          if (!cancelled) setFarcasterProfile(farcasterContext.user);
+          return;
         }
-      } catch (error) {
-        console.error('❌ Error fetching Farcaster profile:', error);
+        if (!walletAddress) return;
+        const user = await getFarcasterUserByAddress(walletAddress);
+        if (cancelled) return;
+        if (user) {
+          // Normalize to the shape used by the UI below
+          setFarcasterProfile({
+            fid: user.fid,
+            username: user.username,
+            display_name: user.displayName,
+            pfp_url: user.pfpUrl,
+            profile: { bio: { text: user.bio } },
+          });
+          return;
+        }
+        setFarcasterProfile(null);
+      } catch (err) {
+        console.warn('Failed to load Farcaster profile for address:', walletAddress, err);
+        setFarcasterProfile(null);
       }
     };
-
-    fetchFarcasterProfile();
-  }, [farcasterContext]);
+    loadProfile();
+    return () => { cancelled = true; };
+  }, [walletAddress, isOwnProfile, farcasterContext]);
 
   // Fetch NFTs for both tabs
   useEffect(() => {
@@ -175,7 +172,7 @@ export default function ProfilePage() {
     <main className={`min-h-screen p-8 ${isDarkMode ? 'bg-black text-white' : 'bg-white text-black'}`}>
       <div className="max-w-2xl mx-auto">
         {/* Farcaster User Info Section */}
-        {isOwnProfile && (farcasterProfile || farcasterContext) ? (
+        {(farcasterProfile || (isOwnProfile && farcasterContext)) ? (
           <div className="flex flex-col items-center mb-8">
             {/* Farcaster Avatar */}
             <div className="mb-4">
@@ -221,8 +218,7 @@ export default function ProfilePage() {
             <h1 className={`text-3xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>
               @{
                 (farcasterProfile as any)?.username ||
-                (farcasterContext as any)?.client?.username ||
-                (farcasterContext as any)?.user?.username ||
+                (isOwnProfile ? (farcasterContext as any)?.user?.username : undefined) ||
                 'Unknown User'
               }
             </h1>
@@ -254,7 +250,7 @@ export default function ProfilePage() {
         ) : (
           <div className="flex flex-col items-center mb-8">
             <h1 className={`text-3xl font-bold mb-6 text-center ${isDarkMode ? 'text-white' : 'text-black'}`}>
-              {isOwnProfile ? 'My Profile' : 'Profile'}
+              Profile
             </h1>
             {walletAddress && (
               <p className={`text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
