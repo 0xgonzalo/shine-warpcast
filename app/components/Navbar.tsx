@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
 
 import { useTheme } from '../context/ThemeContext';
+import { useFarcaster } from '../context/FarcasterContext';
 import {
   ConnectWallet,
   Wallet,
@@ -35,6 +36,10 @@ function ClientOnly({ children }: { children: React.ReactNode }) {
 export default function Navbar() {
   const { address, isConnected } = useAccount();
   const { isDarkMode, toggleTheme } = useTheme();
+  const { context: farcasterContext } = useFarcaster();
+  
+  // Extract Farcaster user data from context
+  const farcasterUser = farcasterContext?.user;
 
 
 
@@ -89,8 +94,20 @@ export default function Navbar() {
 
               <ClientOnly>
                 <Wallet>
-                  <ConnectWallet className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors">
-                    <Name address={address}/>
+                  <ConnectWallet className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors flex items-center space-x-2">
+                    {/* Show Farcaster avatar if available */}
+                    {farcasterUser?.pfpUrl && (
+                      <Image
+                        src={farcasterUser.pfpUrl}
+                        alt={farcasterUser.username || "Farcaster User"}
+                        width={24}
+                        height={24}
+                        className="w-6 h-6 rounded-full"
+                      />
+                    )}
+                    <span className="text-white">
+                      {farcasterUser?.username || <Name address={address}/>}
+                    </span>
                   </ConnectWallet>
                   <WalletDropdown>
                     <div className={`p-4 ${
@@ -99,23 +116,34 @@ export default function Navbar() {
                         : 'bg-white border-gray-200'
                     }`}>
                       <div className={`mb-2 text-lg font-bold pb-2 border-b ${
-                        isDarkMode ? 'text-white border-gray-700' : 'text-black border-gray-200'
+                        isDarkMode ? 'text-white border-gray-700' : 'text-white border-gray-200'
                       }`}>
                         <span>Wallet Details</span>
                       </div>
                       <div>
                         <Identity className="px-2 py-2" hasCopyAddressOnClick>
-                          <Avatar />
-                          <Name address={address}/>
-                          <Address />
-                          <EthBalance />
+                          {/* Show Farcaster avatar in dropdown too */}
+                          {farcasterUser?.pfpUrl ? (
+                            <Image
+                              src={farcasterUser.pfpUrl}
+                              alt={farcasterUser.username || "Farcaster User"}
+                              width={32}
+                              height={32}
+                              className="w-8 h-8 rounded-full"
+                            />
+                          ) : (
+                            <Avatar />
+                          )}
+                          <Name address={address} className="text-white"/>
+                          <Address className="text-white"/>
+                          <EthBalance className="text-white"/>
                         </Identity>
                         <Link
                           href="/create"
                           className={`block w-full mt-2 text-center py-2 px-4 font-bold transition-colors rounded ${
                             isDarkMode 
                               ? 'bg-gray-700 border border-gray-600 text-white hover:bg-gray-600' 
-                              : 'bg-gray-100 border border-gray-300 text-black hover:bg-gray-200'
+                              : 'bg-gray-100 border border-gray-300 text-white hover:bg-gray-200'
                           }`}
                         >
                           Create
@@ -125,7 +153,7 @@ export default function Navbar() {
                           className={`block w-full mt-2 text-center py-2 px-4 font-bold transition-colors rounded ${
                             isDarkMode 
                               ? 'bg-gray-700 border border-gray-600 text-white hover:bg-gray-600' 
-                              : 'bg-gray-100 border border-gray-300 text-black hover:bg-gray-200'
+                              : 'bg-gray-100 border border-gray-300 text-white hover:bg-gray-200'
                           }`}
                         >
                           Profile
@@ -133,7 +161,7 @@ export default function Navbar() {
                         <WalletDropdownDisconnect className={`w-full mt-2 text-center py-2 px-4 font-bold transition-colors rounded ${
                           isDarkMode 
                             ? 'bg-red-900 border border-red-700 text-white hover:bg-red-800' 
-                            : 'bg-red-100 border border-red-300 text-red-700 hover:bg-red-200'
+                            : 'bg-red-100 border border-red-300 text-white hover:bg-red-200'
                         }`} />
                       </div>
                     </div>
