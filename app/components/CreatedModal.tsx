@@ -1,8 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import ReactCanvasConfetti from 'react-canvas-confetti';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
 import { getCelebrationConfettiConfig } from '@/app/utils/confetti';
 import Image from 'next/image';
+import { shareOnFarcasterCast } from '@/app/utils/farcaster';
+import { usePathname } from 'next/navigation';
 
 interface CreatedModalProps {
   nft: { 
@@ -12,10 +14,12 @@ interface CreatedModalProps {
   };
   txHash: string;
   onClose: () => void;
+  tokenPath?: string;
 }
 
-const CreatedModal: React.FC<CreatedModalProps> = ({ nft, txHash, onClose }) => {
+const CreatedModal: React.FC<CreatedModalProps> = ({ nft, txHash, onClose, tokenPath }) => {
   const confettiRef = useRef<any>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     // Trigger confetti after a short delay to ensure modal is rendered
@@ -32,6 +36,16 @@ const CreatedModal: React.FC<CreatedModalProps> = ({ nft, txHash, onClose }) => 
   const getInstance = (instance: any) => {
     confettiRef.current = instance;
   };
+
+  const shareText = useMemo(() => {
+    return `I just created ${nft.name} on Shine. Listen and collect it! 🎵`;
+  }, [nft.name]);
+
+  const tokenUrl = useMemo(() => {
+    if (typeof window === 'undefined') return undefined;
+    if (tokenPath) return window.location.origin + tokenPath;
+    return window.location.origin + pathname;
+  }, [pathname, tokenPath]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
@@ -94,8 +108,14 @@ const CreatedModal: React.FC<CreatedModalProps> = ({ nft, txHash, onClose }) => 
             View Transaction on BaseScan
           </a>
           
-          <div className="pt-2">
-            <p className="text-xs text-gray-500 mb-2">Your music is now live on the blockchain!</p>
+          <div className="pt-2 space-y-2">
+            <p className="text-xs text-gray-500">Your music is now live on the blockchain!</p>
+            <button
+              onClick={() => shareOnFarcasterCast({ text: shareText, url: tokenUrl })}
+              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              Share on Farcaster
+            </button>
             <button
               onClick={onClose}
               className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"

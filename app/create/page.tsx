@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { parseEventLogs } from 'viem';
 import { useAccount, useConnect, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { CONTRACT_ADDRESS, contractABI } from '../utils/contract';
 import { uploadToIPFS, uploadMetadataToIPFS } from '@/app/utils/pinata';
@@ -42,7 +43,7 @@ export default function CreatePage() {
   const { playAudio, currentAudio, isPlaying } = useAudio();
   const { isSDKLoaded } = useFarcaster();
 
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+  const { isLoading: isConfirming, isSuccess: isConfirmed, data: receipt } = useWaitForTransactionReceipt({
     hash,
   });
 
@@ -64,13 +65,31 @@ export default function CreatePage() {
     }
   }, [writeError]);
 
+  const [createdTokenId, setCreatedTokenId] = useState<bigint | null>(null);
+
   useEffect(() => {
     if (isConfirmed && hash && createdNFT) {
       console.log('Transaction confirmed:', hash);
+      // Try to parse the tokenId from logs
+      try {
+        if (receipt?.logs && Array.isArray(receipt.logs)) {
+          const decoded: any[] = (parseEventLogs as any)({
+            abi: contractABI as any,
+            logs: receipt.logs as any,
+          });
+          const creationEvent: any = decoded.find((e: any) => e.eventName === 'NewSongDrop' || e.eventName === 'NewSpecialEditionSongDrop');
+          const tokenId = (creationEvent?.args as any)?.audioId as bigint | undefined;
+          if (tokenId !== undefined) {
+            setCreatedTokenId(tokenId);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not parse tokenId from receipt logs:', err);
+      }
       setShowCreatedModal(true);
       setIsMinting(false);
     }
-  }, [isConfirmed, hash, createdNFT]);
+  }, [isConfirmed, hash, createdNFT, receipt, contractABI]);
 
   const handleAudioUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -593,6 +612,7 @@ export default function CreatePage() {
         <CreatedModal
           nft={createdNFT}
           txHash={hash}
+          tokenPath={createdTokenId ? `/token/${createdTokenId}` : undefined}
           onClose={handleCloseCreatedModal}
         />
       )}

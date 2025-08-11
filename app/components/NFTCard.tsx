@@ -2,7 +2,7 @@
 
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { CONTRACT_ADDRESS, contractABI, getTotalPriceForInstaBuy, userOwnsSong, generatePseudoFarcasterId } from '../utils/contract';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import CollectedModal from './CollectedModal';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
@@ -10,6 +10,7 @@ import { useAudio } from '../context/AudioContext';
 import { useAccount } from 'wagmi';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '../context/ThemeContext';
+import { shareOnFarcasterCast } from '@/app/utils/farcaster';
 
 // Types for the new contract
 interface SongMetadata {
@@ -67,6 +68,20 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
   const [ownershipError, setOwnershipError] = useState<string | null>(null);
   const { playAudio, currentAudio, isPlaying, addToQueue } = useAudio();
   const { address, isConnected } = useAccount();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    if (isMenuOpen) {
+      document.addEventListener('click', handleClickOutside);
+    }
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [isMenuOpen]);
 
   const handlePlayAudio = () => {
     if (data?.audioURI && data.audioURI !== 'ipfs://placeholder-audio-uri') {
@@ -231,21 +246,57 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
             </p>
           </div>
           {isAudioAvailable && (
-            <button
-              onClick={handleAddToQueue}
-              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                isDarkMode 
-                  ? 'bg-white/10 hover:bg-white/20' 
-                  : 'bg-[#0000FE]/10 hover:bg-white/20'
-              }`}
-              title="Add to queue"
-            >
-              <svg className={`w-4 h-4 ${
-                isDarkMode ? 'text-white' : 'text-[#0000FE]'
-              }`} viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-              </svg>
-            </button>
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsMenuOpen((v) => !v);
+                }}
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                  isDarkMode 
+                    ? 'bg-white/10 hover:bg-white/20' 
+                    : 'bg-[#0000FE]/10 hover:bg-white/20'
+                }`}
+                title="Options"
+              >
+                <svg className={`w-4 h-4 ${
+                  isDarkMode ? 'text-white' : 'text-[#0000FE]'
+                }`} viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                </svg>
+              </button>
+
+              {isMenuOpen && (
+                <div className="absolute right-0 mt-2 w-44 bg-white rounded-lg shadow-lg border z-20 text-sm">
+                  <button
+                    onClick={(e) => {
+                      handleAddToQueue(e);
+                      setIsMenuOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2 text-gray-700"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Add to queue
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const url = typeof window !== 'undefined' ? `${window.location.origin}/token/${tokenId}` : undefined;
+                      shareOnFarcasterCast({ text: `Listen and collect ${data.name} on Shine! 🎵`, url });
+                      setIsMenuOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2 text-gray-700"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4h16v12H5.17L4 17.17V4z" />
+                    </svg>
+                    Share on Farcaster
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
         <button
@@ -279,6 +330,7 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
             name: data.name 
           }}
           txHash={txData}
+          tokenPath={`/token/${tokenId}`}
           onClose={() => {
             setShowModal(false);
             // Reset hasShownModal when user manually closes modal

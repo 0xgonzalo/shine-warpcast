@@ -357,6 +357,7 @@ export default function TokenPage() {
         <CollectedModal
           nft={{ imageURI: data.imageURI, name: data.name }}
           txHash={collectTxHash}
+          tokenPath={`/token/${tokenId}`}
           onClose={() => setShowCollectModal(false)}
         />
       )}

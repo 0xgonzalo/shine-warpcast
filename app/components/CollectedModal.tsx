@@ -1,18 +1,22 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import ReactCanvasConfetti from 'react-canvas-confetti';
 import Image from 'next/image';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
 import { getCelebrationConfettiConfig } from '@/app/utils/confetti';
+import { shareOnFarcasterCast } from '@/app/utils/farcaster';
+import { usePathname } from 'next/navigation';
 
 interface CollectedModalProps {
   nft: { imageURI: string; name: string };
   txHash: string;
   onClose: () => void;
+  tokenPath?: string;
 }
 
-const CollectedModal: React.FC<CollectedModalProps> = ({ nft, txHash, onClose }) => {
+const CollectedModal: React.FC<CollectedModalProps> = ({ nft, txHash, onClose, tokenPath }) => {
   const confettiRef = useRef<any>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     // Trigger confetti after a short delay to ensure modal is rendered
@@ -47,6 +51,16 @@ const CollectedModal: React.FC<CollectedModalProps> = ({ nft, txHash, onClose })
   const getInstance = (instance: any) => {
     confettiRef.current = instance;
   };
+
+  const shareText = useMemo(() => {
+    return `I just collected ${nft.name} on Shine. Listen and collect it! 🎵`;
+  }, [nft.name]);
+
+  const tokenUrl = useMemo(() => {
+    if (typeof window === 'undefined') return undefined;
+    if (tokenPath) return window.location.origin + tokenPath;
+    return window.location.origin + pathname;
+  }, [pathname, tokenPath]);
 
   const modalContent = (
     <div 
@@ -90,6 +104,12 @@ const CollectedModal: React.FC<CollectedModalProps> = ({ nft, txHash, onClose })
           />
         )}
         <h3 className="text-md md:text-lg font-semibold mb-2 text-white">{nft.name}</h3>
+        <button
+          onClick={() => shareOnFarcasterCast({ text: shareText, url: tokenUrl })}
+          className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium mb-2"
+        >
+          Share on Farcaster
+        </button>
         <a
           href={`https://sepolia.basescan.org/tx/${txHash}`}
           target="_blank"

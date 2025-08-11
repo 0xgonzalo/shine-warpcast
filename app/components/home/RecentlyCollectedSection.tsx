@@ -5,6 +5,7 @@ import { useAudio } from '../../context/AudioContext';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '../../context/ThemeContext';
+import { shareOnFarcasterCast } from '../../utils/farcaster';
 
 interface CollectedNFT {
   tokenId: bigint;
@@ -59,6 +60,11 @@ export default function RecentlyCollectedSection() {
 
   const handleAction = (action: string, songTitle: string) => {
     console.log(`${action} for ${songTitle}`);
+    setOpenMenuId(null);
+  };
+  const handleShareOnFarcaster = (nft: CollectedNFT) => {
+    const url = typeof window !== 'undefined' ? `${window.location.origin}/token/${nft.tokenId.toString()}` : undefined;
+    shareOnFarcasterCast({ text: `Listen and collect ${nft.metadata.name} on Shine! 🎵`, url });
     setOpenMenuId(null);
   };
 
@@ -191,6 +197,17 @@ export default function RecentlyCollectedSection() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
                         <span>Add to queue</span>
+                      </button>
+                      <button
+                        onClick={() => handleShareOnFarcaster(nft)}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2 ${
+                          isDarkMode ? 'text-gray-700' : 'text-[#0000FE]'
+                        }`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4h16v12H5.17L4 17.17V4z" />
+                        </svg>
+                        <span>Share on Farcaster</span>
                       </button>
                       <button
                         onClick={() => handleAction('Like', nft.metadata.name)}
