@@ -34,10 +34,11 @@ export async function GET(req: NextRequest) {
     const apiKey = process.env.NEYNAR_API_KEY || process.env.NEXT_PUBLIC_NEYNAR_API_KEY;
     const { searchParams } = new URL(req.url);
     const address = (searchParams.get('address') || '').toLowerCase();
+    const fidParam = searchParams.get('fid');
     const debugEnabled = searchParams.get('debug') === '1';
     const debug: Array<string> = [];
-    if (!address) {
-      return NextResponse.json({ error: 'Missing address' }, { status: 400 });
+    if (!address && !fidParam) {
+      return NextResponse.json({ error: 'Missing address or fid' }, { status: 400 });
     }
     const headers: Record<string, string> = { accept: 'application/json' };
     if (apiKey) {
@@ -48,7 +49,21 @@ export async function GET(req: NextRequest) {
 
     // Try Neynar custody and verification lookups first, then plain by-address (if API key exists)
     let user: NeynarUser | null = null;
-    if (apiKey) {
+    // If caller already provided fid, use the free Neynar endpoint directly
+    if (apiKey && fidParam) {
+      try {
+        const byFid = `https://api.neynar.com/v2/farcaster/user?fid=${encodeURIComponent(fidParam)}`;
+        const rf = await fetch(byFid, { headers, cache: 'no-store' });
+        if (debugEnabled) debug.push(`neynar/user?fid status=${rf.status}`);
+        if (rf.ok) {
+          const jf: any = await rf.json();
+          user = jf?.user || null;
+        } else if (debugEnabled) {
+          try { debug.push(`neynar/user?fid body=${(await rf.text()).slice(0,120)}`); } catch {}
+        }
+      } catch (_) {}
+    }
+    if (!user && apiKey && address) {
       try {
         const byCustody = `https://api.neynar.com/v2/farcaster/user/by-custody-address?address=${encodeURIComponent(address)}`;
         const rc = await fetch(byCustody, { headers, cache: 'no-store' });
@@ -143,6 +158,25 @@ export async function GET(req: NextRequest) {
         }
 
         if (resolvedFid != null && resolvedHost) {
+          // Prefer Neynar free endpoint by fid if key available
+          if (apiKey) {
+            try {
+              const byFid = `https://api.neynar.com/v2/farcaster/user?fid=${encodeURIComponent(String(resolvedFid))}`;
+              const rf = await fetch(byFid, { headers, cache: 'no-store' });
+              if (debugEnabled) debug.push(`neynar/user?fid status=${rf.status}`);
+              if (rf.ok) {
+                const jf: any = await rf.json();
+                const neynarUser = jf?.user || null;
+                const normalized = normalizeUser(neynarUser);
+                if (normalized) {
+                  return NextResponse.json({ user: normalized, ...(debugEnabled ? { debug } : {}) }, { status: 200 });
+                }
+              } else if (debugEnabled) {
+                try { debug.push(`neynar/user?fid body=${(await rf.text()).slice(0,120)}`); } catch {}
+              }
+            } catch (_) {}
+          }
+
           // 3) Fetch user data by fid from the same host
           const userDataUrl = `${resolvedHost}/v1/userDataByFid?fid=${encodeURIComponent(String(resolvedFid))}`;
           const ur = await fetch(userDataUrl, { headers: { accept: 'application/json' }, cache: 'no-store' });

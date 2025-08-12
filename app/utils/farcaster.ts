@@ -15,6 +15,7 @@ export interface FarcasterUser {
 // a proper Farcaster API service like Neynar, Airstack, or similar
 // Cache only successful lookups to avoid persisting nulls after API fixes
 const farcasterUserCache: Record<string, FarcasterUser> = {};
+const farcasterUserByFidCache: Record<string, FarcasterUser> = {};
 
 export async function getFarcasterUserByAddress(address: string): Promise<FarcasterUser | null> {
   try {
@@ -38,6 +39,29 @@ export async function getFarcasterUserByAddress(address: string): Promise<Farcas
     return null;
   } catch (error) {
     console.error('Error fetching Farcaster user:', error);
+    return null;
+  }
+}
+
+export async function getFarcasterUserByFid(fid: number | string): Promise<FarcasterUser | null> {
+  try {
+    const key = String(fid);
+    if (farcasterUserByFidCache[key]) return farcasterUserByFidCache[key];
+
+    console.log(`🔍 Looking up Farcaster user by FID: ${fid}`);
+    const url = `/api/farcaster/by-address?fid=${encodeURIComponent(String(fid))}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    if (res.ok) {
+      const { user } = await res.json();
+      if (user) {
+        farcasterUserByFidCache[key] = user;
+        return user;
+      }
+      return null;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching Farcaster user by FID:', error);
     return null;
   }
 }
