@@ -12,7 +12,7 @@ import { ThemeProvider } from './context/ThemeContext';
 export const generateMetadata = (): Metadata => {
   const siteName = process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME || 'Shine';
   const baseUrl = process.env.NEXT_PUBLIC_URL || 'http://localhost:3000';
-  const description = 'Shine, the simplest way to create music onchain';
+  const description = 'Shine, Create music onchain';
 
   return {
     metadataBase: new URL(baseUrl),

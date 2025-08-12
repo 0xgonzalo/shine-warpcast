@@ -2,6 +2,7 @@ import { ImageResponse } from 'next/og';
 import { getSongMetadata } from '@/app/utils/contract';
 
 export const runtime = 'edge';
+export const revalidate = 0;
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -15,10 +16,36 @@ export default async function TokenOgImage({
 
   let title = 'Unknown Song';
   let subtitle = '';
+  let imageUrl: string | undefined;
+
+  const toGateway = (uri?: string) => {
+    if (!uri) return undefined;
+    if (uri.startsWith('ipfs://')) {
+      const hash = uri.replace('ipfs://', '');
+      return `https://ipfs.io/ipfs/${hash}`;
+    }
+    return uri;
+  };
+
   try {
     const metadata = await getSongMetadata(tokenId);
     title = metadata.title || title;
     subtitle = metadata.artistName || metadata.artistAddress || '';
+    // Try to resolve artwork from metadataURI (may be image or JSON)
+    const candidate = toGateway(metadata.metadataURI);
+    if (candidate) {
+      if (/\.(png|jpg|jpeg|gif|webp)$/i.test(candidate)) {
+        imageUrl = candidate;
+      } else {
+        try {
+          const res = await fetch(candidate, { cache: 'no-store' });
+          if (res.ok) {
+            const json = await res.json();
+            imageUrl = toGateway(json.image || json.imageURI);
+          }
+        } catch {}
+      }
+    }
   } catch {}
 
   return new ImageResponse(
@@ -36,14 +63,34 @@ export default async function TokenOgImage({
           color: 'white',
         }}
       >
-        <div style={{ fontSize: 28, opacity: 0.85 }}>{siteName}</div>
-        <div style={{ fontSize: 72, fontWeight: 800, marginTop: 8, letterSpacing: -1.5 }}>
-          {title}
+        <div style={{ display: 'flex', gap: 36, alignItems: 'center' }}>
+          {imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={imageUrl}
+              alt={title}
+              width={420}
+              height={420}
+              style={{
+                width: 420,
+                height: 420,
+                borderRadius: 24,
+                objectFit: 'cover',
+                boxShadow: '0 20px 50px rgba(0,0,0,0.45)'
+              }}
+            />
+          ) : null}
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ fontSize: 28, opacity: 0.85 }}>{siteName}</div>
+            <div style={{ fontSize: 72, fontWeight: 800, marginTop: 8, letterSpacing: -1.5 }}>
+              {title}
+            </div>
+            {subtitle && (
+              <div style={{ fontSize: 36, marginTop: 8, opacity: 0.9 }}>by {subtitle}</div>
+            )}
+            <div style={{ fontSize: 24, marginTop: 28, opacity: 0.8 }}>Token #{params.tokenId}</div>
+          </div>
         </div>
-        {subtitle && (
-          <div style={{ fontSize: 36, marginTop: 8, opacity: 0.9 }}>by {subtitle}</div>
-        )}
-        <div style={{ fontSize: 24, marginTop: 28, opacity: 0.8 }}>Token #{params.tokenId}</div>
       </div>
     ),
     { ...size }
