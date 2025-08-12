@@ -28,7 +28,7 @@ export default async function TokenOgImage({
   };
 
   try {
-    const base = process.env.NEXT_PUBLIC_URL || '';
+    const base = process.env.NEXT_PUBLIC_URL || 'https://shine-warpcast.vercel.app';
     const res = await fetch(`${base}/api/song/${params.tokenId}/metadata`, { cache: 'no-store' });
     if (res.ok) {
       const metadata = await res.json();

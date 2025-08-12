@@ -12,7 +12,7 @@ import { ThemeProvider } from './context/ThemeContext';
 export const generateMetadata = (): Metadata => {
   const siteName = process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME || 'Shine';
   const baseUrl = process.env.NEXT_PUBLIC_URL || 'http://localhost:3000';
-  const description = 'Shine, Create music onchain';
+  const description = 'Shine, the simplest way to create music onchain';
 
   return {
     metadataBase: new URL(baseUrl),
@@ -45,16 +45,16 @@ export const generateMetadata = (): Metadata => {
     },
     other: {
       "fc:frame": JSON.stringify({
-        version: process.env.NEXT_PUBLIC_VERSION,
+        version: process.env.NEXT_PUBLIC_VERSION || 'vNext',
         imageUrl: process.env.NEXT_PUBLIC_IMAGE_URL || `${baseUrl}/opengraph-image`,
         button: {
           title: `Launch ${siteName}`,
           action: {
-            type: 'Launch Shine',
+            type: 'launch_frame',
             name: siteName,
             url: baseUrl,
-            splashImageUrl: process.env.NEXT_PUBLIC_SPLASH_IMAGE_URL,
-            splashBackgroundColor: `#${process.env.NEXT_PUBLIC_SPLASH_BACKGROUND_COLOR}`,
+            splashImageUrl: process.env.NEXT_PUBLIC_SPLASH_IMAGE_URL || `${baseUrl}/splash.png`,
+            splashBackgroundColor: `#${process.env.NEXT_PUBLIC_SPLASH_BACKGROUND_COLOR || '000000'}`,
           },
         },
       }),
