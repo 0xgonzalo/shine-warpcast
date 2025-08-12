@@ -10,22 +10,49 @@ import { FarcasterProvider } from './context/FarcasterContext';
 import { ThemeProvider } from './context/ThemeContext';
 
 export const generateMetadata = (): Metadata => {
+  const siteName = process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME || 'Shine';
+  const baseUrl = process.env.NEXT_PUBLIC_URL || 'http://localhost:3000';
+  const description = 'Shine, the simplest way to create music onchain';
+
   return {
-    title: process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME,
-    description:  "Shine, the simplest way to create music onchain",
+    metadataBase: new URL(baseUrl),
+    title: siteName,
+    description,
     icons: {
       icon: '/favicon.ico',
+    },
+    openGraph: {
+      title: siteName,
+      description,
+      url: baseUrl,
+      siteName,
+      images: [
+        {
+          url: '/opengraph-image',
+          width: 1200,
+          height: 630,
+          alt: `${siteName} – ${description}`,
+        },
+      ],
+      type: 'website',
+      locale: 'en_US',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: siteName,
+      description,
+      images: ['/twitter-image'],
     },
     other: {
       "fc:frame": JSON.stringify({
         version: process.env.NEXT_PUBLIC_VERSION,
-        imageUrl: process.env.NEXT_PUBLIC_IMAGE_URL,
+        imageUrl: process.env.NEXT_PUBLIC_IMAGE_URL || `${baseUrl}/opengraph-image`,
         button: {
-          title: `Launch ${process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME}`,
+          title: `Launch ${siteName}`,
           action: {
-            type: "launch_frame",
-            name: process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME,
-            url: process.env.NEXT_PUBLIC_URL,
+            type: 'Launch Shine',
+            name: siteName,
+            url: baseUrl,
             splashImageUrl: process.env.NEXT_PUBLIC_SPLASH_IMAGE_URL,
             splashBackgroundColor: `#${process.env.NEXT_PUBLIC_SPLASH_BACKGROUND_COLOR}`,
           },
