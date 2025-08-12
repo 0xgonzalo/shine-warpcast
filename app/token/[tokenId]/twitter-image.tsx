@@ -1,5 +1,5 @@
 import { ImageResponse } from 'next/og';
-import { getSongMetadata } from '@/app/utils/contract';
+// Fetch via lightweight API to avoid bundling viem into Edge
 
 export const runtime = 'edge';
 export const revalidate = 0;
@@ -11,7 +11,6 @@ export default async function TokenTwitterImage({
 }: {
   params: { tokenId: string };
 }) {
-  const tokenId = BigInt(params.tokenId);
   let title = 'Unknown Song';
   let imageUrl: string | undefined;
 
@@ -24,20 +23,24 @@ export default async function TokenTwitterImage({
     return uri;
   };
   try {
-    const metadata = await getSongMetadata(tokenId);
-    title = metadata.title || title;
-    const candidate = toGateway(metadata.metadataURI);
-    if (candidate) {
-      if (/\.(png|jpg|jpeg|gif|webp)$/i.test(candidate)) {
-        imageUrl = candidate;
-      } else {
-        try {
-          const res = await fetch(candidate, { cache: 'no-store' });
-          if (res.ok) {
-            const json = await res.json();
-            imageUrl = toGateway(json.image || json.imageURI);
-          }
-        } catch {}
+    const base = process.env.NEXT_PUBLIC_URL || '';
+    const res = await fetch(`${base}/api/song/${params.tokenId}/metadata`, { cache: 'no-store' });
+    if (res.ok) {
+      const metadata = await res.json();
+      title = metadata.title || title;
+      const candidate = toGateway(metadata.metadataURI);
+      if (candidate) {
+        if (/\.(png|jpg|jpeg|gif|webp)$/i.test(candidate)) {
+          imageUrl = candidate;
+        } else {
+          try {
+            const res2 = await fetch(candidate, { cache: 'no-store' });
+            if (res2.ok) {
+              const json = await res2.json();
+              imageUrl = toGateway(json.image || json.imageURI);
+            }
+          } catch {}
+        }
       }
     }
   } catch {}

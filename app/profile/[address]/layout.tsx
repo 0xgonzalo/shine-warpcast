@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
 
-export const runtime = 'edge';
-
 export async function generateMetadata({
   params,
 }: {

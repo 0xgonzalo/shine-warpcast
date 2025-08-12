@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
 import { getSongMetadata } from '@/app/utils/contract';
 
-export const runtime = 'edge';
-
 export async function generateMetadata({
   params,
 }: {
