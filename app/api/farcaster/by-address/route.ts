@@ -63,6 +63,51 @@ export async function GET(req: NextRequest) {
         }
       } catch (_) {}
     }
+
+    // Fallback for fid without Neynar key: fetch from public hubs directly
+    if (!user && fidParam) {
+      const HUBS = [
+        'https://hub.pinata.cloud',
+        'https://hub.farcaster.xyz',
+        'https://hub.frc.dev',
+      ];
+      for (const host of HUBS) {
+        try {
+          const url = `${host}/v1/userDataByFid?fid=${encodeURIComponent(String(fidParam))}`;
+          const r = await fetch(url, { headers: { accept: 'application/json' }, cache: 'no-store' });
+          if (debugEnabled) debug.push(`hubble(${host})/userDataByFid(fid) status=${r.status}`);
+          if (!r.ok) continue;
+          const uj: any = await r.json();
+          const messages: any[] = uj?.messages || [];
+          let username: string | undefined;
+          let displayName: string | undefined;
+          let pfpUrl: string | undefined;
+          let bio: string | undefined;
+          for (const m of messages) {
+            const type = m?.data?.userDataBody?.type;
+            const value = m?.data?.userDataBody?.value;
+            if (!type || typeof value !== 'string') continue;
+            if (type === 5 && !username) username = value;
+            if (type === 2 && !displayName) displayName = value;
+            if (type === 1 && !pfpUrl) pfpUrl = value;
+            if (type === 3 && !bio) bio = value;
+          }
+          const fallbackUser = {
+            fid: Number(fidParam),
+            username,
+            display_name: displayName,
+            pfp_url: pfpUrl,
+            profile: { bio: { text: bio } },
+          } as NeynarUser as any;
+          const normalized = normalizeUser(fallbackUser as NeynarUser);
+          if (normalized) {
+            return NextResponse.json({ user: normalized, ...(debugEnabled ? { debug } : {}) }, { status: 200 });
+          }
+        } catch (_) {
+          // try next hub
+        }
+      }
+    }
     if (!user && apiKey && address) {
       try {
         const byCustody = `https://api.neynar.com/v2/farcaster/user/by-custody-address?address=${encodeURIComponent(address)}`;
