@@ -362,7 +362,7 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
                     onClick={(e) => {
                       e.stopPropagation();
                       const url = typeof window !== 'undefined' ? `${window.location.origin}/token/${tokenId}` : undefined;
-                      shareOnFarcasterCast({ text: `Listen and collect ${data.name} on Shine! 🎵`, url });
+                      shareOnFarcasterCast({ text: `Listen and collect ${data.name}${creatorHandle ? ` by @${creatorHandle}` : ''} on Shine! 🎵`, url });
                       setIsMenuOpen(false);
                     }}
                     className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2 text-gray-700"
@@ -406,7 +406,8 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
         <CollectedModal
           nft={{ 
             imageURI: getIPFSGatewayURL(data.imageURI), 
-            name: data.name 
+            name: data.name,
+            artistUsername: creatorHandle || undefined
           }}
           txHash={txData}
           tokenPath={`/token/${tokenId}`}

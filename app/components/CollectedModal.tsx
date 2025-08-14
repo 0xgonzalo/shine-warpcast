@@ -8,7 +8,7 @@ import { shareOnFarcasterCast } from '@/app/utils/farcaster';
 import { usePathname } from 'next/navigation';
 
 interface CollectedModalProps {
-  nft: { imageURI: string; name: string };
+  nft: { imageURI: string; name: string; artistUsername?: string };
   txHash: string;
   onClose: () => void;
   tokenPath?: string;
@@ -53,8 +53,9 @@ const CollectedModal: React.FC<CollectedModalProps> = ({ nft, txHash, onClose, t
   };
 
   const shareText = useMemo(() => {
-    return `I just collected ${nft.name} on Shine. Listen and collect it! 🎵`;
-  }, [nft.name]);
+    const by = nft.artistUsername ? ` by @${nft.artistUsername}` : '';
+    return `I just collected ${nft.name}${by} on Shine! 🎵`;
+  }, [nft.name, nft.artistUsername]);
 
   const tokenUrl = useMemo(() => {
     if (typeof window === 'undefined') return undefined;

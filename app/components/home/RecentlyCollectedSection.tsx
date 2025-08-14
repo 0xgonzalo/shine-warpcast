@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '../../context/ThemeContext';
 import { shareOnFarcasterCast } from '../../utils/farcaster';
+import { getFarcasterUserByAddress } from '../../utils/farcaster';
 
 interface CollectedNFT {
   tokenId: bigint;
@@ -17,6 +18,7 @@ interface CollectedNFT {
     creator: string;
   };
   collectedAt: bigint;
+  farcasterId?: bigint;
 }
 
 function generateGradient(tokenId: bigint) {
@@ -37,6 +39,7 @@ export default function RecentlyCollectedSection() {
   const [recentlyCollected, setRecentlyCollected] = useState<CollectedNFT[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [creatorHandles, setCreatorHandles] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const fetchRecentlyCollected = async () => {
@@ -52,6 +55,44 @@ export default function RecentlyCollectedSection() {
     };
     fetchRecentlyCollected();
   }, []);
+
+  // Resolve Farcaster usernames for creators
+  useEffect(() => {
+    const resolveHandles = async () => {
+      try {
+        const creators = Array.from(
+          new Set(
+            recentlyCollected
+              .map((n) => (n.metadata?.creator || '').toLowerCase())
+              .filter(Boolean)
+          )
+        );
+        const missing = creators.filter((c) => !creatorHandles[c]);
+        if (missing.length === 0) return;
+        const entries: Array<[string, string]> = [];
+        await Promise.all(
+          missing.map(async (addr) => {
+            try {
+              const user = await getFarcasterUserByAddress(addr);
+              if (user?.username) entries.push([addr, user.username]);
+            } catch (_) {
+              // ignore per-address failures
+            }
+          })
+        );
+        if (entries.length > 0) {
+          setCreatorHandles((prev) => {
+            const next = { ...prev } as Record<string, string>;
+            for (const [addr, handle] of entries) next[addr] = handle;
+            return next;
+          });
+        }
+      } catch (_) {
+        // no-op
+      }
+    };
+    if (recentlyCollected.length > 0) resolveHandles();
+  }, [recentlyCollected, creatorHandles]);
 
   const handleMenuToggle = (tokenId: bigint) => {
     const numericId = Number(tokenId);
@@ -169,7 +210,9 @@ export default function RecentlyCollectedSection() {
                   }`}
                   onClick={() => handleViewArtistProfile(nft.metadata.creator)}
                 >
-                  {nft.metadata.creator.slice(0, 6)}...{nft.metadata.creator.slice(-4)}
+                  {creatorHandles[nft.metadata.creator.toLowerCase()] 
+                    ? `@${creatorHandles[nft.metadata.creator.toLowerCase()]}`
+                    : `${nft.metadata.creator.slice(0, 6)}...${nft.metadata.creator.slice(-4)}`}
                 </p>
               </div>
               {/* Three dots menu */}

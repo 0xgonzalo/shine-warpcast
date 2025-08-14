@@ -59,11 +59,10 @@ export async function GET(req: NextRequest) {
     }
     if (debugEnabled) debug.push(`apiKeyPresent=${Boolean(apiKey)}`);
 
-    // Try Neynar SDK lookups first, then REST, then Hubble
+    // Try Neynar SDK first (paid plan for address-based lookups), then REST, then Hubble
     let user: NeynarUser | null = null;
     const client = getNeynarClient();
-
-    // Prefer SDK by fid if provided
+    // SDK by fid first (works on free and paid), then REST
     if (!user && client && fidParam) {
       try {
         const fidNum = Number(fidParam);
@@ -77,7 +76,8 @@ export async function GET(req: NextRequest) {
         if (debugEnabled) debug.push(`sdk.fetchBulkUsers error=${e?.message || 'err'}`);
       }
     }
-    // REST by fid as fallback
+
+    // Neynar by fid (works on paid and free)
     if (!user && apiKey && fidParam) {
       try {
         const byFid = `https://api.neynar.com/v2/farcaster/user?fid=${encodeURIComponent(fidParam)}`;
@@ -136,13 +136,22 @@ export async function GET(req: NextRequest) {
         }
       }
     }
-    // Prefer SDK by address first
-    if (!user && address && client) {
+    // SDK by address first (paid-only)
+    if (!user && client && address) {
       try {
         const result: any = await (client as any).fetchBulkUsersByEthOrSolAddress({ addresses: [address] });
-        const sdkUser = result?.users?.[0] || null;
+        let sdkUser = result?.users?.[0] || null;
+        // Some SDK versions return a map keyed by address
+        if (!sdkUser && result && typeof result === 'object') {
+          const lower = address.toLowerCase();
+          const byAddr = (result[lower] || result[address] || result?.data?.[lower] || result?.data?.[address]);
+          if (Array.isArray(byAddr) && byAddr.length > 0) sdkUser = byAddr[0];
+        }
         if (sdkUser) user = sdkUser as NeynarUser;
-        if (debugEnabled) debug.push(`sdk.fetchBulkUsersByEthOrSolAddress(${address}) ok=${Boolean(sdkUser)}`);
+        if (debugEnabled) {
+          const keys = result && typeof result === 'object' ? Object.keys(result).slice(0, 5) : [];
+          debug.push(`sdk.fetchBulkUsersByEthOrSolAddress(${address}) ok=${Boolean(sdkUser)} keys=${keys.join(',')}`);
+        }
       } catch (e: any) {
         if (debugEnabled) debug.push(`sdk.fetchBulkUsersByEthOrSolAddress error=${e?.message || 'err'}`);
       }

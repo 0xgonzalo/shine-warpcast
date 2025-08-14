@@ -203,7 +203,7 @@ export default function Navbar() {
                           Create
                         </Link>
                         <Link
-                          href={address ? `/profile/${address}` : '/profile'}
+                          href={address ? (`/profile/${address}` + (farcasterContext?.client?.fid ? `?fid=${encodeURIComponent(String((farcasterContext as any)?.client?.fid))}` : '')) : '/profile'}
                           className={`block w-full mt-2 text-center py-2 px-4 font-bold transition-colors rounded ${
                             isDarkMode 
                               ? 'bg-gray-700 border border-gray-600 text-white hover:bg-gray-600' 
