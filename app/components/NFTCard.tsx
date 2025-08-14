@@ -12,7 +12,8 @@ import { useAccount } from 'wagmi';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '../context/ThemeContext';
 import { shareOnFarcasterCast } from '@/app/utils/farcaster';
-import { getFarcasterUserByAddress } from '../utils/farcaster';
+import { getFarcasterUserByAddress, getFarcasterUserByFid } from '../utils/farcaster';
+import { useFarcaster } from '../context/FarcasterContext';
 
 // Types for the new contract
 interface SongMetadata {
@@ -70,6 +71,7 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
   const [ownershipError, setOwnershipError] = useState<string | null>(null);
   const { playAudio, currentAudio, isPlaying, addToQueue } = useAudio();
   const { address, isConnected } = useAccount();
+  const { context: farcasterContext } = useFarcaster();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -97,6 +99,26 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
       try {
         const addr = (rawData as any)?.artistAddress || (data?.creator as string | undefined);
         if (!addr) return;
+
+        // If the creator is the connected user and we have Farcaster context, use it directly
+        if (address && addr.toLowerCase() === address.toLowerCase()) {
+          const ctxUsername = (farcasterContext as any)?.user?.username;
+          if (ctxUsername) {
+            setCreatorHandle(ctxUsername);
+            return;
+          }
+          // Try by fid via mini app context on free plan
+          const ctxFid = (farcasterContext as any)?.client?.fid;
+          if (ctxFid) {
+            const user = await getFarcasterUserByFid(ctxFid);
+            if (user?.username) {
+              setCreatorHandle(user.username);
+              return;
+            }
+          }
+        }
+
+        // Otherwise try mapping via address (will work if wallet is verified/custody)
         const user = await getFarcasterUserByAddress(addr);
         if (user?.username) {
           setCreatorHandle(user.username);
@@ -108,7 +130,7 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
       }
     };
     loadCreatorHandle();
-  }, [rawData, data?.creator]);
+  }, [rawData, data?.creator, address, farcasterContext]);
 
   useEffect(() => {
     const updateMenuPosition = () => {

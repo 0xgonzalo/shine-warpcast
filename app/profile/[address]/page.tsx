@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { CONTRACT_ADDRESS, getNFTMetadata, publicClient, getTotalSongCount, checkSongExists, getUserCollection, generatePseudoFarcasterId } from '../../utils/contract';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import NFTCard from '@/app/components/NFTCard';
 import { useFarcaster } from '../../context/FarcasterContext';
 import { useTheme } from '../../context/ThemeContext';
 import Image from 'next/image';
 import { Avatar } from '@coinbase/onchainkit/identity';
-import { getFarcasterUserByAddress } from '../../utils/farcaster';
+import { getFarcasterUserByAddress, getFarcasterUserByFid } from '../../utils/farcaster';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic' as const;
@@ -32,6 +32,7 @@ interface NFT {
 
 export default function ProfilePage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const { address: paramAddress } = params;
   const { address: connectedAddress } = useAccount();
   const { isDarkMode } = useTheme();
@@ -61,12 +62,22 @@ export default function ProfilePage() {
     let cancelled = false;
     const loadProfile = async () => {
       try {
-        if (isOwnProfile && farcasterContext?.user) {
+        // If we have a Farcaster user in context, prefer that for the current user
+        if (farcasterContext?.user) {
           if (!cancelled) setFarcasterProfile(farcasterContext.user);
-          return;
+          // Do not early-return; still allow explicit fid query override below
         }
         if (!walletAddress) return;
-        const user = await getFarcasterUserByAddress(walletAddress);
+        // Prefer fetching by FID if provided (free Neynar plan supports by-fid)
+        const fidQuery = searchParams?.get('fid');
+        let user = fidQuery
+          ? await getFarcasterUserByFid(fidQuery)
+          : await getFarcasterUserByAddress(walletAddress);
+
+        // If address path failed on free plan, try the Mini App context fid as a fallback
+        if (!user && farcasterContext?.client?.fid) {
+          user = await getFarcasterUserByFid(farcasterContext.client.fid);
+        }
         if (cancelled) return;
         if (user) {
           // Normalize to the shape used by the UI below
