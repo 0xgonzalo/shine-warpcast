@@ -62,10 +62,9 @@ export default function ProfilePage() {
     let cancelled = false;
     const loadProfile = async () => {
       try {
-        // If we have a Farcaster user in context, prefer that for the current user
-        if (farcasterContext?.user) {
+        // Only prefill from context if viewing own profile
+        if (isOwnProfile && farcasterContext?.user) {
           if (!cancelled) setFarcasterProfile(farcasterContext.user);
-          // Do not early-return; still allow explicit fid query override below
         }
         if (!walletAddress) return;
         // Prefer fetching by FID if provided (free Neynar plan supports by-fid)
@@ -74,8 +73,8 @@ export default function ProfilePage() {
           ? await getFarcasterUserByFid(fidQuery)
           : await getFarcasterUserByAddress(walletAddress);
 
-        // If address path failed on free plan, try the Mini App context fid as a fallback
-        if (!user && farcasterContext?.client?.fid) {
+        // If address path failed on free plan, try the Mini App context fid as a fallback for own profile only
+        if (!user && isOwnProfile && farcasterContext?.client?.fid) {
           user = await getFarcasterUserByFid(farcasterContext.client.fid);
         }
         if (cancelled) return;
@@ -98,7 +97,7 @@ export default function ProfilePage() {
     };
     loadProfile();
     return () => { cancelled = true; };
-  }, [walletAddress, isOwnProfile, farcasterContext]);
+  }, [walletAddress, isOwnProfile, farcasterContext, searchParams]);
 
   // Fetch NFTs for both tabs
   useEffect(() => {
