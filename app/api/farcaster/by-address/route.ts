@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { NeynarAPIClient, Configuration } from '@neynar/nodejs-sdk';
 
 // Ensure the route is always dynamic and not statically cached by the platform
 export const dynamic = 'force-dynamic';
@@ -29,6 +30,17 @@ function normalizeUser(u: NeynarUser | undefined | null) {
   };
 }
 
+function getNeynarClient() {
+  const apiKey = process.env.NEYNAR_API_KEY || process.env.NEXT_PUBLIC_NEYNAR_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const config = new Configuration({ apiKey });
+    return new NeynarAPIClient(config);
+  } catch (_) {
+    return null;
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const apiKey = process.env.NEYNAR_API_KEY || process.env.NEXT_PUBLIC_NEYNAR_API_KEY;
@@ -47,10 +59,26 @@ export async function GET(req: NextRequest) {
     }
     if (debugEnabled) debug.push(`apiKeyPresent=${Boolean(apiKey)}`);
 
-    // Try Neynar custody and verification lookups first, then plain by-address (if API key exists)
+    // Try Neynar SDK lookups first, then REST, then Hubble
     let user: NeynarUser | null = null;
-    // If caller already provided fid, use the free Neynar endpoint directly
-    if (apiKey && fidParam) {
+    const client = getNeynarClient();
+
+    // Prefer SDK by fid if provided
+    if (!user && client && fidParam) {
+      try {
+        const fidNum = Number(fidParam);
+        if (!Number.isNaN(fidNum)) {
+          const result: any = await (client as any).fetchBulkUsers({ fids: [fidNum] });
+          const sdkUser = result?.users?.[0] || null;
+          if (sdkUser) user = sdkUser as NeynarUser;
+          if (debugEnabled) debug.push(`sdk.fetchBulkUsers(fid=${fidNum}) ok=${Boolean(sdkUser)}`);
+        }
+      } catch (e: any) {
+        if (debugEnabled) debug.push(`sdk.fetchBulkUsers error=${e?.message || 'err'}`);
+      }
+    }
+    // REST by fid as fallback
+    if (!user && apiKey && fidParam) {
       try {
         const byFid = `https://api.neynar.com/v2/farcaster/user?fid=${encodeURIComponent(fidParam)}`;
         const rf = await fetch(byFid, { headers, cache: 'no-store' });
@@ -108,6 +136,18 @@ export async function GET(req: NextRequest) {
         }
       }
     }
+    // Prefer SDK by address first
+    if (!user && address && client) {
+      try {
+        const result: any = await (client as any).fetchBulkUsersByEthOrSolAddress({ addresses: [address] });
+        const sdkUser = result?.users?.[0] || null;
+        if (sdkUser) user = sdkUser as NeynarUser;
+        if (debugEnabled) debug.push(`sdk.fetchBulkUsersByEthOrSolAddress(${address}) ok=${Boolean(sdkUser)}`);
+      } catch (e: any) {
+        if (debugEnabled) debug.push(`sdk.fetchBulkUsersByEthOrSolAddress error=${e?.message || 'err'}`);
+      }
+    }
+
     if (!user && apiKey && address) {
       try {
         const byCustody = `https://api.neynar.com/v2/farcaster/user/by-custody-address?address=${encodeURIComponent(address)}`;

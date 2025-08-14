@@ -56,23 +56,17 @@ export default function Navbar() {
       const fid = farcasterContext?.client?.fid;
       if (!fid) return;
       
-      console.log('🔍 [Navbar] Fetching Farcaster profile for FID:', fid);
-      
+      console.log('🔍 [Navbar] Fetching Farcaster profile for FID via internal API:', fid);
       try {
-        // Try without API key first (public endpoint)
-        const response = await fetch(`https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`);
-        
+        const response = await fetch(`/api/farcaster/by-address?fid=${encodeURIComponent(String(fid))}`, { cache: 'no-store' });
         if (response.ok) {
           const data = await response.json();
-          console.log('📱 [Navbar] Neynar user data:', data);
-          if (data.users && data.users[0]) {
-            setFarcasterProfile(data.users[0]);
-          }
+          if (data?.user) setFarcasterProfile(data.user);
         } else {
-          console.log('📱 [Navbar] Neynar API response not OK:', response.status);
+          console.log('📱 [Navbar] Internal API response not OK:', response.status);
         }
       } catch (error) {
-        console.error('❌ [Navbar] Error fetching Farcaster profile:', error);
+        console.error('❌ [Navbar] Error fetching Farcaster profile via internal API:', error);
       }
     };
 

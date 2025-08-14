@@ -25,11 +25,13 @@ export async function getFarcasterUserByAddress(address: string): Promise<Farcas
     console.log(`🔍 Looking up Farcaster user for address: ${address}`);
 
     // Use Next API route to avoid exposing keys and to normalize shapes
-    const res = await fetch(`/api/farcaster/by-address?address=${encodeURIComponent(lower)}`, {
+    const res = await fetch(`/api/farcaster/by-address?address=${encodeURIComponent(lower)}&debug=1`, {
       cache: 'no-store'
     });
     if (res.ok) {
-      const { user } = await res.json();
+      const json = await res.json();
+      if (json?.debug) console.log('[FC] by-address debug:', json.debug);
+      const { user } = json;
       if (user) {
         farcasterUserCache[lower] = user;
         return user;
@@ -49,10 +51,12 @@ export async function getFarcasterUserByFid(fid: number | string): Promise<Farca
     if (farcasterUserByFidCache[key]) return farcasterUserByFidCache[key];
 
     console.log(`🔍 Looking up Farcaster user by FID: ${fid}`);
-    const url = `/api/farcaster/by-address?fid=${encodeURIComponent(String(fid))}`;
+    const url = `/api/farcaster/by-address?fid=${encodeURIComponent(String(fid))}&debug=1`;
     const res = await fetch(url, { cache: 'no-store' });
     if (res.ok) {
-      const { user } = await res.json();
+      const json = await res.json();
+      if (json?.debug) console.log('[FC] by-fid debug:', json.debug);
+      const { user } = json;
       if (user) {
         farcasterUserByFidCache[key] = user;
         return user;
