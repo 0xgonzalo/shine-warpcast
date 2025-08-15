@@ -301,18 +301,20 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
         </div>
 
         <div className="flex items-center justify-between md:px-2 mb-2">
-          <div>
+          <div className="flex-1 min-w-0 mr-2">
             <h3 
-              className="md:text-lg text-sm font-semibold cursor-pointer hover:text-purple-300 transition-colors"
+              className="md:text-lg text-sm font-semibold cursor-pointer hover:text-purple-300 transition-colors truncate"
               onClick={() => router.push(`/token/${tokenId}`)}
+              title={data.name}
             >
               {data.name}
             </h3>
             <p 
-              className={`md:text-xs text-[10px] cursor-pointer hover:underline ${
+              className={`md:text-xs text-[10px] cursor-pointer hover:underline truncate ${
                 isDarkMode ? 'text-gray-400' : 'text-[#0000FE]'
               }`}
               onClick={handleCreatorClick}
+              title={creatorHandle ? `@${creatorHandle}` : `${data.creator?.slice(0, 6)}...${data.creator?.slice(-4)}`}
             >
               {creatorHandle ? `@${creatorHandle}` : `${data.creator?.slice(0, 6)}...${data.creator?.slice(-4)}`}
             </p>
