@@ -1,5 +1,5 @@
 import { createPublicClient, http } from 'viem';
-import { baseSepolia } from 'viem/chains';
+import { base } from 'viem/chains';
 import songDataBaseABI from '../../abi/SongDataBase.json';
 
 // Use the imported ABI from the generated file  
@@ -20,11 +20,11 @@ interface SongMetadata {
   maxSupplySpecialEdition: bigint;
 }
 
-export const CONTRACT_ADDRESS = '0xF66464ccf2d0e56DFA15572c122C6474B0A1c82C';
+export const CONTRACT_ADDRESS = '0x3419c1f2d26c1c37092a28cd3a56128d2d25abd7';
 
 // Create a public client for reading from the contract
 export const publicClient = createPublicClient({
-  chain: baseSepolia,
+  chain: base,
   transport: http(),
 });
 
@@ -81,7 +81,7 @@ export async function testContractConnection() {
   try {
     console.log('🧪 Testing contract connection...');
     console.log('📍 Contract Address:', CONTRACT_ADDRESS);
-    console.log('🌐 Network: Base Sepolia');
+    console.log('🌐 Network: Base Mainnet');
     
     // Try to get total song count as a simple test
     const count = await getTotalSongCount();

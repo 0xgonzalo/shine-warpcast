@@ -2,13 +2,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactNode } from "react";
 import { createConfig, WagmiProvider as WProvider, http } from "wagmi";
 import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
-import { baseSepolia } from "viem/chains";
+import { base } from "viem/chains";
 import { metaMask, coinbaseWallet, injected } from "wagmi/connectors";
 
 const queryClient = new QueryClient();
 
 export const config = createConfig({
-  chains: [baseSepolia],
+  chains: [base],
   connectors: [
     farcasterMiniApp(),
     metaMask(),
@@ -16,7 +16,7 @@ export const config = createConfig({
     injected(),
   ],
   transports: {
-    [baseSepolia.id]: http('https://sepolia.base.org'),
+    [base.id]: http(),
   },
   ssr: false,
 });
