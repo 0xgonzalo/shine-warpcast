@@ -398,7 +398,7 @@ export default function CreatePage() {
                   type="text"
                   value={nftName}
                   onChange={(e) => setNftName(e.target.value)}
-                  className={`w-full px-3 py-2 bg-white/10 text-white rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-[#0000FE]'} focus:border-blue-500 focus:outline-none`}
+                  className={`w-full px-3 py-2 bg-white/10 ${isDarkMode ? 'text-white' : 'text-[#0000FA]'} rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-[#0000FE]'} focus:border-blue-500 focus:outline-none`}
                   placeholder="Enter song name"
                 />
               </div>
@@ -407,7 +407,7 @@ export default function CreatePage() {
                 <textarea
                   value={nftDescription}
                   onChange={(e) => setNftDescription(e.target.value)}
-                  className={`w-full px-3 py-2 bg-white/10 text-white rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-[#0000FE]'} focus:border-blue-500 focus:outline-none h-24`}
+                  className={`w-full px-3 py-2 bg-white/10 ${isDarkMode ? 'text-white' : 'text-[#0000FA]'} rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-[#0000FE]'} focus:border-blue-500 focus:outline-none h-24`}
                   placeholder="Enter song description"
                 />
               </div>
@@ -451,7 +451,7 @@ export default function CreatePage() {
                         value={tagInput}
                         onChange={(e) => setTagInput(e.target.value)}
                         onKeyDown={handleTagInputKeyDown}
-                        className={`w-full px-3 py-2 bg-white/10 text-white rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-[#0000FE]'} focus:border-blue-500 focus:outline-none`}
+                        className={`w-full px-3 py-2 bg-white/10 ${isDarkMode ? 'text-white' : 'text-[#0000FA]'} rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-[#0000FE]'} focus:border-blue-500 focus:outline-none`}
                         placeholder="Type to search genres or add custom tags..."
                       />
                       
@@ -495,7 +495,7 @@ export default function CreatePage() {
                   min="0"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
-                  className={`w-full px-3 py-2 bg-white/10 text-white rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-[#0000FE]'} focus:border-blue-500 focus:outline-none`}
+                  className={`w-full px-3 py-2 bg-white/10 ${isDarkMode ? 'text-white' : 'text-[#0000FA]'} rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-[#0000FE]'} focus:border-blue-500 focus:outline-none`}
                   placeholder="0.001"
                 />
               </div>
@@ -521,7 +521,7 @@ export default function CreatePage() {
                       type="text"
                       value={specialEditionName}
                       onChange={(e) => setSpecialEditionName(e.target.value)}
-                      className={`w-full px-3 py-2 bg-white/10 text-white rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-[#0000FE]'} focus:border-blue-500 focus:outline-none`}
+                      className={`w-full px-3 py-2 bg-white/10 ${isDarkMode ? 'text-white' : 'text-[#0000FA]'} rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-[#0000FE]'} focus:border-blue-500 focus:outline-none`}
                       placeholder="Enter special edition name"
                     />
                   </div>
@@ -534,7 +534,7 @@ export default function CreatePage() {
                       min="0"
                       value={specialEditionPrice}
                       onChange={(e) => setSpecialEditionPrice(e.target.value)}
-                      className={`w-full px-3 py-2 bg-white/10 text-white rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-[#0000FE]'} focus:border-blue-500 focus:outline-none`}
+                      className={`w-full px-3 py-2 bg-white/10 ${isDarkMode ? 'text-white' : 'text-[#0000FA]'} rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-[#0000FE]'} focus:border-blue-500 focus:outline-none`}
                       placeholder="0.001"
                     />
                   </div>
@@ -546,7 +546,7 @@ export default function CreatePage() {
                       min="1"
                       value={numberOfEditions}
                       onChange={(e) => setNumberOfEditions(e.target.value)}
-                      className={`w-full px-3 py-2 bg-white/10 text-white rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-[#0000FE]'} focus:border-blue-500 focus:outline-none`}
+                      className={`w-full px-3 py-2 bg-white/10 ${isDarkMode ? 'text-white' : 'text-[#0000FA]'} rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-[#0000FE]'} focus:border-blue-500 focus:outline-none`}
                       placeholder="Enter number of editions"
                     />
                   </div>
