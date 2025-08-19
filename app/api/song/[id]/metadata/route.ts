@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSongMetadata } from '@/app/utils/contract';
-import { getIPFSGatewayURL } from '@/app/utils/pinata';
+import { getIPFSGatewayURL, getAllIPFSGatewayURLs } from '@/app/utils/pinata';
 
 export const revalidate = 0;
 
@@ -22,19 +22,41 @@ export async function GET(
     }
 
     let imageUrl = null;
-    const metadataUrl = getIPFSGatewayURL(songMetadata.metadataURI);
+    const metadataUrls = getAllIPFSGatewayURLs(songMetadata.metadataURI);
 
-    if (metadataUrl) {
+    // Try multiple IPFS gateways with timeout
+    for (const metadataUrl of metadataUrls) {
       try {
-        const response = await fetch(metadataUrl, { cache: 'no-store' });
+        console.log('Fetching metadata from:', metadataUrl);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        
+        const response = await fetch(metadataUrl, { 
+          cache: 'no-store',
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        
+        console.log('Metadata response status:', response.status);
+        
         if (response.ok) {
           const json = await response.json();
-          if (json.image || json.imageURI) {
-            imageUrl = getIPFSGatewayURL(json.image || json.imageURI);
+          console.log('Metadata JSON:', JSON.stringify(json, null, 2));
+          
+          // Try multiple possible image field names
+          const imageUri = json.image || json.imageURI || json.artwork || json.cover;
+          console.log('Found image URI:', imageUri);
+          
+          if (imageUri) {
+            imageUrl = getIPFSGatewayURL(imageUri);
+            console.log('Final image URL:', imageUrl);
+            break; // Success, exit the loop
           }
         }
       } catch (e) {
-        console.error('Failed to fetch or parse metadata JSON:', e);
+        console.error('Failed to fetch metadata from', metadataUrl, ':', e);
+        // Continue to next gateway
       }
     }
 
