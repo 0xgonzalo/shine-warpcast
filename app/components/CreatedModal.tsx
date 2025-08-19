@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import ReactCanvasConfetti from 'react-canvas-confetti';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
 import { getCelebrationConfettiConfig } from '@/app/utils/confetti';
@@ -33,6 +34,24 @@ const CreatedModal: React.FC<CreatedModalProps> = ({ nft, txHash, onClose, token
     return () => clearTimeout(timer);
   }, []);
 
+  // Handle escape key to close modal and prevent body scroll
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    // Prevent body scroll when modal is open
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', handleEscape);
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [onClose]);
+
   const getInstance = (instance: any) => {
     confettiRef.current = instance;
   };
@@ -47,8 +66,16 @@ const CreatedModal: React.FC<CreatedModalProps> = ({ nft, txHash, onClose, token
     return window.location.origin + pathname;
   }, [pathname, tokenPath]);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+  const modalContent = (
+    <div 
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-60"
+      onClick={(e) => {
+        // Close modal when clicking on backdrop
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       {/* Confetti Canvas */}
       <ReactCanvasConfetti
         onInit={({ confetti }) => getInstance(confetti)}
@@ -58,14 +85,19 @@ const CreatedModal: React.FC<CreatedModalProps> = ({ nft, txHash, onClose, token
           width: '100%',
           height: '100%',
           pointerEvents: 'none',
-          zIndex: 40
+          zIndex: 9998
         }}
       />
       
-      <div className="bg-black rounded-lg p-6 md:p-12 max-w-xs md:max-w-sm w-full text-center relative border border-white/10 z-50">
+      <div className="bg-black rounded-lg p-6 md:p-12 max-w-xs md:max-w-sm w-full text-center relative border border-white/10 z-[10000] mx-4">
         <button
-          onClick={onClose}
-          className="absolute top-2 right-4 text-gray-50 hover:text-gray-200 text-xl md:text-2xl"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onClose();
+          }}
+          className="absolute top-2 right-4 text-gray-50 hover:text-gray-200 text-xl md:text-2xl transition-colors"
+          aria-label="Close modal"
         >
           &times;
         </button>
@@ -117,7 +149,11 @@ const CreatedModal: React.FC<CreatedModalProps> = ({ nft, txHash, onClose, token
               Share on Farcaster
             </button>
             <button
-              onClick={onClose}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClose();
+              }}
               className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
             >
               Continue Creating
@@ -127,6 +163,13 @@ const CreatedModal: React.FC<CreatedModalProps> = ({ nft, txHash, onClose, token
       </div>
     </div>
   );
+
+  // Use portal to render modal at the root level, outside of any parent containers
+  if (typeof window !== 'undefined') {
+    return createPortal(modalContent, document.body);
+  }
+
+  return null;
 };
 
 export default CreatedModal; 

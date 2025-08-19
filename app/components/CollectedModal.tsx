@@ -88,7 +88,11 @@ const CollectedModal: React.FC<CollectedModalProps> = ({ nft, txHash, onClose, t
       
       <div className="bg-black rounded-lg p-6 md:p-12 max-w-xs md:max-w-sm w-full text-center relative border border-white/10 z-[10000] mx-4">
         <button
-          onClick={onClose}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onClose();
+          }}
           className="absolute top-2 right-4 text-gray-50 hover:text-gray-200 text-xl md:text-2xl transition-colors"
           aria-label="Close modal"
         >
