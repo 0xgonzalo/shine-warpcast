@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  env: {
+    NEXT_PUBLIC_ALCHEMY_API_KEY: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY,
+  },
   // Silence warnings
   // https://github.com/WalletConnect/walletconnect-monorepo/issues/1908
   images: {

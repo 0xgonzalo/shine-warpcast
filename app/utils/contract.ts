@@ -22,10 +22,15 @@ interface SongMetadata {
 
 export const CONTRACT_ADDRESS = '0x3419c1f2d26c1c37092a28cd3a56128d2d25abd7';
 
+// Rate limiting utility
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 // Create a public client for reading from the contract
 export const publicClient = createPublicClient({
   chain: base,
-  transport: http(),
+  transport: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY 
+    ? http(`https://base-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`)
+    : http(), // Fallback to default Base RPC
 });
 
 // Contract interaction functions
@@ -44,20 +49,22 @@ export async function getSongMetadata(songId: bigint): Promise<SongMetadata> {
   }
 }
 
-export async function checkSongExists(songId: bigint) {
+export async function checkSongExists(songId: bigint): Promise<boolean> {
+  console.log(`🔍 checkSongExists: Checking song ID ${songId}...`);
   try {
-    console.log(`🔍 checkSongExists: Checking song ID ${songId}...`);
+    // Add delay to prevent rate limiting
+    await delay(100);
     const exists = await publicClient.readContract({
       address: CONTRACT_ADDRESS as `0x${string}`,
       abi: contractABI,
       functionName: 'songIdExists',
       args: [songId],
     });
-    console.log(`✅ checkSongExists: Song ID ${songId} exists:`, exists);
-    return exists;
+    console.log(`✅ checkSongExists: Song ID ${songId} exists: ${exists}`);
+    return exists as boolean;
   } catch (error) {
     console.error(`❌ checkSongExists: Error checking if song ${songId} exists:`, error);
-    throw error;
+    return false;
   }
 }
 
@@ -216,35 +223,36 @@ export async function getRecentlyCollectedSongs(limit: number = 10) {
     const fromBlock = latestBlock - BigInt(10000);
     console.log('📦 Searching from block:', fromBlock.toString(), 'to', latestBlock.toString());
     
-    // Get UserBuy and UserInstaBuy events
-    const [userBuyLogs, userInstaBuyLogs] = await Promise.all([
-      publicClient.getLogs({
-        address: CONTRACT_ADDRESS as `0x${string}`,
-        event: {
-          type: 'event',
-          name: 'UserBuy',
-          inputs: [
-            { name: 'audioIds', type: 'uint256[]', indexed: true },
-            { name: 'farcasterId', type: 'uint256', indexed: true }
-          ]
-        },
-        fromBlock,
-        toBlock: 'latest'
-      }),
-      publicClient.getLogs({
-        address: CONTRACT_ADDRESS as `0x${string}`,
-        event: {
-          type: 'event',
-          name: 'UserInstaBuy',
-          inputs: [
-            { name: 'audioId', type: 'uint256', indexed: true },
-            { name: 'farcasterId', type: 'uint256', indexed: true }
-          ]
-        },
-        fromBlock,
-        toBlock: 'latest'
-      })
-    ]);
+    // Get UserBuy and UserInstaBuy events (sequential to avoid rate limiting)
+    await delay(200);
+    const userBuyLogs = await publicClient.getLogs({
+      address: CONTRACT_ADDRESS as `0x${string}`,
+      event: {
+        type: 'event',
+        name: 'UserBuy',
+        inputs: [
+          { name: 'audioIds', type: 'uint256[]', indexed: true },
+          { name: 'farcasterId', type: 'uint256', indexed: true }
+        ]
+      },
+      fromBlock,
+      toBlock: 'latest'
+    });
+
+    await delay(200);
+    const userInstaBuyLogs = await publicClient.getLogs({
+      address: CONTRACT_ADDRESS as `0x${string}`,
+      event: {
+        type: 'event',
+        name: 'UserInstaBuy',
+        inputs: [
+          { name: 'audioId', type: 'uint256', indexed: true },
+          { name: 'farcasterId', type: 'uint256', indexed: true }
+        ]
+      },
+      fromBlock,
+      toBlock: 'latest'
+    });
 
     console.log('📋 UserBuy events found:', userBuyLogs.length);
     console.log('📋 UserInstaBuy events found:', userInstaBuyLogs.length);

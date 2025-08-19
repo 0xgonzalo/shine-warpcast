@@ -233,16 +233,18 @@ function KeenNFTSlider({ tokenIds }: { tokenIds: bigint[] }) {
     async function checkExists() {
       setIsLoading(true);
       const { checkNFTExists } = await import('../../utils/contract');
-      const checks = await Promise.all(
-        tokenIds.map(async (tokenId) => {
-          try {
-            const exists = await checkNFTExists(tokenId);
-            return exists ? tokenId : null;
-          } catch (error) {
-            return null;
-          }
-        })
-      );
+      // Process sequentially to avoid rate limiting
+      const checks: (bigint | null)[] = [];
+      for (const tokenId of tokenIds) {
+        try {
+          const exists = await checkNFTExists(tokenId);
+          checks.push(exists ? tokenId : null);
+          // Small delay between requests
+          await new Promise(resolve => setTimeout(resolve, 50));
+        } catch (error) {
+          checks.push(null);
+        }
+      }
       if (isMounted) {
         setAvailableTokenIds(checks.filter(Boolean) as bigint[]);
         setIsLoading(false);
