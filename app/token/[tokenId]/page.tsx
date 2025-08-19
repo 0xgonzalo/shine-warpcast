@@ -216,7 +216,7 @@ export default function TokenPage() {
 
         {/* Song Info */}
         <h1 className={`text-2xl font-bold mb-2 text-center ${
-          isDarkMode ? 'text-white' : 'text-[#0000FE]'
+          isDarkMode ? 'text-white' : 'text-foreground'
         }`}>{data.name}</h1>
         <p className={`mb-6 text-center ${
           isDarkMode ? 'text-gray-300' : 'text-blue-800'

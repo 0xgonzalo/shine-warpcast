@@ -26,7 +26,7 @@ export default function HomeTabs({ activeTab, onTabChange }: HomeTabsProps) {
             activeTab === tab.id
               ? isDarkMode 
                 ? 'text-white border-b-2 border-white' 
-                : 'text-[#0000FE] border-b-2 border-[#0000FE]'
+                : 'text-foreground border-b-2 border-foreground'
               : isDarkMode
                 ? 'text-gray-400 hover:text-white'
                 : 'text-blue-800 hover:text-gray-800'
@@ -35,7 +35,7 @@ export default function HomeTabs({ activeTab, onTabChange }: HomeTabsProps) {
           {tab.label}
           {activeTab === tab.id && (
             <div className={`absolute bottom-0 left-0 right-0 h-0.5 rounded-full ${
-              isDarkMode ? 'bg-white' : 'bg-[#0000FE]'
+              isDarkMode ? 'bg-white' : 'bg-foreground'
             }`} />
           )}
         </button>

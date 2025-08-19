@@ -294,7 +294,7 @@ export default function GlobalAudioPlayer() {
             className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors flex-shrink-0 ${
               isDarkMode 
                 ? 'bg-white text-black hover:bg-gray-200 disabled:bg-gray-400' 
-                : 'bg-[#0000FE] text-white hover:bg-blue-600 disabled:bg-gray-400'
+                : 'bg-foreground text-white hover:bg-blue-600 disabled:bg-gray-400'
             }`}
           >
             {isLoadingFallback ? (
@@ -322,12 +322,12 @@ export default function GlobalAudioPlayer() {
             >
               <div 
                 className={`h-full rounded-full relative ${
-                  isDarkMode ? 'bg-white' : 'bg-[#0000FE]'
+                  isDarkMode ? 'bg-white' : 'bg-foreground'
                 }`}
                 style={{ width: `${progressPercentage}%` }}
               >
                 <div className={`absolute right-0 top-1/2 transform translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full ${
-                  isDarkMode ? 'bg-white' : 'bg-[#0000FE]'
+                  isDarkMode ? 'bg-white' : 'bg-foreground'
                 }`}></div>
               </div>
             </div>

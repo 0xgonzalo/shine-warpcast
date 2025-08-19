@@ -253,7 +253,7 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
       <div className={`w-full rounded-lg shadow-lg overflow-hidden p-2 transition-all duration-300 hover:shadow-2xl ${
         isDarkMode 
           ? 'bg-gradient-to-r from-[#323232] to-[#232323] text-white' 
-          : 'bg-white/20 border border-[#0000FE] text-[#0000FE]'
+          : 'bg-white/20 border border-foreground text-foreground'
       }`}>
         <div
           className="w-full aspect-square bg-gradient-to-r from-[#282828] to-[#232323] rounded-md mb-2 relative cursor-pointer group flex items-center justify-center"
@@ -311,7 +311,7 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
             </h3>
             <p 
               className={`md:text-xs text-[10px] cursor-pointer hover:underline truncate ${
-                isDarkMode ? 'text-gray-400' : 'text-[#0000FE]'
+                isDarkMode ? 'text-gray-400' : 'text-foreground'
               }`}
               onClick={handleCreatorClick}
               title={creatorHandle ? `@${creatorHandle}` : `${data.creator?.slice(0, 6)}...${data.creator?.slice(-4)}`}
@@ -329,13 +329,13 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
                 className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
                   isDarkMode 
                     ? 'bg-white/10 hover:bg-white/20' 
-                    : 'bg-[#0000FE]/10 hover:bg-white/20'
+                    : 'bg-foreground/10 hover:bg-white/20'
                 }`}
                 title="Options"
                 ref={buttonRef}
               >
                 <svg className={`w-4 h-4 ${
-                  isDarkMode ? 'text-white' : 'text-[#0000FE]'
+                  isDarkMode ? 'text-white' : 'text-foreground'
                 }`} viewBox="0 0 24 24" fill="currentColor">
                   <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                 </svg>
@@ -386,7 +386,7 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
           className={`w-full px-4 py-2 text-white rounded-lg transition-colors disabled:opacity-50 ${
             isDarkMode 
               ? 'bg-gradient-to-r from-[#5D2DA0] to-[#821FA5] hover:bg-purple-700' 
-              : 'bg-[#0000FE] hover:bg-blue-800'
+              : 'bg-foreground hover:bg-blue-800'
           }`}
         >
           {isPending ? 'Collecting...' : 'Collect'}

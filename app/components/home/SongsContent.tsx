@@ -113,7 +113,7 @@ export default function SongsContent() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-[#0000FE]'}`}>Browse Songs</h2>
+        <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-foreground'}`}>Browse Songs</h2>
       </div>
 
       <div className="mb-6">
@@ -134,7 +134,7 @@ export default function SongsContent() {
               }}
               placeholder="Search genres (e.g., Pop, Lo-fi, Afrobeat)"
               className={`w-full px-3 py-2 rounded-lg border text-sm ${
-                isDarkMode ? 'bg-white/10 text-white border-white/20 placeholder-white/50' : 'bg-white text-[#0000FE] border-[#0000FE] placeholder-[#0000FE]/70'
+                isDarkMode ? 'bg-white/10 text-white border-white/20 placeholder-white/50' : 'bg-white text-foreground border-foreground placeholder-foreground/70'
               }`}
             />
             {genreQuery && filteredSuggestions.length > 0 && (
@@ -166,10 +166,10 @@ export default function SongsContent() {
                   selectedGenre === genre
                     ? isDarkMode
                       ? 'bg-white text-black border-white'
-                      : 'bg-[#0000FE] text-white border-[#0000FE]'
+                      : 'bg-foreground text-white border-foreground'
                     : isDarkMode
                       ? 'text-white border-white/30 hover:bg-white/10'
-                      : 'text-[#0000FE] border-[#0000FE] hover:bg-[#0000FE]/10'
+                      : 'text-foreground border-foreground hover:bg-foreground/10'
                 }`}
                 title={genre}
               >
@@ -181,7 +181,7 @@ export default function SongsContent() {
       </div>
 
       {isLoading ? (
-        <div className={`text-center py-8 ${isDarkMode ? 'text-white' : 'text-[#0000FE]'}`}>
+        <div className={`text-center py-8 ${isDarkMode ? 'text-white' : 'text-foreground'}`}>
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-current mx-auto mb-2"></div>
           <p>Loading songs...</p>
         </div>

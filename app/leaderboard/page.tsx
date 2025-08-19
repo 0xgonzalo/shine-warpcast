@@ -21,7 +21,7 @@ export default function LeaderboardPage() {
   const { isDarkMode } = useTheme();
 
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'bg-black text-white' : 'bg-white text-[#0000FE]'} pb-20`}>
+    <div className={`min-h-screen ${isDarkMode ? 'bg-black text-white' : 'bg-white text-foreground'} pb-20`}>
       {/* Header */}
       <div className="sticky top-0 z-10 bg-opacity-80 backdrop-blur-md border-b border-white/10">
         <div className="max-w-4xl mx-auto px-4 py-6">
@@ -42,7 +42,7 @@ export default function LeaderboardPage() {
       {/* Coming Soon Banner */}
       <div className="max-w-4xl mx-auto px-4 py-6">
         <div className={`rounded-lg border ${
-          isDarkMode ? 'border-gray-600 bg-gray-900/50' : 'border-[#0000FE] bg-gray-50'
+          isDarkMode ? 'border-gray-600 bg-gray-900/50' : 'border-foreground bg-gray-50'
         } p-6 text-center mb-8`}>
           <div className="text-2xl mb-2">✨</div>
           <h2 className="text-xl font-semibold mb-2">Points System Coming Soon!</h2>

@@ -175,14 +175,14 @@ export default function FeedContent({ mobileColumns, setMobileColumns }: FeedCon
     <>
       <div className="flex justify-between items-center mb-4">
         <h1 className={`md:text-4xl text-2xl font-bold text-center ${
-          isDarkMode ? 'text-white' : 'text-[#0000FE]'
+          isDarkMode ? 'text-white' : 'text-foreground'
         }`}>New Releases</h1>
         <button
           onClick={handleRefresh}
           className={`px-4 py-2 rounded-lg transition-colors ${
             isDarkMode
               ? 'bg-white/10 hover:bg-white/20 text-white'
-              : 'bg-[#0000FE]/10 hover:bg-[#0000FE]/20 text-[#0000FE]'
+              : 'bg-foreground/10 hover:bg-foreground/20 text-foreground'
           }`}
           title="Refresh to show latest songs"
         >
@@ -205,7 +205,7 @@ export default function FeedContent({ mobileColumns, setMobileColumns }: FeedCon
       {/* NFTExists Cards as a horizontal slider */}
       <div className="mb-12">
         {isLoadingTokens ? (
-          <div className={`text-center py-8 ${isDarkMode ? 'text-white' : 'text-[#0000FE]'}`}>
+          <div className={`text-center py-8 ${isDarkMode ? 'text-white' : 'text-foreground'}`}>
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-current mx-auto mb-2"></div>
             <p>Loading latest releases...</p>
           </div>
