@@ -34,20 +34,7 @@ export default async function TokenOgImage({
       const metadata = await res.json();
       title = metadata.title || title;
       subtitle = metadata.artistName || metadata.artistAddress || '';
-      const candidate = toGateway(metadata.metadataURI);
-      if (candidate) {
-        if (/\.(png|jpg|jpeg|gif|webp)$/i.test(candidate)) {
-          imageUrl = candidate;
-        } else {
-          try {
-            const res2 = await fetch(candidate, { cache: 'no-store' });
-            if (res2.ok) {
-              const json = await res2.json();
-              imageUrl = toGateway(json.image || json.imageURI);
-            }
-          } catch {}
-        }
-      }
+      imageUrl = metadata.imageUrl;
     }
   } catch {}
 
