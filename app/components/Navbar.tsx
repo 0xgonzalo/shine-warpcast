@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useEffect, useState, useRef } from 'react';
+import { useAccount, useDisconnect } from 'wagmi';
 
 import { useTheme } from '../context/ThemeContext';
 import { useFarcaster } from '../context/FarcasterContext';
@@ -35,12 +35,27 @@ function ClientOnly({ children }: { children: React.ReactNode }) {
 
 export default function Navbar() {
   const { address, isConnected } = useAccount();
+  const { disconnect } = useDisconnect();
   const { isDarkMode, toggleTheme } = useTheme();
   const { context: farcasterContext } = useFarcaster();
   
   // Extract Farcaster user data from context
   const farcasterUser = farcasterContext?.user;
   const [farcasterProfile, setFarcasterProfile] = useState<any>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Handle click outside dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Try to get Farcaster profile data from context or fetch it
   useEffect(() => {
@@ -123,111 +138,166 @@ export default function Navbar() {
                   height={20}
                 />
               </button>
-
               <ClientOnly>
-                <Wallet>
-                  <ConnectWallet className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors flex items-center space-x-2">
-                    {/* Show Farcaster avatar if available */}
-                    {(() => {
-                      const avatarUrl =
-                        (farcasterProfile as any)?.pfp_url ||
-                        (farcasterProfile as any)?.pfp?.url ||
-                        (farcasterContext as any)?.user?.pfpUrl ||
-                        (farcasterContext as any)?.user?.pfp?.url ||
-                        undefined;
-                      if (!avatarUrl) return null;
-                      return (
-                        <img
-                          src={avatarUrl}
-                          alt={(farcasterProfile as any)?.username || 'Farcaster User'}
-                          width={24}
-                          height={24}
-                          referrerPolicy="no-referrer"
-                          crossOrigin="anonymous"
-                          className="w-6 h-6 rounded-full object-cover"
-                        />
-                      );
-                    })()}
-                    <span className="text-white">
-                      {(farcasterProfile as any)?.username || (farcasterContext as any)?.user?.username || <Name address={address}/>}
-                    </span>
-                  </ConnectWallet>
-                  <WalletDropdown>
-                    <div className={`p-4 ${
-                      isDarkMode 
-                        ? 'bg-gray-800 border-gray-700' 
-                        : 'bg-white border-gray-200'
-                    }`}>
-                      <div className={`mb-2 text-lg font-bold pb-2 border-b ${
-                        isDarkMode ? 'text-white border-gray-700' : 'text-white border-gray-200'
-                      }`}>
-                        <span>Wallet Details</span>
-                      </div>
-                      <div>
-                        <Identity className="px-2 py-2" hasCopyAddressOnClick>
-                          {/* Show Farcaster avatar in dropdown too */}
-                          {(() => {
-                            const avatarUrl =
-                              (farcasterProfile as any)?.pfp_url ||
-                              (farcasterProfile as any)?.pfp?.url ||
-                              (farcasterContext as any)?.user?.pfpUrl ||
-                              (farcasterContext as any)?.user?.pfp?.url ||
-                              undefined;
-                            if (avatarUrl) {
-                              return (
-                                <img
-                                  src={avatarUrl}
-                                  alt={(farcasterProfile as any)?.username || 'Farcaster User'}
-                                  width={32}
-                                  height={32}
-                                  referrerPolicy="no-referrer"
-                                  crossOrigin="anonymous"
-                                  className="w-8 h-8 rounded-full object-cover"
-                                />
-                              );
-                            }
-                            return <Avatar />;
-                          })()}
-                          <Name address={address} className="text-white"/>
-                          <Address className="text-white"/>
-                          <EthBalance className="text-white"/>
-                        </Identity>
-                        <Link
-                          href="/create"
-                          className={`block w-full mt-2 text-center py-2 px-4 font-bold transition-colors rounded ${
-                            isDarkMode 
-                              ? 'bg-gray-700 border border-gray-600 text-white hover:bg-gray-600' 
-                              : 'bg-gray-100 border border-gray-300 text-white hover:bg-gray-200'
-                          }`}
+                <div className="relative" ref={dropdownRef}>
+                  {!isConnected ? (
+                    <Wallet>
+                      <ConnectWallet className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors">
+                        Connect Wallet
+                      </ConnectWallet>
+                    </Wallet>
+                  ) : (
+                    <>
+                      {/* Profile Button */}
+                      <button
+                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                        className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors flex items-center space-x-2"
+                      >
+                        {/* Show Farcaster avatar if available */}
+                        {(() => {
+                          const avatarUrl =
+                            (farcasterProfile as any)?.pfp_url ||
+                            (farcasterProfile as any)?.pfp?.url ||
+                            (farcasterContext as any)?.user?.pfpUrl ||
+                            (farcasterContext as any)?.user?.pfp?.url ||
+                            undefined;
+                          if (avatarUrl) {
+                            return (
+                              <img
+                                src={avatarUrl}
+                                alt={(farcasterProfile as any)?.username || 'Farcaster User'}
+                                width={24}
+                                height={24}
+                                referrerPolicy="no-referrer"
+                                crossOrigin="anonymous"
+                                className="w-6 h-6 rounded-full object-cover"
+                              />
+                            );
+                          }
+                          return (
+                            <div className="w-6 h-6 rounded-full bg-gray-400 flex items-center justify-center">
+                              <span className="text-xs text-white">
+                                {address ? address.slice(2, 4).toUpperCase() : '??'}
+                              </span>
+                            </div>
+                          );
+                        })()}
+                        <span className="text-white">
+                          {(farcasterProfile as any)?.username || (farcasterContext as any)?.user?.username || (address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Profile')}
+                        </span>
+                        <svg 
+                          className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
                         >
-                          Create
-                        </Link>
-                        <Link
-                          href={address ? (`/profile/${address}` + (farcasterContext?.client?.fid ? `?fid=${encodeURIComponent(String((farcasterContext as any)?.client?.fid))}` : '')) : '/profile'}
-                          className={`block w-full mt-2 text-center py-2 px-4 font-bold transition-colors rounded ${
-                            isDarkMode 
-                              ? 'bg-gray-700 border border-gray-600 text-white hover:bg-gray-600' 
-                              : 'bg-gray-100 border border-gray-300 text-white hover:bg-gray-200'
-                          }`}
-                        >
-                          Profile
-                        </Link>
-                        <WalletDropdownDisconnect className={`w-full mt-2 text-center py-2 px-4 font-bold transition-colors rounded ${
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+
+                      {/* Custom Dropdown */}
+                      {isDropdownOpen && (
+                        <div className={`absolute right-0 top-full mt-2 z-50 p-4 rounded-lg shadow-xl border min-w-[280px] ${
                           isDarkMode 
-                            ? 'bg-red-900 border border-red-700 text-white hover:bg-red-800' 
-                            : 'bg-red-100 border border-red-300 text-white hover:bg-red-200'
-                        }`} />
-                      </div>
-                    </div>
-                  </WalletDropdown>
-                </Wallet>
+                            ? 'bg-gradient-to-br from-gray-900 to-black border-gray-600 shadow-black/50' 
+                            : 'bg-gradient-to-br from-white to-blue-50 border-blue-200 shadow-blue-100/50'
+                        }`}>
+                          <div className={`mb-4 text-lg font-bold pb-2 border-b ${
+                            isDarkMode ? 'text-white border-gray-600' : 'text-foreground border-blue-200'
+                          }`}>
+                            <span>Wallet Details</span>
+                          </div>
+                          
+                          {/* User Info */}
+                          <div className="mb-4">
+                            <div className="flex items-center space-x-3 mb-2">
+                              {(() => {
+                                const avatarUrl =
+                                  (farcasterProfile as any)?.pfp_url ||
+                                  (farcasterProfile as any)?.pfp?.url ||
+                                  (farcasterContext as any)?.user?.pfpUrl ||
+                                  (farcasterContext as any)?.user?.pfp?.url ||
+                                  undefined;
+                                if (avatarUrl) {
+                                  return (
+                                    <img
+                                      src={avatarUrl}
+                                      alt={(farcasterProfile as any)?.username || 'Farcaster User'}
+                                      width={32}
+                                      height={32}
+                                      referrerPolicy="no-referrer"
+                                      crossOrigin="anonymous"
+                                      className="w-8 h-8 rounded-full object-cover"
+                                    />
+                                  );
+                                }
+                                return (
+                                  <div className="w-8 h-8 rounded-full bg-gray-400 flex items-center justify-center">
+                                    <span className="text-sm text-white">
+                                      {address ? address.slice(2, 4).toUpperCase() : '??'}
+                                    </span>
+                                  </div>
+                                );
+                              })()}
+                              <div>
+                                <div className={`font-medium ${isDarkMode ? 'text-white' : 'text-foreground'}`}>
+                                  {(farcasterProfile as any)?.username || (farcasterContext as any)?.user?.username || 'Anonymous'}
+                                </div>
+                                <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-foreground'}`}>
+                                  {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'No address'}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="space-y-2">
+                            <Link
+                              href="/create"
+                              onClick={() => setIsDropdownOpen(false)}
+                              className={`block w-full text-center py-2 px-4 font-medium transition-all rounded-lg ${
+                                isDarkMode 
+                                  ? 'bg-gradient-to-r from-gray-700 to-gray-600 border border-gray-500 text-white hover:from-gray-600 hover:to-gray-500 hover:shadow-lg' 
+                                  : 'bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 text-foreground hover:from-blue-100 hover:to-blue-200 hover:shadow-lg'
+                              }`}
+                            >
+                              Create
+                            </Link>
+                            <Link
+                              href={address ? (`/profile/${address}` + (farcasterContext?.client?.fid ? `?fid=${encodeURIComponent(String((farcasterContext as any)?.client?.fid))}` : '')) : '/profile'}
+                              onClick={() => setIsDropdownOpen(false)}
+                              className={`block w-full text-center py-2 px-4 font-medium transition-all rounded-lg ${
+                                isDarkMode 
+                                  ? 'bg-gradient-to-r from-gray-700 to-gray-600 border border-gray-500 text-white hover:from-gray-600 hover:to-gray-500 hover:shadow-lg' 
+                                  : 'bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 text-foreground hover:from-blue-100 hover:to-blue-200 hover:shadow-lg'
+                              }`}
+                            >
+                              Profile
+                            </Link>
+                            <button
+                              onClick={() => {
+                                disconnect();
+                                setIsDropdownOpen(false);
+                              }}
+                              className={`w-full text-center py-2 px-4 font-medium transition-all rounded-lg ${
+                                isDarkMode 
+                                  ? 'bg-gradient-to-r from-red-800 to-red-700 border border-red-600 text-white hover:from-red-700 hover:to-red-600 hover:shadow-lg' 
+                                  : 'bg-gradient-to-r from-red-50 to-red-100 border border-red-200 text-red-700 hover:from-red-100 hover:to-red-200 hover:shadow-lg'
+                              }`}
+                            >
+                              Disconnect
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </ClientOnly>
             </div>
           </div>
         </div>
       </div>
-
-
     </>
   );
 }
