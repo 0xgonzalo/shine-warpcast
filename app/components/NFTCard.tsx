@@ -161,8 +161,13 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
       const imageUrl = data.imageURI && data.imageURI !== 'ipfs://placeholder-image-uri' 
         ? getIPFSGatewayURL(data.imageURI) 
         : undefined;
-      const artist = data.creator ? `${data.creator.slice(0, 6)}...${data.creator.slice(-4)}` : undefined;
-      
+      // Prefer Farcaster handle if available; fallback to truncated wallet
+      const artist = creatorHandle
+        ? `@${creatorHandle}`
+        : data.creator
+          ? `${data.creator.slice(0, 6)}...${data.creator.slice(-4)}`
+          : undefined;
+
       playAudio(audioUrl, data.name, artist, imageUrl);
     }
   };
@@ -174,7 +179,12 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
       const imageUrl = data.imageURI && data.imageURI !== 'ipfs://placeholder-image-uri' 
         ? getIPFSGatewayURL(data.imageURI) 
         : undefined;
-      const artist = data.creator ? `${data.creator.slice(0, 6)}...${data.creator.slice(-4)}` : undefined;
+      // Prefer Farcaster handle if available; fallback to truncated wallet
+      const artist = creatorHandle
+        ? `@${creatorHandle}`
+        : data.creator
+          ? `${data.creator.slice(0, 6)}...${data.creator.slice(-4)}`
+          : undefined;
       addToQueue(audioUrl, data.name, artist, imageUrl);
     }
   };
