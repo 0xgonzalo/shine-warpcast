@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { CONTRACT_ADDRESS, contractABI, getTotalPriceForInstaBuy, userOwnsSong, generatePseudoFarcasterId } from '../../utils/contract';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
+import { getFarcasterUserByAddress } from '../../utils/farcaster';
 import { useAudio } from '../../context/AudioContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAccount } from 'wagmi';
@@ -46,6 +47,24 @@ export default function TokenPage() {
 
   // Extract price from raw data
   const tokenPrice = rawData ? (rawData as any).price : BigInt(0);
+  
+  // Farcaster handle state
+  const [creatorHandle, setCreatorHandle] = useState<string | null>(null);
+
+  // Resolve Farcaster handle for creator
+  useEffect(() => {
+    const resolveHandle = async () => {
+      try {
+        const addr = (rawData as any)?.artistAddress || (data?.creator as string | undefined);
+        if (!addr) return;
+        const user = await getFarcasterUserByAddress(addr);
+        if (user?.username) setCreatorHandle(user.username);
+      } catch (_) {
+        // ignore
+      }
+    };
+    resolveHandle();
+  }, [rawData, data?.creator]);
 
   const { currentAudio, isPlaying, playAudio, setIsPlaying, currentTime, duration, seekTo } = useAudio();
   const { writeContract, isPending: isCollectPending, isSuccess: isCollectSuccess, data: collectTxData, error: collectError } = useWriteContract();
@@ -60,7 +79,15 @@ export default function TokenPage() {
       if (currentAudio?.src === audioUrl) {
         setIsPlaying(!isPlaying);
       } else {
-        playAudio(audioUrl, data.name);
+        const imageUrl = data.imageURI && data.imageURI !== 'ipfs://placeholder-image-uri'
+          ? getIPFSGatewayURL(data.imageURI)
+          : undefined;
+        const artist = creatorHandle
+          ? `@${creatorHandle}`
+          : data.creator
+            ? `${data.creator.slice(0, 6)}...${data.creator.slice(-4)}`
+            : undefined;
+        playAudio(audioUrl, data.name, artist, imageUrl);
       }
     }
   };
@@ -218,10 +245,13 @@ export default function TokenPage() {
         <h1 className={`text-2xl font-bold mb-2 text-center ${
           isDarkMode ? 'text-white' : 'text-foreground'
         }`}>{data.name}</h1>
-        <p className={`mb-6 text-center ${
-          isDarkMode ? 'text-gray-300' : 'text-blue-800'
-        }`}>
-          {data.creator?.slice(0, 6)}...{data.creator?.slice(-4)}
+        <p
+          className={`mb-6 text-center ${
+            isDarkMode ? 'text-gray-300' : 'text-blue-800'
+          }`}
+          title={creatorHandle ? `@${creatorHandle}` : `${data.creator?.slice(0,6)}...${data.creator?.slice(-4)}`}
+        >
+          {creatorHandle ? `@${creatorHandle}` : `${data.creator?.slice(0, 6)}...${data.creator?.slice(-4)}`}
         </p>
 
         {/* Audio Controls */}

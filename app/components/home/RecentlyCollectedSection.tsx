@@ -112,7 +112,16 @@ export default function RecentlyCollectedSection() {
   const handlePlaySong = (nft: CollectedNFT) => {
     if (!nft.metadata.audioURI || nft.metadata.audioURI === 'ipfs://placeholder-audio-uri') return;
     const audioUrl = getIPFSGatewayURL(nft.metadata.audioURI);
-    playAudio(audioUrl, nft.metadata.name);
+    const imageUrl = nft.metadata.imageURI && nft.metadata.imageURI !== 'ipfs://placeholder-image-uri'
+      ? getIPFSGatewayURL(nft.metadata.imageURI)
+      : undefined;
+    const key = nft.metadata.creator?.toLowerCase();
+    const artist = key && creatorHandles[key]
+      ? `@${creatorHandles[key]}`
+      : nft.metadata.creator
+        ? `${nft.metadata.creator.slice(0, 6)}...${nft.metadata.creator.slice(-4)}`
+        : undefined;
+    playAudio(audioUrl, nft.metadata.name, artist, imageUrl);
   };
 
   const handleViewToken = (tokenId: bigint) => {
