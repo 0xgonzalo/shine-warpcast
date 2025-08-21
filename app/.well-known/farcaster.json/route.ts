@@ -5,6 +5,9 @@ export async function GET() {
         payload: process.env.FARCASTER_PAYLOAD,
         signature: process.env.FARCASTER_SIGNATURE,
       },
+      baseBuilder: {
+        allowedAddresses: ["0x6B0425666196885aeA6F2630F5B8750Be2C81ea1", "0x6B0425666196885aeA6F2630F5B8750Be2C81ea1"]
+      },
       frame: {
         version: process.env.NEXT_PUBLIC_VERSION,
         name: process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME,
@@ -15,13 +18,10 @@ export async function GET() {
         splashImageUrl: process.env.NEXT_PUBLIC_SPLASH_IMAGE_URL,
         splashBackgroundColor: `#${process.env.NEXT_PUBLIC_SPLASH_BACKGROUND_COLOR}`,
         webhookUrl: `${process.env.NEXT_PUBLIC_URL}/api/webhook`,
-        subtitle: "Artists own their timeline",
-        description:
-          "Shine is a music platform that lets artists own their music",
-        primaryCategory: "music",
-      },
-      baseBuilder: {
-        allowedAddresses: ["0x6B0425666196885aeA6F2630F5B8750Be2C81ea1"]
+        tags: ["music", "creator", "artist", "miniapp", "baseapp"],
+        subtitle: "Listen and collect music",
+        description: "Shine is a music platform that lets artists own their music",
+        primaryCategory: "music"
       }
     });
   }
