@@ -19,6 +19,7 @@ export default function CreatePage() {
   const { connectors, connect } = useConnect();
   const { writeContract, data: hash, error: writeError, isPending } = useWriteContract();
   const [nftName, setNftName] = useState('');
+  const [nftArtist, setNftArtist] = useState('');
   const [nftDescription, setNftDescription] = useState('');
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioPreview, setAudioPreview] = useState<string>('');
@@ -221,7 +222,7 @@ export default function CreatePage() {
       
       console.log('📋 Contract parameters:', {
         title: nftName,
-        artistName: 'Anonymous Artist', // Using a default name
+        artistName: nftArtist,
         mediaURI: audioURI,
         metadataURI: imageURI,
         artistAddress: address,
@@ -239,7 +240,7 @@ export default function CreatePage() {
         functionName: 'newSong',
         args: [
           nftName.trim(), // title
-          'Anonymous Artist', // artistName - using a safe default
+          nftArtist.trim(), // artistName
           audioURI, // mediaURI  
           imageURI, // metadataURI
           address as `0x${string}`, // artistAddress
@@ -262,7 +263,7 @@ export default function CreatePage() {
   const handleCloseCreatedModal = () => {
     setShowCreatedModal(false);
     setCreatedNFT(null);
-    // Reset form after modal is closed
+    setNftArtist('');
     setNftName('');
     setNftDescription('');
     setAudioFile(null);
@@ -400,6 +401,16 @@ export default function CreatePage() {
                   onChange={(e) => setNftName(e.target.value)}
                   className={`w-full px-3 py-2 bg-white/10 ${isDarkMode ? 'text-white' : 'text-foreground'} rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-foreground'} focus:border-blue-500 focus:outline-none`}
                   placeholder="Enter song name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Artist Name</label>
+                <input
+                  type="text"
+                  value={nftArtist}
+                  onChange={(e) => setNftArtist(e.target.value)}
+                  className={`w-full px-3 py-2 bg-white/10 ${isDarkMode ? 'text-white' : 'text-foreground'} rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-foreground'} focus:border-blue-500 focus:outline-none`}
+                  placeholder="Enter artist name"
                 />
               </div>
               <div>
