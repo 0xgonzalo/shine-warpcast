@@ -1,4 +1,11 @@
+function withValidProperties(properties: Record<string, undefined | string | string[]>) {
+  return Object.fromEntries(
+    Object.entries(properties).filter(([_, value]) => (Array.isArray(value) ? value.length > 0 : !!value))
+  );
+}
+
 export async function GET() {
+  const URL = process.env.NEXT_PUBLIC_URL as string;
     return Response.json({
       accountAssociation: {
         header: process.env.FARCASTER_HEADER,
@@ -8,10 +15,12 @@ export async function GET() {
       baseBuilder: {
         allowedAddresses: ["0x6B0425666196885aeA6F2630F5B8750Be2C81ea1", "0xB6A50Db52F703dbB009F03F6Eb7f558f110C9b0D"]
       },
-      frame: {
+      frame: withValidProperties({
         version: process.env.NEXT_PUBLIC_VERSION,
         name: process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME,
-        homeUrl: process.env.NEXT_PUBLIC_URL,
+        subtitle: "Listen and collect music",
+        description: "Shine is a music platform that lets artists own their music",
+        homeUrl: URL,
         iconUrl: process.env.NEXT_PUBLIC_ICON_URL,
         imageUrl: process.env.NEXT_PUBLIC_IMAGE_URL,
         buttonTitle: `Launch ${process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME}`,
@@ -19,9 +28,7 @@ export async function GET() {
         splashBackgroundColor: `#${process.env.NEXT_PUBLIC_SPLASH_BACKGROUND_COLOR}`,
         webhookUrl: `${process.env.NEXT_PUBLIC_URL}/api/webhook`,
         tags: ["music", "creator", "artist", "miniapp", "baseapp"],
-        subtitle: "Listen and collect music",
-        description: "Shine is a music platform that lets artists own their music",
         primaryCategory: "music"
-      }
+      })
     });
   }
