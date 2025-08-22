@@ -1,11 +1,11 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { CONTRACT_ADDRESS, contractABI, getTotalPriceForInstaBuy, userOwnsSong, generatePseudoFarcasterId } from '../../utils/contract';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
-import { getFarcasterUserByAddress } from '../../utils/farcaster';
+import { getFarcasterUserByAddress, shareOnFarcasterCast } from '../../utils/farcaster';
 import { useAudio } from '../../context/AudioContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAccount } from 'wagmi';
@@ -22,6 +22,7 @@ interface NFTMetadata {
 }
 
 export default function TokenPage() {
+  const router = useRouter();
   const params = useParams();
   const tokenId = BigInt(params.tokenId as string);
   const { isDarkMode } = useTheme();
@@ -146,6 +147,18 @@ export default function TokenPage() {
     }
   };
 
+  // Share on Farcaster with token deep link
+  const handleShareOnFarcaster = () => {
+    try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const url = origin ? `${origin}/token/${tokenId.toString()}` : undefined;
+      const title = data?.name || 'this song';
+      shareOnFarcasterCast({ text: `Listen and collect ${title} on Shine! 🎵`, url });
+    } catch (_) {
+      // no-op
+    }
+  };
+
   // Show modal on successful collect after confirmation
   useEffect(() => {
     if (isCollectConfirmed && collectReceipt && collectReceipt.status === 'success' && data) {
@@ -216,6 +229,19 @@ export default function TokenPage() {
       )}
 
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-6 pt-8">
+        {/* Back Arrow */}
+        <button
+          onClick={() => router.back()}
+          className={`absolute top-4 left-4 p-2 rounded-full transition-colors ${
+            isDarkMode ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-foreground/10 hover:bg-foreground/20 text-foreground'
+          }`}
+          aria-label="Go back"
+          title="Go back"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
         {/* Album Art */}
         <div className="w-64 h-64 mb-6 rounded-lg overflow-hidden shadow-2xl">
           {data.imageURI && data.imageURI !== 'ipfs://placeholder-image-uri' ? (
@@ -328,33 +354,46 @@ export default function TokenPage() {
 
             </div>
 
-            {/* Collect Button */}
-            <button
-              onClick={handleCollect}
-              disabled={!isConnected || isCollectPending}
-              className={`px-8 py-3 rounded-full font-semibold transition-all duration-200 ${
-                !isConnected
-                  ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                  : isCollectPending
-                  ? isDarkMode
-                    ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : isDarkMode
-                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 hover:scale-105 shadow-lg'
-                  : 'bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600 hover:scale-105 shadow-lg'
-              }`}
-            >
-              {isCollectPending ? (
-                <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Collecting...</span>
-                </div>
-              ) : !isConnected ? (
-                'Connect Wallet to Collect'
-              ) : (
-                `✨ Collect (${formatPrice(tokenPrice)} ETH)`
-              )}
-            </button>
+            {/* Action Buttons: Collect and Share on Farcaster (stacked) */}
+            <div className="w-full max-w-sm flex flex-col items-stretch gap-3 mt-2">
+              <button
+                onClick={handleCollect}
+                disabled={!isConnected || isCollectPending}
+                className={`w-full px-5 py-3 rounded-full font-semibold transition-all duration-200 ${
+                  !isConnected
+                    ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                    : isCollectPending
+                    ? isDarkMode
+                      ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : isDarkMode
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 hover:scale-105 shadow-lg'
+                    : 'bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600 hover:scale-105 shadow-lg'
+                }`}
+              >
+                {isCollectPending ? (
+                  <div className="flex items-center justify-center space-x-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Collecting...</span>
+                  </div>
+                ) : !isConnected ? (
+                  'Connect Wallet'
+                ) : (
+                  `✨ Collect (${formatPrice(tokenPrice)} ETH)`
+                )}
+              </button>
+              <button
+                onClick={handleShareOnFarcaster}
+                className={`w-full px-5 py-3 rounded-full font-semibold transition-all duration-200 ${
+                  isDarkMode
+                    ? 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
+                    : 'bg-foreground/10 hover:bg-foreground/20 text-foreground border border-foreground'
+                }`}
+                title="Share on Farcaster"
+              >
+                Share on Farcaster
+              </button>
+            </div>
           </>
         )}
 
