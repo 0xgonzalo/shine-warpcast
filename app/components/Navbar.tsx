@@ -88,14 +88,6 @@ export default function Navbar() {
     fetchFarcasterProfile();
   }, [farcasterContext]);
 
-
-
-
-
-
-
-
-
   return (
     <>
       <div className={`sticky top-0 z-40 transition-colors ${
@@ -116,8 +108,6 @@ export default function Navbar() {
                 />
               </Link>
             </div>
-
-            
 
             {/* Right side - OnchainKit Wallet */}
             <div className="flex items-center space-x-4">
