@@ -13,6 +13,8 @@ export function MiniKitProviderWrapper({ children }: { children: ReactNode }) {
         appearance: {
           mode: "dark",
           theme: "snake",
+          name: process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME,
+          logo: process.env.NEXT_PUBLIC_ICON_URL,
         }
       }}
     >
