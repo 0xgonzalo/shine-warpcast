@@ -6,6 +6,7 @@ import { getIPFSGatewayURL } from '@/app/utils/pinata';
 import { getCelebrationConfettiConfig } from '@/app/utils/confetti';
 import { shareOnFarcasterCast } from '@/app/utils/farcaster';
 import { usePathname } from 'next/navigation';
+import { sdk } from '@farcaster/miniapp-sdk';
 
 interface CollectedModalProps {
   nft: { imageURI: string; name: string; artistUsername?: string };
@@ -63,6 +64,10 @@ const CollectedModal: React.FC<CollectedModalProps> = ({ nft, txHash, onClose, t
     return window.location.origin + pathname;
   }, [pathname, tokenPath]);
 
+  const baseScanUrl = useMemo(() => {
+    return `https://sepolia.basescan.org/tx/${txHash}`;
+  }, [txHash]);
+
   const modalContent = (
     <div 
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-60"
@@ -115,14 +120,22 @@ const CollectedModal: React.FC<CollectedModalProps> = ({ nft, txHash, onClose, t
         >
           Share on Farcaster
         </button>
-        <a
-          href={`https://sepolia.basescan.org/tx/${txHash}`}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          onClick={async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            try {
+              await sdk.actions.openUrl({ url: baseScanUrl });
+            } catch (err) {
+              if (typeof window !== 'undefined') {
+                window.open(baseScanUrl, '_blank', 'noopener,noreferrer');
+              }
+            }
+          }}
           className="text-purple-400 underline block mt-4 hover:text-purple-300 transition-colors"
         >
           View on BaseScan
-        </a>
+        </button>
       </div>
     </div>
   );
