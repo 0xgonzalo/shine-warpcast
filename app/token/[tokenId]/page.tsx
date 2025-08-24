@@ -389,9 +389,9 @@ export default function TokenPage() {
                     ? 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
                     : 'bg-foreground/10 hover:bg-foreground/20 text-foreground border border-foreground'
                 }`}
-                title="Share on Farcaster"
+                title="Share on feed"
               >
-                Share on Farcaster
+                Share on feed
               </button>
             </div>
           </>
