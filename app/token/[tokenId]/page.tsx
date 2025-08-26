@@ -3,9 +3,9 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { CONTRACT_ADDRESS, contractABI, getTotalPriceForInstaBuy, userOwnsSong, generatePseudoFarcasterId } from '../../utils/contract';
+import { CONTRACT_ADDRESS, contractABI, getTotalPriceForInstaBuy, userOwnsSong, generatePseudoFarcasterId, getCollectorsForSong } from '../../utils/contract';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
-import { getFarcasterUserByAddress, shareOnFarcasterCast } from '../../utils/farcaster';
+import { getFarcasterUserByAddress, shareOnFarcasterCast, getFarcasterUserByFid, FarcasterUser } from '../../utils/farcaster';
 import { useAudio } from '../../context/AudioContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAccount } from 'wagmi';
@@ -51,6 +51,9 @@ export default function TokenPage() {
   
   // Farcaster handle state
   const [creatorHandle, setCreatorHandle] = useState<string | null>(null);
+  // Collectors state
+  const [collectors, setCollectors] = useState<FarcasterUser[]>([]);
+  const [isCollectorsLoading, setIsCollectorsLoading] = useState<boolean>(false);
 
   // Resolve Farcaster handle for creator
   useEffect(() => {
@@ -66,6 +69,33 @@ export default function TokenPage() {
     };
     resolveHandle();
   }, [rawData, data?.creator]);
+
+  // Load collectors (Farcaster profiles) for this token
+  useEffect(() => {
+    const loadCollectors = async () => {
+      try {
+        setIsCollectorsLoading(true);
+        const fids = await getCollectorsForSong(tokenId, 25);
+        const profiles: FarcasterUser[] = [];
+        for (const fid of fids) {
+          try {
+            const user = await getFarcasterUserByFid(String(fid));
+            if (user) profiles.push(user);
+          } catch (_) {
+            // ignore individual failures
+          }
+          // small delay to avoid API rate limits
+          await new Promise((r) => setTimeout(r, 80));
+        }
+        setCollectors(profiles);
+      } catch (_) {
+        setCollectors([]);
+      } finally {
+        setIsCollectorsLoading(false);
+      }
+    };
+    loadCollectors();
+  }, [tokenId]);
 
   const { currentAudio, isPlaying, playAudio, setIsPlaying, currentTime, duration, seekTo } = useAudio();
   const { writeContract, isPending: isCollectPending, isSuccess: isCollectSuccess, data: collectTxData, error: collectError } = useWriteContract();
@@ -393,6 +423,45 @@ export default function TokenPage() {
               >
                 Share on feed
               </button>
+              {/* Collectors Section */}
+              <div className={`w-full mt-2 rounded-xl ${isDarkMode ? 'bg-white/5 border border-white/10' : 'bg-white/40 border border-foreground/60'} p-3`}>
+                <h3 className={`text-sm font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-foreground'}`}>Collectors</h3>
+                {isCollectorsLoading ? (
+                  <div className={`${isDarkMode ? 'text-gray-300' : 'text-gray-700'} text-sm`}>Loading collectors...</div>
+                ) : collectors.length > 0 ? (
+                  <div className="flex flex-col gap-2 max-h-52 overflow-auto pr-1">
+                    {collectors.map((u) => {
+                      const handle = u.username ? `@${u.username}` : `fid:${u.fid}`;
+                      const profileUrl = u.username
+                        ? `https://warpcast.com/${u.username}`
+                        : `https://warpcast.com/~/profiles/${u.fid}`;
+                      return (
+                        <a
+                          key={`${u.fid}-${u.username || 'nouser'}`}
+                          href={profileUrl}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className={`flex items-center gap-3 rounded-lg px-2 py-1 hover:bg-white/10 ${isDarkMode ? 'text-white' : 'text-foreground'}`}
+                        >
+                          <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-500 flex items-center justify-center text-xs">
+                            {u.pfpUrl ? (
+                              <Image src={u.pfpUrl} alt={handle} width={32} height={32} className="w-8 h-8 object-cover" />
+                            ) : (
+                              <span>{u.username ? u.username[0].toUpperCase() : 'F'}</span>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm truncate">{u.displayName || handle}</div>
+                            {u.username && <div className="text-xs opacity-70 truncate">@{u.username}</div>}
+                          </div>
+                        </a>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className={`${isDarkMode ? 'text-gray-300' : 'text-gray-700'} text-sm`}>No collectors yet.</div>
+                )}
+              </div>
             </div>
           </>
         )}

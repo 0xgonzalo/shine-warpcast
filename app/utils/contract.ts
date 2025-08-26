@@ -330,6 +330,88 @@ export async function getRecentlyCollectedSongs(limit: number = 10) {
 // Legacy function name for backward compatibility
 export const getRecentlyCollectedNFTs = getRecentlyCollectedSongs;
 
+// Get collectors (Farcaster IDs) for a specific song by scanning events
+export async function getCollectorsForSong(songId: bigint, maxResults: number = 25) {
+  try {
+    // Find a reasonable block range to search
+    const latestBlock = await publicClient.getBlockNumber();
+    // Look back 50k blocks by default (~ a few days on Base)
+    const fromBlock = latestBlock - BigInt(50000);
+
+    // Small delay to avoid RPC rate limiting
+    await delay(150);
+    const userBuyLogs = await publicClient.getLogs({
+      address: CONTRACT_ADDRESS as `0x${string}`,
+      event: {
+        type: 'event',
+        name: 'UserBuy',
+        inputs: [
+          { name: 'audioIds', type: 'uint256[]', indexed: true },
+          { name: 'farcasterId', type: 'uint256', indexed: true }
+        ]
+      },
+      fromBlock,
+      toBlock: 'latest'
+    });
+
+    await delay(150);
+    const userInstaBuyLogs = await publicClient.getLogs({
+      address: CONTRACT_ADDRESS as `0x${string}`,
+      event: {
+        type: 'event',
+        name: 'UserInstaBuy',
+        inputs: [
+          { name: 'audioId', type: 'uint256', indexed: true },
+          { name: 'farcasterId', type: 'uint256', indexed: true }
+        ]
+      },
+      fromBlock,
+      toBlock: 'latest'
+    });
+
+    // Collect farcasterIds where this songId appears
+    const entries: Array<{ fid: bigint; blockNumber: bigint }> = [];
+
+    userBuyLogs.forEach((log: any) => {
+      const audioIds: bigint[] | undefined = log.args.audioIds;
+      const fid: bigint | undefined = log.args.farcasterId;
+      const blockNumber: bigint | undefined = log.blockNumber;
+      if (audioIds && fid && blockNumber) {
+        if (audioIds.some((id) => id === songId)) {
+          entries.push({ fid, blockNumber });
+        }
+      }
+    });
+
+    userInstaBuyLogs.forEach((log: any) => {
+      const audioId: bigint | undefined = log.args.audioId;
+      const fid: bigint | undefined = log.args.farcasterId;
+      const blockNumber: bigint | undefined = log.blockNumber;
+      if (audioId && fid && blockNumber && audioId === songId) {
+        entries.push({ fid, blockNumber });
+      }
+    });
+
+    // Sort by most recent and dedupe by fid
+    entries.sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber));
+    const seen = new Set<string>();
+    const unique: bigint[] = [];
+    for (const e of entries) {
+      const key = e.fid.toString();
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(e.fid);
+      }
+      if (unique.length >= maxResults) break;
+    }
+
+    return unique;
+  } catch (error) {
+    console.error('❌ Error fetching collectors for song:', error);
+    return [] as bigint[];
+  }
+}
+
 // Fallback function to get existing songs (for when no recent collections are found)
 async function getFallbackRecentSongs(limit: number = 10) {
   console.log('🔄 Using fallback approach to get existing songs...');
