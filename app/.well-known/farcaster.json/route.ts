@@ -27,10 +27,10 @@ export async function GET() {
         tags: ["music", "creator", "artist", "miniapp", "baseapp"],
         primaryCategory: "music",
         heroImageUrl: "",
-        tagline: "Where all the stars shines",
+        tagline: "Where all the stars shine",
         ogTitle: "Shine",
         ogDescription: "Create music onchain in a simple way and share it with your friends",
-        ogImageUrl: "https://shine-mini-app.vercel.app/opImage.png",
+        ogImageUrl: "https://shine-mini-app.vercel.app/ogImage.png",
         canonicalDomain: "shine-mini-app.vercel.app"
       }),
       baseBuilder: {
