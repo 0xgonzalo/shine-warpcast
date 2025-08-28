@@ -57,7 +57,7 @@ const CreatedModal: React.FC<CreatedModalProps> = ({ nft, txHash, onClose, token
   };
 
   const shareText = useMemo(() => {
-    return `I just created ${nft.name} on Shine. Listen and collect it! 🎵`;
+    return `I just created ${nft.name} on @shinemusic. Listen and collect it! 🎵`;
   }, [nft.name]);
 
   const tokenUrl = useMemo(() => {

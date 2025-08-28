@@ -105,7 +105,7 @@ export default function RecentlyCollectedSection() {
   };
   const handleShareOnFarcaster = (nft: CollectedNFT) => {
     const url = typeof window !== 'undefined' ? `${window.location.origin}/token/${nft.tokenId.toString()}` : undefined;
-    shareOnFarcasterCast({ text: `Listen and collect ${nft.metadata.name} on Shine! 🎵`, url });
+    shareOnFarcasterCast({ text: `Listen and collect ${nft.metadata.name} on @shinemusic! 🎵`, url });
     setOpenMenuId(null);
   };
 
