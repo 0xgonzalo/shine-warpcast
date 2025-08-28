@@ -30,8 +30,8 @@ export async function GET() {
         tagline: "Where all the stars shine",
         ogTitle: "Shine",
         ogDescription: "Create music onchain in a simple way and share it with your friends",
-        ogImageUrl: "https://shine-mini-app.vercel.app/ogImage.png",
-        canonicalDomain: "shine-mini-app.vercel.app"
+        ogImageUrl: "https://shine-warpcast.vercel.app/ogImage.png",
+        canonicalDomain: "shine-warpcast.vercel.app"
       }),
       baseBuilder: {
         allowedAddresses: ["0x6B0425666196885aeA6F2630F5B8750Be2C81ea1", "0xB6A50Db52F703dbB009F03F6Eb7f558f110C9b0D"]
