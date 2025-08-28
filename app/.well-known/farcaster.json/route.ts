@@ -26,7 +26,7 @@ export async function GET() {
         webhookUrl: `${process.env.NEXT_PUBLIC_URL}/api/webhook`,
         tags: ["music", "creator", "artist", "miniapp", "baseapp"],
         primaryCategory: "music",
-        heroImageUrl: "",
+        heroImageUrl: "https://shine-warpcast.vercel.app/ogImage.png",
         tagline: "Where all the stars shine",
         ogTitle: "Shine",
         ogDescription: "Create music onchain in a simple way and share it with your friends",
