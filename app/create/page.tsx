@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { parseEventLogs } from 'viem';
 import { useAccount, useConnect, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { CONTRACT_ADDRESS, contractABI } from '../utils/contract';
@@ -9,6 +9,12 @@ import { useAudio } from '../context/AudioContext';
 import { useFarcaster } from '../context/FarcasterContext';
 import { useTheme } from '../context/ThemeContext';
 import CreatedModal from '../components/CreatedModal';
+import AudioUploadSection from '../components/create/AudioUploadSection';
+import ImageUploadSection from '../components/create/ImageUploadSection';
+import SongDetailsForm from '../components/create/SongDetailsForm';
+import SpecialEditionToggle from '../components/create/SpecialEditionToggle';
+import TagInput from '../components/create/TagInput';
+import MintButton from '../components/create/MintButton';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic' as const;
@@ -135,28 +141,36 @@ export default function CreatePage() {
     'Indie', 'Alternative', 'Experimental', 'Lo-fi', 'Trap', 'Drill', 'Afrobeat', 'Latin', 'K-pop', 'Anime'
   ];
 
-  const addTag = (tag: string) => {
+  const addTag = useCallback((tag: string) => {
     const trimmedTag = tag.trim();
     if (trimmedTag && !tags.includes(trimmedTag) && tags.length < 5) {
-      setTags([...tags, trimmedTag]);
+      setTags(prevTags => [...prevTags, trimmedTag]);
       setTagInput('');
     }
-  };
+  }, [tags]);
 
-  const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove));
-  };
+  const removeTag = useCallback((tagToRemove: string) => {
+    setTags(prevTags => prevTags.filter(tag => tag !== tagToRemove));
+  }, []);
 
-  const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleTagInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && tagInput.trim()) {
       e.preventDefault();
       addTag(tagInput);
     }
-  };
+  }, [tagInput, addTag]);
 
   const filteredGenres = genreOptions.filter(genre => 
     genre.toLowerCase().includes(tagInput.toLowerCase()) && !tags.includes(genre)
   );
+
+  const handleSpecialEditionToggle = useCallback(() => {
+    setIsSpecialEdition(prev => !prev);
+  }, []);
+
+  const handleTagInputChange = useCallback((value: string) => {
+    setTagInput(value);
+  }, []);
 
   const handleMint = async () => {
     if (!address || !nftName || !nftDescription || !audioFile || !imageFile || !price) {
@@ -306,289 +320,61 @@ export default function CreatePage() {
           </div>
         ) : (
           <div className="space-y-8">
-            {/* Audio Upload Section */}
-            <div className="bg-white/5 p-6 rounded-lg">
-              <h2 className="text-2xl font-semibold mb-4">Upload Audio</h2>
-              <div className="space-y-4">
-              <input
-                  id="audio-upload"
-                type="file"
-                  accept="audio/*,audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/aac,audio/m4a,.mp3,.wav,.ogg,.aac,.m4a"
-                onChange={handleAudioUpload}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="audio-upload"
-                  className={`block w-full p-4 border-2 border-dashed ${isDarkMode ? 'border-white/30 hover:border-white/50' : 'border-foreground hover:border-foreground/70'} rounded-lg text-center cursor-pointer transition-colors`}
-                >
-                  <div className="space-y-2">
-                    <div className="text-4xl">🎵</div>
-                    <div className="text-lg font-medium">
-                      {audioFile ? audioFile.name : 'Choose Audio File'}
-                    </div>
-                    <div className="text-sm text-gray-400">
-                      Tap to select an audio file from your device
-                    </div>
-                  </div>
-                </label>
-                {fileError && (
-                  <div className="text-red-500 text-sm text-center">
-                    {fileError}
-                  </div>
-                )}
-              {audioPreview && (
-                <button
-                  onClick={handlePlayPreview}
-                  className={`w-full mt-4 px-4 py-2 rounded-lg transition-colors ${
-                    currentAudio?.src === audioPreview && isPlaying
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white/10 text-white hover:bg-white/20'
-                  }`}
-                >
-                  {currentAudio?.src === audioPreview && isPlaying
-                    ? 'Playing Preview...'
-                    : 'Play Preview'}
-                </button>
-              )}
-              </div>
-            </div>
+            <AudioUploadSection
+              audioFile={audioFile}
+              audioPreview={audioPreview}
+              fileError={fileError}
+              onAudioUpload={handleAudioUpload}
+              onPlayPreview={handlePlayPreview}
+              currentAudio={currentAudio}
+              isPlaying={isPlaying}
+            />
 
-            {/* Image Upload Section */}
-            <div className="bg-white/5 p-6 rounded-lg">
-              <h2 className="text-2xl font-semibold mb-4">Upload Cover Art</h2>
-              <div className="space-y-4">
-                <input
-                  id="image-upload"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="image-upload"
-                  className={`block w-full p-4 border-2 border-dashed ${isDarkMode ? 'border-white/30 hover:border-white/50' : 'border-foreground hover:border-foreground/70'} rounded-lg text-center cursor-pointer transition-colors`}
-                >
-                  <div className="space-y-2">
-                    <div className="text-4xl">🎨</div>
-                    <div className="text-lg font-medium">
-                      {imageFile ? imageFile.name : 'Choose Cover Art'}
-                    </div>
-                    <div className="text-sm text-gray-400">
-                      Tap to select an image file from your device
-                    </div>
-                  </div>
-                </label>
-                {imagePreview && (
-                  <div className="mt-4">
-                    <img
-                      src={imagePreview}
-                      alt="Cover art preview"
-                      className="max-w-xs rounded-lg mx-auto"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
+            <ImageUploadSection
+              imageFile={imageFile}
+              imagePreview={imagePreview}
+              onImageUpload={handleImageUpload}
+            />
 
-            {/* Metadata Section */}
-            <div className="bg-white/5 p-6 rounded-lg space-y-4">
-              <h2 className="text-2xl font-semibold mb-4">Song Details</h2>
-              <div>
-                <label className="block text-sm font-medium mb-2">Song Name</label>
-                <input
-                  type="text"
-                  value={nftName}
-                  onChange={(e) => setNftName(e.target.value)}
-                  className={`w-full px-3 py-2 bg-white/10 ${isDarkMode ? 'text-white' : 'text-foreground'} rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-foreground'} focus:border-blue-500 focus:outline-none`}
-                  placeholder="Enter song name"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Artist Name</label>
-                <input
-                  type="text"
-                  value={nftArtist}
-                  onChange={(e) => setNftArtist(e.target.value)}
-                  className={`w-full px-3 py-2 bg-white/10 ${isDarkMode ? 'text-white' : 'text-foreground'} rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-foreground'} focus:border-blue-500 focus:outline-none`}
-                  placeholder="Enter artist name"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Description</label>
-                <textarea
-                  value={nftDescription}
-                  onChange={(e) => setNftDescription(e.target.value)}
-                  className={`w-full px-3 py-2 bg-white/10 ${isDarkMode ? 'text-white' : 'text-foreground'} rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-foreground'} focus:border-blue-500 focus:outline-none h-24`}
-                  placeholder="Enter song description"
-                />
-              </div>
-              
-              {/* Tags Section */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Tags (up to 5)</label>
-                <div className="space-y-3">
-                  {/* Selected Tags */}
-                  {tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm ${
-                            isDarkMode 
-                              ? 'bg-blue-600 text-white' 
-                              : 'bg-foreground text-white'
-                          }`}
-                        >
-                          {tag}
-                          <button
-                            type="button"
-                            onClick={() => removeTag(tag)}
-                            className="ml-1 hover:bg-white/20 rounded-full p-0.5 transition-colors"
-                          >
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  
-                  {/* Tag Input */}
-                  {tags.length < 5 && (
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={tagInput}
-                        onChange={(e) => setTagInput(e.target.value)}
-                        onKeyDown={handleTagInputKeyDown}
-                        className={`w-full px-3 py-2 bg-white/10 ${isDarkMode ? 'text-white' : 'text-foreground'} rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-foreground'} focus:border-blue-500 focus:outline-none`}
-                        placeholder="Type to search genres or add custom tags..."
-                      />
-                      
-                      {/* Dropdown suggestions */}
-                      {tagInput && filteredGenres.length > 0 && (
-                        <div className={`absolute top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded-lg border z-10 ${
-                          isDarkMode 
-                            ? 'bg-gray-800 border-white/20' 
-                            : 'bg-white border-gray-200'
-                        }`}>
-                          {filteredGenres.slice(0, 8).map((genre) => (
-                            <button
-                              key={genre}
-                              type="button"
-                              onClick={() => addTag(genre)}
-                              className={`w-full text-left px-3 py-2 text-sm transition-colors ${
-                                isDarkMode 
-                                  ? 'text-white hover:bg-white/10' 
-                                  : 'text-gray-800 hover:bg-gray-100'
-                              }`}
-                            >
-                              {genre}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  <div className="text-xs text-gray-400">
-                    {tags.length}/5 tags selected. Press Enter to add custom tags.
-                  </div>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-2">Price (ETH)</label>
-                <input
-                  type="number"
-                  step="0.001"
-                  min="0"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  className={`w-full px-3 py-2 bg-white/10 ${isDarkMode ? 'text-white' : 'text-foreground'} rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-foreground'} focus:border-blue-500 focus:outline-none`}
-                  placeholder="0.001"
-                />
-              </div>
+            <SongDetailsForm
+              nftName={nftName}
+              nftArtist={nftArtist}
+              nftDescription={nftDescription}
+              price={price}
+              onNameChange={(e) => setNftName(e.target.value)}
+              onArtistChange={(e) => setNftArtist(e.target.value)}
+              onDescriptionChange={(e) => setNftDescription(e.target.value)}
+              onPriceChange={(e) => setPrice(e.target.value)}
+            />
 
-              <div className="flex items-center space-x-3">
-                <input
-                  type="checkbox"
-                  id="special-edition"
-                  checked={isSpecialEdition}
-                  onChange={(e) => setIsSpecialEdition(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 bg-white/10 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-                />
-                <label htmlFor="special-edition" className="text-sm font-medium cursor-pointer">
-                  Special Editions
-                </label>
-              </div>
-
-              {isSpecialEdition && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Special Edition Name</label>
-                    <input
-                      type="text"
-                      value={specialEditionName}
-                      onChange={(e) => setSpecialEditionName(e.target.value)}
-                      className={`w-full px-3 py-2 bg-white/10 ${isDarkMode ? 'text-white' : 'text-foreground'} rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-foreground'} focus:border-blue-500 focus:outline-none`}
-                      placeholder="Enter special edition name"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Special Edition Price (ETH)</label>
-                    <input
-                      type="number"
-                      step="0.001"
-                      min="0"
-                      value={specialEditionPrice}
-                      onChange={(e) => setSpecialEditionPrice(e.target.value)}
-                      className={`w-full px-3 py-2 bg-white/10 ${isDarkMode ? 'text-white' : 'text-foreground'} rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-foreground'} focus:border-blue-500 focus:outline-none`}
-                      placeholder="0.001"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Number of Editions</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={numberOfEditions}
-                      onChange={(e) => setNumberOfEditions(e.target.value)}
-                      className={`w-full px-3 py-2 bg-white/10 ${isDarkMode ? 'text-white' : 'text-foreground'} rounded-lg border ${isDarkMode ? 'border-white/20' : 'border-foreground'} focus:border-blue-500 focus:outline-none`}
-                      placeholder="Enter number of editions"
-                    />
-                  </div>
-                </>
-              )}
-            </div>
+            <SpecialEditionToggle
+              isSpecialEdition={isSpecialEdition}
+              specialEditionName={specialEditionName}
+              numberOfEditions={numberOfEditions}
+              specialEditionPrice={specialEditionPrice}
+              onSpecialEditionToggle={handleSpecialEditionToggle}
+              onSpecialEditionNameChange={(e: React.ChangeEvent<HTMLInputElement>) => setSpecialEditionName(e.target.value)}
+              onNumberOfEditionsChange={(e: React.ChangeEvent<HTMLInputElement>) => setNumberOfEditions(e.target.value)}
+              onSpecialEditionPriceChange={(e: React.ChangeEvent<HTMLInputElement>) => setSpecialEditionPrice(e.target.value)}
+            />
 
             <div className="space-y-4">
+              <TagInput
+                tags={tags}
+                tagInput={tagInput}
+                onTagInputChange={handleTagInputChange}
+                onAddTag={addTag}
+                onRemoveTag={removeTag}
+                onTagInputKeyDown={handleTagInputKeyDown}
+                filteredGenres={filteredGenres}
+              />
+              <MintButton
+                isMinting={isMinting}
+                isPending={isPending}
+                isConnected={isConnected}
+                onMint={handleMint}
+              />
               
-              <div className="flex justify-center">
-                <button
-                  onClick={handleMint}
-                  disabled={
-                    isMinting || 
-                    isConfirming || 
-                    isPending || 
-                    !audioFile || 
-                    !imageFile || 
-                    !nftName || 
-                    !nftDescription || 
-                    !price ||
-                    (isSpecialEdition && (!specialEditionName || !specialEditionPrice || !numberOfEditions))
-                  }
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isPending ? 'Waiting for Wallet...' :
-                    isMinting ? 'Preparing Transaction...' :
-                    isConfirming ? 'Confirming Transaction...' :
-                      'Upload Music'}
-                </button>
-              </div>
               {mintError && (
                 <div className="text-center text-red-500 mt-2">
                   {mintError}
@@ -624,7 +410,7 @@ export default function CreatePage() {
           nft={createdNFT}
           txHash={hash}
           tokenPath={createdTokenId ? `/token/${createdTokenId}` : undefined}
-          onClose={handleCloseCreatedModal}
+          onClose={() => setShowCreatedModal(false)}
         />
       )}
     </main>
