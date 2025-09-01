@@ -1,66 +1,15 @@
-import type { Metadata } from 'next';
-import { getSongMetadata } from '@/app/utils/contract';
-
-const APP_URL = process.env.NEXT_PUBLIC_URL || '';
-const SITE_NAME = process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME || 'Shine';
-
-export async function generateMetadata({
-  params,
-}: {
-  params: { tokenId: string };
-}): Promise<Metadata> {
-  const tokenId = BigInt(params.tokenId);
-  const data = await getSongMetadata(tokenId);
-  
-  const title = data ? `${data.title} • ${SITE_NAME}` : 'Shine';
-  const description = data?.artistName ? `by ${data.artistName}` : 'Onchain music';
-  const imageUrl = `${APP_URL}/token/${params.tokenId}/opengraph-image`;
-
-  const frame = {
-    version: 'next',
-    imageUrl: imageUrl,
-    aspectRatio: '3:2',
-    button: {
-      title: 'Collect',
-      action: {
-        type: 'launch_frame',
-        name: SITE_NAME,
-        url: `${APP_URL}/token/${params.tokenId}`,
-        iconImageUrl: imageUrl,
-        splashImageUrl: `${APP_URL}/splash.png`,
-        splashBackgroundColor: '#000000',
-      },
-    },
-  };
-
-  return {
-    title,
-    description,
-    openGraph: {
-      title,
-      description,
-      images: [imageUrl],
-    },
-    other: {
-      'fc:frame': JSON.stringify(frame),
-    },
-  };
-}
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
 import { CONTRACT_ADDRESS, contractABI, getTotalPriceForInstaBuy, userOwnsSong, generatePseudoFarcasterId, getCollectorsForSong } from '../../utils/contract';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
 import { getFarcasterUserByAddress, shareOnFarcasterCast, getFarcasterUserByFid, FarcasterUser } from '../../utils/farcaster';
 import { useAudio } from '../../context/AudioContext';
 import { useTheme } from '../../context/ThemeContext';
-import { useAccount } from 'wagmi';
 import CollectedModal from '../../components/CollectedModal';
 import Image from 'next/image';
-
 // This is the legacy format the component expects
 interface NFTMetadata {
   name: string;
