@@ -1,71 +1,55 @@
 import type { Metadata } from 'next';
 import { getSongMetadata } from '@/app/utils/contract';
 
+const APP_URL = process.env.NEXT_PUBLIC_URL || '';
+const SITE_NAME = process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME || 'Shine';
+
 export async function generateMetadata({
   params,
 }: {
   params: { tokenId: string };
 }): Promise<Metadata> {
-  const siteName = process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME || 'Shine';
   const tokenId = BigInt(params.tokenId);
+  const data = await getSongMetadata(tokenId);
+  
+  const title = data ? `${data.title} • ${SITE_NAME}` : `${SITE_NAME} • Token #${params.tokenId}`;
+  const description = data?.artistName ? `by ${data.artistName}` : 'Onchain music';
+  const imageUrl = `${APP_URL}/token/${params.tokenId}/opengraph-image`;
 
-  try {
-    const data = await getSongMetadata(tokenId);
-    const title = `${data.title} • ${siteName}`;
-    const description = data.artistName
-      ? `by ${data.artistName}`
-      : `by ${data.artistAddress}`;
+  const frame = {
+    version: 'next',
+    name: SITE_NAME,
+    imageUrl,
+    postUrl: `${APP_URL}/api/frame`,
+    buttons: [
+      {
+        label: 'View on OpenSea',
+        action: 'link',
+        target: `https://opensea.io/assets/base/${process.env.NEXT_PUBLIC_SONG_DATABASE_CONTRACT_ADDRESS}/${params.tokenId}`,
+      },
+    ],
+  };
 
-    // Ensure absolute URLs for Farcaster
-    const base = process.env.NEXT_PUBLIC_URL || '';
-    return {
+  return {
+    title,
+    description,
+    openGraph: {
       title,
       description,
-      openGraph: {
-        title,
-        description,
-        images: [
-          {
-            url: `${base}/token/${params.tokenId}/opengraph-image`,
-            width: 1200,
-            height: 630,
-            alt: `${data.title} – ${description}`,
-          },
-        ],
-        type: 'article',
-      },
-      twitter: {
-        card: 'summary_large_image',
-        title,
-        description,
-        images: [`${base}/token/${params.tokenId}/twitter-image`],
-      },
-    };
-  } catch {
-    const title = `${siteName} • Token #${params.tokenId}`;
-    const description = 'Onchain music';
-    const base = process.env.NEXT_PUBLIC_URL || '';
-    return {
+      images: [imageUrl],
+    },
+    twitter: {
+      card: 'summary_large_image',
       title,
       description,
-      openGraph: {
-        title,
-        description,
-        images: [{ url: `${base}/token/${params.tokenId}/opengraph-image`, width: 1200, height: 630 }],
-        type: 'article',
-      },
-      twitter: {
-        card: 'summary_large_image',
-        title,
-        description,
-        images: [`${base}/token/${params.tokenId}/twitter-image`],
-      },
-    };
-  }
+      images: [imageUrl],
+    },
+    other: {
+      'fc:frame': JSON.stringify(frame),
+    },
+  };
 }
 
 export default function TokenLayout({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
-
-
