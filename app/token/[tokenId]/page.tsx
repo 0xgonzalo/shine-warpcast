@@ -16,7 +16,7 @@ export async function generateMetadata({
   const description = data.artistName
     ? `by ${data.artistName}`
     : `by ${data.artistAddress}`;
-  const imageUrl = `${APP_URL}/token/${params.tokenId}/opengraph-image`;
+  const imageUrl = `${APP_URL}/ogImage.png`;
 
   const frame = {
     version: 'next',
