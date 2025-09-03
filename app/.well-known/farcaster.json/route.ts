@@ -23,7 +23,7 @@ export async function GET() {
         buttonTitle: `Launch ${process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME}`,
         splashImageUrl: process.env.NEXT_PUBLIC_SPLASH_IMAGE_URL,
         splashBackgroundColor: `#${process.env.NEXT_PUBLIC_SPLASH_BACKGROUND_COLOR}`,
-        webhookUrl: `${process.env.NEXT_PUBLIC_URL}/api/webhook`,
+        webhookUrl: "https://api.neynar.com/f/app/957e2aea-be9c-4256-a91a-d3e7cb7cb4ee/event",
         tags: ["music", "creator", "artist", "miniapp", "baseapp"],
         primaryCategory: "music",
         heroImageUrl: "https://shine-warpcast.vercel.app/ogImage.png",
