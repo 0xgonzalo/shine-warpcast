@@ -183,7 +183,7 @@ export default function TokenPageClient() {
       const origin = typeof window !== 'undefined' ? window.location.origin : '';
       const url = origin ? `${origin}/token/${tokenId.toString()}` : undefined;
       const title = data?.name || 'this song';
-      shareOnFarcasterCast({ text: `Listen and collect ${title} on @shinemusic! 🎵`, url });
+      shareOnFarcasterCast({ text: `Listen and collect ${title}${creatorHandle ? ` by @${creatorHandle}` : ''} on @shinemusic! 🎵`, url });
     } catch (_) {
       // no-op
     }
