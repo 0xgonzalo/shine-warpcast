@@ -65,7 +65,7 @@ const CollectedModal: React.FC<CollectedModalProps> = ({ nft, txHash, onClose, t
   }, [pathname, tokenPath]);
 
   const baseScanUrl = useMemo(() => {
-    return `https://sepolia.basescan.org/tx/${txHash}`;
+    return `https://basescan.org/tx/${txHash}`;
   }, [txHash]);
 
   const modalContent = (

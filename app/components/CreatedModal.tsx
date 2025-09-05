@@ -132,7 +132,7 @@ const CreatedModal: React.FC<CreatedModalProps> = ({ nft, txHash, onClose, token
         
         <div className="space-y-3">
           <a
-            href={`https://sepolia.basescan.org/tx/${txHash}`}
+            href={`https://basescan.org/tx/${txHash}`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-400 underline block hover:text-blue-300 transition-colors text-sm"

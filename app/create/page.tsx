@@ -390,7 +390,7 @@ export default function CreatePage() {
                     TX: {hash}
                   </div>
                   <a
-                    href={`https://sepolia.basescan.org/tx/${hash}`}
+                    href={`https://basescan.org/tx/${hash}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-500 hover:underline block"
