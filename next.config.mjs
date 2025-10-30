@@ -7,6 +7,7 @@ const nextConfig = {
   // https://github.com/WalletConnect/walletconnect-monorepo/issues/1908
   images: {
     domains: [
+      'shine.mypinata.cloud',
       'gateway.pinata.cloud',
       'ipfs.io',
       'cloudflare-ipfs.com',

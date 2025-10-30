@@ -85,15 +85,18 @@ export async function uploadMetadataToIPFS(metadata: {
   }
 }
 
+// Get Pinata gateway from environment variable or use default
+const PINATA_GATEWAY = process.env.NEXT_PUBLIC_PINATA_GATEWAY || 'gateway.pinata.cloud';
+
 // List of IPFS gateways to try (in order of preference)
-// Custom Pinata gateway is first to utilize dedicated gateway for faster loading
+// Use public gateways first to avoid authentication issues
 const IPFS_GATEWAYS = [
-  'https://shine.mypinata.cloud/ipfs',
-  'https://gateway.pinata.cloud/ipfs',
   'https://ipfs.io/ipfs',
   'https://cloudflare-ipfs.com/ipfs',
+  'https://gateway.pinata.cloud/ipfs',
   'https://dweb.link/ipfs',
-  'https://ipfs.filebase.io/ipfs'
+  'https://ipfs.filebase.io/ipfs',
+  `https://${PINATA_GATEWAY}/ipfs` // Custom gateway last (may require auth)
 ];
 
 // Helper function to get IPFS gateway URL

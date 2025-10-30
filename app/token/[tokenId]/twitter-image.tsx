@@ -20,7 +20,8 @@ export default async function TokenTwitterImage({
     if (!uri) return undefined;
     if (uri.startsWith('ipfs://')) {
       const hash = uri.replace('ipfs://', '');
-      return `https://gateway.pinata.cloud/ipfs/${hash}`;
+      const gateway = process.env.NEXT_PUBLIC_PINATA_GATEWAY || 'gateway.pinata.cloud';
+      return `https://${gateway}/ipfs/${hash}`;
     }
     return uri;
   };
