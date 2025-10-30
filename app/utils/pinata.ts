@@ -86,10 +86,12 @@ export async function uploadMetadataToIPFS(metadata: {
 }
 
 // List of IPFS gateways to try (in order of preference)
+// Custom Pinata gateway is first to utilize dedicated gateway for faster loading
 const IPFS_GATEWAYS = [
+  'https://shine.mypinata.cloud/ipfs',
+  'https://gateway.pinata.cloud/ipfs',
   'https://ipfs.io/ipfs',
   'https://cloudflare-ipfs.com/ipfs',
-  'https://gateway.pinata.cloud/ipfs',
   'https://dweb.link/ipfs',
   'https://ipfs.filebase.io/ipfs'
 ];
