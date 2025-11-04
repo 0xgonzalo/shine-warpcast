@@ -1,5 +1,8 @@
 // Farcaster API utilities
 'use client';
+
+import { sdk } from '@farcaster/miniapp-sdk';
+
 export interface FarcasterUser {
   fid: number;
   username?: string;
@@ -95,8 +98,7 @@ export async function shareOnFarcasterCast(params: { text: string; url?: string 
   const { text, url } = params;
   const message = url ? `${text}\n\n${url}` : text;
   try {
-    const { sdk } = await import('@farcaster/miniapp-sdk');
-    // Prefer native composer if available in the Mini App client
+    // Use native composer if available in the Mini App client
     // Some clients support embeds; appending URL to text is sufficient for most
     // Keep call minimal to maximize compatibility across client versions
     await sdk.actions.composeCast({ text: message } as any);

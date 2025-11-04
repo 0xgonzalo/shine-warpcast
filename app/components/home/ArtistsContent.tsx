@@ -6,14 +6,7 @@ import Image from 'next/image';
 import { getMostCollectedArtists } from '../../utils/contract';
 import { getFarcasterUserByAddress, getMockFarcasterUser, FarcasterUser } from '../../utils/farcaster';
 import { getIPFSGatewayURL } from '../../utils/pinata';
-
-// Import Farcaster Frame SDK
-let sdk: any = null;
-if (typeof window !== 'undefined') {
-  import('@farcaster/miniapp-sdk').then((module) => {
-    sdk = module.sdk;
-  });
-}
+import { sdk } from '@farcaster/miniapp-sdk';
 
 interface Artist {
   address: `0x${string}`;
@@ -112,22 +105,14 @@ export default function ArtistsContent() {
     router.push(`/profile/${artist.address}`);
   };
 
-  const handleFollowClick = (e: React.MouseEvent, artist: Artist) => {
+  const handleFollowClick = async (e: React.MouseEvent, artist: Artist) => {
     e.stopPropagation();
-    
-    // If we have Farcaster user data, use the Frame SDK to show their profile
-    if (artist.farcasterUser && sdk) {
+
+    // If we have Farcaster user data, use the SDK to show their profile
+    if (artist.farcasterUser) {
       console.log('Showing Farcaster profile for:', artist.farcasterUser.username);
       try {
-        // Add timeout to prevent hanging
-        Promise.race([
-          sdk.actions.viewProfile({ fid: artist.farcasterUser.fid }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
-        ]).catch((error) => {
-          console.error('Error showing Farcaster profile:', error);
-          // Fallback to navigating to their profile page
-          router.push(`/profile/${artist.address}`);
-        });
+        await sdk.actions.viewProfile({ fid: artist.farcasterUser.fid });
       } catch (error) {
         console.error('Error showing Farcaster profile:', error);
         // Fallback to navigating to their profile page
