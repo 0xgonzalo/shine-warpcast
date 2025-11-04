@@ -88,42 +88,45 @@ export default function TokenPageClient() {
 
       try {
         setIsMetadataLoading(true);
-        const metadataUrl = getIPFSGatewayURL(metadataURI);
-        console.log('🔍 Fetching metadata from:', metadataUrl);
-        const response = await fetch(metadataUrl);
-        console.log('📥 Response status:', response.status, 'Content-Type:', response.headers.get('content-type'));
 
-        if (response.ok) {
+        // Try fetching from multiple gateways
+        let response: Response | null = null;
+        const gateways = [0, 1, 2]; // Try first 3 gateways from the list
+
+        for (const gatewayIndex of gateways) {
+          try {
+            const metadataUrl = getIPFSGatewayURL(metadataURI, gatewayIndex);
+            const attemptResponse = await fetch(metadataUrl);
+            if (attemptResponse.ok) {
+              response = attemptResponse;
+              break;
+            }
+          } catch (err) {
+            continue;
+          }
+        }
+
+        if (response && response.ok) {
           const contentType = response.headers.get('content-type');
           // Check if it's JSON (metadata) or an image
           if (contentType && contentType.includes('application/json')) {
             const metadata = await response.json();
-            console.log('📋 Metadata JSON:', metadata);
             setDescription(metadata.description || null);
             setActualImageURI(metadata.imageURI || null);
           } else {
-            console.log('⚠️ metadataURI points to an image, not JSON metadata (old format)');
             // Old format: metadataURI is the image itself
             setActualImageURI(metadataURI);
 
             // Try to find the metadata JSON for old songs via API
-            console.log('🔍 Attempting to find metadata JSON for old song...');
             try {
               const apiResponse = await fetch(`/api/find-metadata?imageURI=${encodeURIComponent(metadataURI)}`);
               if (apiResponse.ok) {
                 const result = await apiResponse.json();
-                if (result.description) {
-                  console.log('✅ Found description for old song:', result.description);
-                  setDescription(result.description);
-                } else {
-                  setDescription(null);
-                }
+                setDescription(result.description || null);
               } else {
-                console.log('⚠️ Could not find metadata JSON for old song');
                 setDescription(null);
               }
             } catch (apiError) {
-              console.error('Error querying metadata API:', apiError);
               setDescription(null);
             }
           }
@@ -132,7 +135,6 @@ export default function TokenPageClient() {
           setActualImageURI(null);
         }
       } catch (error) {
-        console.error('Error fetching metadata:', error);
         setDescription(null);
         setActualImageURI(null);
       } finally {
