@@ -238,7 +238,7 @@ export default function CreatePage() {
         title: nftName,
         artistName: nftArtist,
         mediaURI: audioURI,
-        metadataURI: imageURI,
+        metadataURI: metadataURI, // Now using the actual metadata JSON URI
         artistAddress: address,
         tags: [],
         price: priceInWei.toString(),
@@ -255,8 +255,8 @@ export default function CreatePage() {
         args: [
           nftName.trim(), // title
           nftArtist.trim(), // artistName
-          audioURI, // mediaURI  
-          imageURI, // metadataURI
+          audioURI, // mediaURI
+          metadataURI, // metadataURI - using the metadata JSON URI
           address as `0x${string}`, // artistAddress
           tags, // tags array
           priceInWei, // price in wei

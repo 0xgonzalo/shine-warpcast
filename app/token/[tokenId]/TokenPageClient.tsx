@@ -37,18 +37,23 @@ export default function TokenPageClient() {
     args: [tokenId],
   });
 
+  // State for extracted metadata from JSON
+  const [actualImageURI, setActualImageURI] = useState<string | null>(null);
+  const [description, setDescription] = useState<string | null>(null);
+  const [isMetadataLoading, setIsMetadataLoading] = useState<boolean>(false);
+
   // Adapt the new contract data to the legacy format used by this component
   const data: NFTMetadata | undefined = rawData ? {
     name: (rawData as any).title,
-    description: '', // Not available in new contract
+    description: '', // Will be loaded from metadata JSON
     audioURI: (rawData as any).mediaURI,
-    imageURI: (rawData as any).metadataURI, // Using metadataURI as a fallback for the image
+    imageURI: actualImageURI || (rawData as any).metadataURI, // Use extracted imageURI or fallback to metadataURI
     creator: (rawData as any).artistAddress
   } : undefined;
 
   // Extract price from raw data
   const tokenPrice = rawData ? (rawData as any).price : BigInt(0);
-  
+
   // Farcaster handle state
   const [creatorHandle, setCreatorHandle] = useState<string | null>(null);
   // Collectors state
@@ -69,6 +74,73 @@ export default function TokenPageClient() {
     };
     resolveHandle();
   }, [rawData, data?.creator]);
+
+  // Load metadata (description and imageURI) from metadataURI
+  useEffect(() => {
+    const loadMetadata = async () => {
+      const metadataURI = (rawData as any)?.metadataURI;
+      if (!metadataURI || metadataURI === 'ipfs://placeholder-image-uri') {
+        setDescription(null);
+        setActualImageURI(null);
+        setIsMetadataLoading(false);
+        return;
+      }
+
+      try {
+        setIsMetadataLoading(true);
+        const metadataUrl = getIPFSGatewayURL(metadataURI);
+        console.log('🔍 Fetching metadata from:', metadataUrl);
+        const response = await fetch(metadataUrl);
+        console.log('📥 Response status:', response.status, 'Content-Type:', response.headers.get('content-type'));
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type');
+          // Check if it's JSON (metadata) or an image
+          if (contentType && contentType.includes('application/json')) {
+            const metadata = await response.json();
+            console.log('📋 Metadata JSON:', metadata);
+            setDescription(metadata.description || null);
+            setActualImageURI(metadata.imageURI || null);
+          } else {
+            console.log('⚠️ metadataURI points to an image, not JSON metadata (old format)');
+            // Old format: metadataURI is the image itself
+            setActualImageURI(metadataURI);
+
+            // Try to find the metadata JSON for old songs via API
+            console.log('🔍 Attempting to find metadata JSON for old song...');
+            try {
+              const apiResponse = await fetch(`/api/find-metadata?imageURI=${encodeURIComponent(metadataURI)}`);
+              if (apiResponse.ok) {
+                const result = await apiResponse.json();
+                if (result.description) {
+                  console.log('✅ Found description for old song:', result.description);
+                  setDescription(result.description);
+                } else {
+                  setDescription(null);
+                }
+              } else {
+                console.log('⚠️ Could not find metadata JSON for old song');
+                setDescription(null);
+              }
+            } catch (apiError) {
+              console.error('Error querying metadata API:', apiError);
+              setDescription(null);
+            }
+          }
+        } else {
+          setDescription(null);
+          setActualImageURI(null);
+        }
+      } catch (error) {
+        console.error('Error fetching metadata:', error);
+        setDescription(null);
+        setActualImageURI(null);
+      } finally {
+        setIsMetadataLoading(false);
+      }
+    };
+    loadMetadata();
+  }, [rawData]);
 
   // Load collectors (Farcaster profiles) for this token
   useEffect(() => {
@@ -423,6 +495,17 @@ export default function TokenPageClient() {
               >
                 Share on feed
               </button>
+              {/* Description Section */}
+              <div className={`w-full mt-2 rounded-xl ${isDarkMode ? 'bg-white/5 border border-white/10' : 'bg-white/40 border border-foreground/60'} p-3`}>
+                <h3 className={`text-sm font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-foreground'}`}>About</h3>
+                {isMetadataLoading ? (
+                  <div className={`${isDarkMode ? 'text-gray-300' : 'text-gray-700'} text-sm`}>Loading...</div>
+                ) : description ? (
+                  <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-700'} text-sm whitespace-pre-wrap`}>{description}</p>
+                ) : (
+                  <div className={`${isDarkMode ? 'text-gray-300' : 'text-gray-700'} text-sm`}>No description available.</div>
+                )}
+              </div>
               {/* Collectors Section */}
               <div className={`w-full mt-2 rounded-xl ${isDarkMode ? 'bg-white/5 border border-white/10' : 'bg-white/40 border border-foreground/60'} p-3`}>
                 <h3 className={`text-sm font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-foreground'}`}>Collectors</h3>
