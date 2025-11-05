@@ -53,12 +53,69 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
     args: [tokenId],
   });
 
+  // State for fetched metadata
+  const [fetchedMetadata, setFetchedMetadata] = useState<{ imageURI?: string; description?: string } | null>(null);
+  const [isLoadingMetadata, setIsLoadingMetadata] = useState(false);
+
+  // Fetch metadata JSON from IPFS (handles both old and new formats)
+  useEffect(() => {
+    const fetchMetadata = async () => {
+      if (!rawData) return;
+
+      const metadataURI = (rawData as SongMetadata).metadataURI;
+      if (!metadataURI || metadataURI === 'ipfs://placeholder-metadata-uri' || metadataURI === 'ipfs://placeholder-image-uri') {
+        setFetchedMetadata(null);
+        return;
+      }
+
+      setIsLoadingMetadata(true);
+      try {
+        const metadataUrl = getIPFSGatewayURL(metadataURI);
+        const response = await fetch(metadataUrl);
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type');
+
+          // Check if it's JSON (new format) or an image (old format)
+          if (contentType && contentType.includes('application/json')) {
+            // New format: metadata is a JSON file with imageURI inside
+            const json = await response.json();
+            setFetchedMetadata({
+              imageURI: json.imageURI || undefined,
+              description: json.description || undefined,
+            });
+          } else {
+            // Old format: metadataURI is the image itself
+            setFetchedMetadata({
+              imageURI: metadataURI,
+              description: undefined,
+            });
+          }
+        } else {
+          console.warn('Failed to fetch metadata for token', tokenId);
+          setFetchedMetadata(null);
+        }
+      } catch (error) {
+        console.error('Error fetching metadata for token', tokenId, error);
+        // Fallback: assume old format where metadataURI is the image
+        setFetchedMetadata({
+          imageURI: metadataURI,
+          description: undefined,
+        });
+      } finally {
+        setIsLoadingMetadata(false);
+      }
+    };
+
+    fetchMetadata();
+  }, [rawData, tokenId]);
+
   // Convert new SongMetadata to legacy format for backward compatibility
   const data: LegacyMetadata | undefined = rawData ? {
     name: (rawData as SongMetadata).title,
-    description: '', // Not available in new contract
+    description: fetchedMetadata?.description || '', // Use fetched description
     audioURI: (rawData as SongMetadata).mediaURI,
-    imageURI: (rawData as SongMetadata).metadataURI,
+    imageURI: fetchedMetadata?.imageURI || 'ipfs://placeholder-image-uri', // Use fetched imageURI
     creator: (rawData as SongMetadata).artistAddress
   } : undefined;
 
