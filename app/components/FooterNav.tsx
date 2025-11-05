@@ -19,10 +19,10 @@ export default function FooterNav() {
       href: '/home', 
       iconSrc: isDarkMode ? '/home.svg' : '/home-blue.svg' 
     },
-    { 
-      name: 'Search', 
-      href: '', 
-      iconSrc: isDarkMode ? '/search.svg' : '/search-blue.svg' 
+    {
+      name: 'Search',
+      href: '/search',
+      iconSrc: isDarkMode ? '/search.svg' : '/search-blue.svg'
     },
     { 
       name: 'Create', 
