@@ -79,7 +79,6 @@ export async function GET(req: NextRequest) {
     let data: NeynarSearchResponse;
     try {
       data = await response.json();
-      console.log('Neynar search response:', JSON.stringify(data, null, 2));
     } catch (parseError) {
       console.error('Failed to parse Neynar response:', parseError);
       return NextResponse.json(
@@ -93,7 +92,6 @@ export async function GET(req: NextRequest) {
     const nextCursor = data.result?.next || data.next;
 
     const users = usersArray.map(normalizeUser).filter(Boolean);
-    console.log('Normalized users:', JSON.stringify(users, null, 2));
 
     return NextResponse.json({ users, next: nextCursor }, { status: 200 });
   } catch (err: any) {

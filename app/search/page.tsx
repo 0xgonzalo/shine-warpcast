@@ -114,8 +114,6 @@ export default function SearchPage() {
         }
 
         const data = await response.json();
-        console.log('Artist search response:', data);
-        console.log('Users array:', data.users);
         if (isMounted) setArtists(data.users || []);
       } catch (error) {
         console.error('Error searching artists:', error);
@@ -240,7 +238,7 @@ export default function SearchPage() {
               />
             </svg>
             <p className="text-lg">Search for songs or artists</p>
-            <p className="text-sm mt-2">Try searching for "water", "pop", or an artist name</p>
+            <p className="text-sm mt-2">Try searching for &quot;water&quot;, &quot;pop&quot;, or an artist name</p>
           </div>
         )}
 
@@ -266,7 +264,7 @@ export default function SearchPage() {
                 </div>
               ) : (
                 <div className={`text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                  <p>No songs found for "{searchQuery}"</p>
+                  <p>No songs found for &quot;{searchQuery}&quot;</p>
                 </div>
               )}
             </div>
@@ -348,7 +346,7 @@ export default function SearchPage() {
                 </div>
               ) : (
                 <div className={`text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                  <p>No artists found for "{searchQuery}"</p>
+                  <p>No artists found for &quot;{searchQuery}&quot;</p>
                 </div>
               )}
             </div>
