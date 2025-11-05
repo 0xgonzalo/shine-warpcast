@@ -1,0 +1,11 @@
+name: shine-song-indexer
+networks:
+  - id: 8453  # Base mainnet
+    start_block: 35365070
+    contracts:
+      - name: SongDataBase
+        address: 0x3419c1f2d26c1c37092a28cd3a56128d2d25abd7
+        handler: src/EventHandlers.ts
+        events:
+          - event: "UserInstaBuy(uint256 indexed audioId, uint256 indexed farcasterId)"
+          - event: "UserBuy(uint256[] indexed audioIds, uint256 indexed farcasterId)"

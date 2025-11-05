@@ -3,9 +3,10 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { CONTRACT_ADDRESS, contractABI, getTotalPriceForInstaBuy, userOwnsSong, generatePseudoFarcasterId, getCollectorsForSong } from '../../utils/contract';
+import { CONTRACT_ADDRESS, contractABI, getTotalPriceForInstaBuy, userOwnsSong, generatePseudoFarcasterId } from '../../utils/contract';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
 import { getFarcasterUserByAddress, shareOnFarcasterCast, getFarcasterUserByFid, FarcasterUser } from '../../utils/farcaster';
+import { getUniqueCollectorFids } from '@/app/lib/envio';
 import { useAudio } from '../../context/AudioContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAccount } from 'wagmi';
@@ -144,12 +145,13 @@ export default function TokenPageClient() {
     loadMetadata();
   }, [rawData]);
 
-  // Load collectors (Farcaster profiles) for this token
+  // Load collectors (Farcaster profiles) for this token using Envio indexer
   useEffect(() => {
     const loadCollectors = async () => {
       try {
         setIsCollectorsLoading(true);
-        const fids = await getCollectorsForSong(tokenId, 25);
+        // Use Envio indexer to get collectors instead of RPC event scanning
+        const fids = await getUniqueCollectorFids(Number(tokenId), 25);
         const profiles: FarcasterUser[] = [];
         for (const fid of fids) {
           try {
@@ -162,7 +164,8 @@ export default function TokenPageClient() {
           await new Promise((r) => setTimeout(r, 80));
         }
         setCollectors(profiles);
-      } catch (_) {
+      } catch (error) {
+        console.error('Error loading collectors from Envio:', error);
         setCollectors([]);
       } finally {
         setIsCollectorsLoading(false);

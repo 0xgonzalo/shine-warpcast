@@ -1,0 +1,14 @@
+type Collector {
+  id: ID!
+  songId: BigInt! @index
+  farcasterId: BigInt! @index
+  purchaseTimestamp: Timestamp!
+  txHash: String!
+  blockNumber: BigInt!
+}
+
+type Song {
+  id: ID!
+  songId: BigInt! @index
+  totalCollectors: Int!
+}
