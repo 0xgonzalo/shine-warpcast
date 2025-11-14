@@ -6,6 +6,7 @@ import FeedContent from '../components/home/FeedContent';
 import SongsContent from '../components/home/SongsContent';
 import PlaylistContent from '../components/home/PlaylistContent';
 import ArtistsContent from '../components/home/ArtistsContent';
+import FeaturedBanner from '../components/home/FeaturedBanner';
 import { sdk } from '@farcaster/miniapp-sdk';
 
 export default function HomePage() {
@@ -77,6 +78,7 @@ export default function HomePage() {
   return (
     <main className="min-h-screen p-8 pb-32">
       <div className="max-w-4xl mx-auto">
+        <FeaturedBanner />
         <HomeTabs activeTab={activeTab} onTabChange={setActiveTab} />
         {renderContent()}
       </div>
