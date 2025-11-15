@@ -48,15 +48,15 @@ export default function FeaturedBanner() {
             priority
           />
           {/* Gradient Overlay for better text readability */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-black/20 group-hover:from-black/95 group-hover:via-black/70 transition-colors duration-300" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/75 to-black/30" />
         </div>
 
         {/* Text Content Overlay */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
-          <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-3 drop-shadow-lg">
+        <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 lg:p-8">
+          <h2 className="text-lg md:text-2xl lg:text-3xl font-bold text-white mb-2 md:mb-3 drop-shadow-lg">
             MusicaW3 x Devconnect Drop on Base
           </h2>
-          <p className="text-sm md:text-base lg:text-lg text-gray-100 max-w-3xl drop-shadow-md">
+          <p className="text-xs md:text-sm lg:text-base text-gray-100 max-w-3xl drop-shadow-md">
             MusicaW3 is celebrating Devconnect with a curated selection of artists
             participating in featured events around the conference like Base Meetup,
             The Music Stage at the main conference and others
