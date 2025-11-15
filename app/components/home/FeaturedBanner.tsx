@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 
 export default function FeaturedBanner() {
   const [timeRemaining, setTimeRemaining] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -37,8 +36,7 @@ export default function FeaturedBanner() {
   }, []);
 
   return (
-    <Link href="/featured" className="block group">
-      <div className="relative w-full rounded-xl overflow-hidden mb-8 shadow-lg transition-transform duration-300 group-hover:scale-[1.02] cursor-pointer">
+    <div className="relative w-full rounded-xl overflow-hidden mb-8 shadow-lg">
         {/* Banner Image */}
         <div className="relative w-full">
           <Image
@@ -67,32 +65,31 @@ export default function FeaturedBanner() {
           {/* Countdown Timer */}
           <div className="mt-4">
             {isExpired ? (
-              <div className="inline-flex items-center gap-2 text-white bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
-                <span className="text-sm font-medium">Event Started!</span>
+              <div className="inline-flex items-center gap-2 text-white bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-lg">
+                <span className="text-xs font-medium">Event Started!</span>
               </div>
             ) : (
-              <div className="flex gap-3 text-white">
-                <div className="bg-white/20 backdrop-blur-sm px-3 py-2 rounded-lg min-w-[60px] text-center">
-                  <div className="text-2xl md:text-3xl font-bold">{timeRemaining.days}</div>
-                  <div className="text-xs md:text-sm opacity-80">Days</div>
+              <div className="flex gap-2 text-white">
+                <div className="bg-white/20 backdrop-blur-sm px-2 py-1.5 rounded-lg min-w-[45px] text-center">
+                  <div className="text-lg md:text-xl font-bold">{timeRemaining.days}</div>
+                  <div className="text-[10px] md:text-xs opacity-80">Days</div>
                 </div>
-                <div className="bg-white/20 backdrop-blur-sm px-3 py-2 rounded-lg min-w-[60px] text-center">
-                  <div className="text-2xl md:text-3xl font-bold">{timeRemaining.hours}</div>
-                  <div className="text-xs md:text-sm opacity-80">Hours</div>
+                <div className="bg-white/20 backdrop-blur-sm px-2 py-1.5 rounded-lg min-w-[45px] text-center">
+                  <div className="text-lg md:text-xl font-bold">{timeRemaining.hours}</div>
+                  <div className="text-[10px] md:text-xs opacity-80">Hours</div>
                 </div>
-                <div className="bg-white/20 backdrop-blur-sm px-3 py-2 rounded-lg min-w-[60px] text-center">
-                  <div className="text-2xl md:text-3xl font-bold">{timeRemaining.minutes}</div>
-                  <div className="text-xs md:text-sm opacity-80">Min</div>
+                <div className="bg-white/20 backdrop-blur-sm px-2 py-1.5 rounded-lg min-w-[45px] text-center">
+                  <div className="text-lg md:text-xl font-bold">{timeRemaining.minutes}</div>
+                  <div className="text-[10px] md:text-xs opacity-80">Min</div>
                 </div>
-                <div className="bg-white/20 backdrop-blur-sm px-3 py-2 rounded-lg min-w-[60px] text-center">
-                  <div className="text-2xl md:text-3xl font-bold">{timeRemaining.seconds}</div>
-                  <div className="text-xs md:text-sm opacity-80">Sec</div>
+                <div className="bg-white/20 backdrop-blur-sm px-2 py-1.5 rounded-lg min-w-[45px] text-center">
+                  <div className="text-lg md:text-xl font-bold">{timeRemaining.seconds}</div>
+                  <div className="text-[10px] md:text-xs opacity-80">Sec</div>
                 </div>
               </div>
             )}
           </div>
         </div>
-      </div>
-    </Link>
+    </div>
   );
 }
