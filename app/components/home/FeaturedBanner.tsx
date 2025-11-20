@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default function FeaturedBanner() {
   const [timeRemaining, setTimeRemaining] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -36,7 +37,8 @@ export default function FeaturedBanner() {
   }, []);
 
   return (
-    <div className="relative w-full rounded-xl overflow-hidden mb-8 shadow-lg">
+    <Link href="/featured" className="block group">
+      <div className="relative w-full rounded-xl overflow-hidden mb-8 shadow-lg transition-transform duration-300 group-hover:scale-[1.02] cursor-pointer">
         {/* Banner Image */}
         <div className="relative w-full">
           <Image
@@ -90,6 +92,7 @@ export default function FeaturedBanner() {
             )}
           </div>
         </div>
-    </div>
+      </div>
+    </Link>
   );
 }

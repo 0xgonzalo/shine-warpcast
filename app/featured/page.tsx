@@ -9,9 +9,9 @@ import Image from 'next/image';
 export default function FeaturedPage() {
   const { isDarkMode } = useTheme();
 
-  // Featured token IDs 30-37
+  // Featured token IDs 66-67-68-69-79
   const featuredTokenIds = useMemo(() => {
-    return [30, 31, 32, 33, 34, 35, 36, 37].map(id => BigInt(id));
+    return [66, 67, 68, 69, 79].map(id => BigInt(id));
   }, []);
 
   return (
