@@ -19,7 +19,7 @@
     "@vercel/og": "^0.8.5",
     "ethers": "^6.15.0",
     "keen-slider": "^6.8.6",
-    "next": "14.2.15",
+    "next": "14.2.35",
     "pinata-web3": "^0.5.4",
     "privy": "^0.4.1",
     "react": "^18",
