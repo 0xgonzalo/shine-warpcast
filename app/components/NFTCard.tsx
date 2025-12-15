@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import CollectedModal from './CollectedModal';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
+import { useTokenMetadata } from '../hooks/useTokenMetadata';
 import { useAudio } from '../context/AudioContext';
 import { useAccount } from 'wagmi';
 import { useRouter } from 'next/navigation';
@@ -53,69 +54,17 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
     args: [tokenId],
   });
 
-  // State for fetched metadata
-  const [fetchedMetadata, setFetchedMetadata] = useState<{ imageURI?: string; description?: string } | null>(null);
-  const [isLoadingMetadata, setIsLoadingMetadata] = useState(false);
-
-  // Fetch metadata JSON from IPFS (handles both old and new formats)
-  useEffect(() => {
-    const fetchMetadata = async () => {
-      if (!rawData) return;
-
-      const metadataURI = (rawData as SongMetadata).metadataURI;
-      if (!metadataURI || metadataURI === 'ipfs://placeholder-metadata-uri' || metadataURI === 'ipfs://placeholder-image-uri') {
-        setFetchedMetadata(null);
-        return;
-      }
-
-      setIsLoadingMetadata(true);
-      try {
-        const metadataUrl = getIPFSGatewayURL(metadataURI);
-        const response = await fetch(metadataUrl);
-
-        if (response.ok) {
-          const contentType = response.headers.get('content-type');
-
-          // Check if it's JSON (new format) or an image (old format)
-          if (contentType && contentType.includes('application/json')) {
-            // New format: metadata is a JSON file with imageURI inside
-            const json = await response.json();
-            setFetchedMetadata({
-              imageURI: json.imageURI || undefined,
-              description: json.description || undefined,
-            });
-          } else {
-            // Old format: metadataURI is the image itself
-            setFetchedMetadata({
-              imageURI: metadataURI,
-              description: undefined,
-            });
-          }
-        } else {
-          console.warn('Failed to fetch metadata for token', tokenId);
-          setFetchedMetadata(null);
-        }
-      } catch (error) {
-        console.error('Error fetching metadata for token', tokenId, error);
-        // Fallback: assume old format where metadataURI is the image
-        setFetchedMetadata({
-          imageURI: metadataURI,
-          description: undefined,
-        });
-      } finally {
-        setIsLoadingMetadata(false);
-      }
-    };
-
-    fetchMetadata();
-  }, [rawData, tokenId]);
+  // Use the robust metadata hook to fetch imageURI and description
+  // This handles both old format (metadataURI = image) and new format (metadataURI = JSON with imageURI)
+  const metadataURI = rawData ? (rawData as SongMetadata).metadataURI : undefined;
+  const { imageURI: fetchedImageURI, description: fetchedDescription, isLoading: isLoadingMetadata } = useTokenMetadata(metadataURI);
 
   // Convert new SongMetadata to legacy format for backward compatibility
   const data: LegacyMetadata | undefined = rawData ? {
     name: (rawData as SongMetadata).title,
-    description: fetchedMetadata?.description || '', // Use fetched description
+    description: fetchedDescription || '', // Use fetched description
     audioURI: (rawData as SongMetadata).mediaURI,
-    imageURI: fetchedMetadata?.imageURI || 'ipfs://placeholder-image-uri', // Use fetched imageURI
+    imageURI: fetchedImageURI || 'ipfs://placeholder-image-uri', // Use fetched imageURI
     creator: (rawData as SongMetadata).artistAddress
   } : undefined;
 
@@ -252,9 +201,11 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
       return;
     }
 
-    // Generate pseudo-FID from wallet address for collection
-    const farcasterId = generatePseudoFarcasterId(address);
-    console.log('🎯 [NFTCard] Using pseudo-Farcaster ID for wallet:', address, '→', farcasterId.toString());
+    // Use real Farcaster ID if available from context, otherwise generate pseudo-FID
+    // This ensures consistency between collection and lookup
+    const realFid = (farcasterContext as any)?.user?.fid;
+    const farcasterId = realFid ? BigInt(realFid) : generatePseudoFarcasterId(address);
+    console.log('🎯 [NFTCard] Using Farcaster ID:', realFid ? `real FID ${realFid}` : `pseudo-FID from ${address}`, '→', farcasterId.toString());
     
     try {
       // Clear any previous ownership error
@@ -314,33 +265,38 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
   if (isError || !data) return null;
 
   const isAudioAvailable = data.audioURI && data.audioURI !== 'ipfs://placeholder-audio-uri';
+  const hasValidImage = data.imageURI && data.imageURI !== 'ipfs://placeholder-image-uri';
 
   return (
     <>
       <div className={`w-full rounded-lg shadow-lg overflow-hidden p-2 transition-all duration-300 hover:shadow-2xl ${
-        isDarkMode 
-          ? 'bg-gradient-to-r from-[#323232] to-[#232323] text-white' 
+        isDarkMode
+          ? 'bg-gradient-to-r from-[#323232] to-[#232323] text-white'
           : 'bg-white/20 border border-foreground text-foreground'
       }`}>
         <div
           className="w-full aspect-square bg-gradient-to-r from-[#282828] to-[#232323] rounded-md mb-2 relative cursor-pointer group flex items-center justify-center"
           onClick={isAudioAvailable ? handlePlayAudio : undefined}
         >
-          {data.imageURI && data.imageURI !== 'ipfs://placeholder-image-uri' ? (
+          {/* Show loading skeleton while metadata is being fetched */}
+          {isLoadingMetadata && (
+            <div className="absolute inset-0 bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 animate-pulse rounded-md" />
+          )}
+          {hasValidImage ? (
             <Image
               src={getIPFSGatewayURL(data.imageURI)}
               alt={data.name}
               width={300}
               height={300}
-              className="w-full h-full object-cover transition-opacity duration-300 group-hover:opacity-70"
+              className={`w-full h-full object-cover transition-opacity duration-300 group-hover:opacity-70 ${isLoadingMetadata ? 'opacity-0' : 'opacity-100'}`}
             />
-          ) : (
+          ) : !isLoadingMetadata ? (
             <div className="w-full h-full flex items-center justify-center bg-gray-600">
               <svg className="w-16 h-16 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 12v4h-4v-4H7l5-5 5 5h-3z" />
               </svg>
             </div>
-          )}
+          ) : null}
           {isAudioAvailable && (
             <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               <svg className="w-16 h-16 text-white" fill="currentColor" viewBox="0 0 24 24">

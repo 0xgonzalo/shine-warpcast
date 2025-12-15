@@ -14,6 +14,8 @@ alwaysApply: false
   - Use lowercase with dashes for directories (e.g., components/auth-wizard).
   - Favor named exports for components.
   - Use the Receive an Object, Return an Object (RORO) pattern.
+  - You are building with mobile first orientation. This app is only being used on mobile.
+  - The miniapp is made to be used on the Farcaster and Base App context.
   
   JavaScript/TypeScript
   - Use "function" keyword for pure functions. Omit semicolons.

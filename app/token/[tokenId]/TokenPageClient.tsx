@@ -5,10 +5,12 @@ import { useState, useEffect } from 'react';
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { CONTRACT_ADDRESS, contractABI, getTotalPriceForInstaBuy, userOwnsSong, generatePseudoFarcasterId, getCollectorsForSong } from '../../utils/contract';
 import { getIPFSGatewayURL } from '@/app/utils/pinata';
+import { useTokenMetadata } from '../../hooks/useTokenMetadata';
 import { getFarcasterUserByAddress, shareOnFarcasterCast, getFarcasterUserByFid, FarcasterUser } from '../../utils/farcaster';
 import { useAudio } from '../../context/AudioContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAccount } from 'wagmi';
+import { useFarcaster } from '../../context/FarcasterContext';
 import CollectedModal from '../../components/CollectedModal';
 import Image from 'next/image';
 
@@ -27,6 +29,7 @@ export default function TokenPageClient() {
   const tokenId = BigInt(params.tokenId as string);
   const { isDarkMode } = useTheme();
   const { address, isConnected } = useAccount();
+  const { context: farcasterContext } = useFarcaster();
   const [showCollectModal, setShowCollectModal] = useState(false);
   const [collectTxHash, setCollectTxHash] = useState<string | null>(null);
   
@@ -37,17 +40,17 @@ export default function TokenPageClient() {
     args: [tokenId],
   });
 
-  // State for extracted metadata from JSON
-  const [actualImageURI, setActualImageURI] = useState<string | null>(null);
-  const [description, setDescription] = useState<string | null>(null);
-  const [isMetadataLoading, setIsMetadataLoading] = useState<boolean>(false);
+  // Use the robust metadata hook to fetch imageURI and description
+  // This handles both old format (metadataURI = image) and new format (metadataURI = JSON with imageURI)
+  const metadataURI = rawData ? (rawData as any).metadataURI : undefined;
+  const { imageURI: fetchedImageURI, description, isLoading: isMetadataLoading } = useTokenMetadata(metadataURI);
 
   // Adapt the new contract data to the legacy format used by this component
   const data: NFTMetadata | undefined = rawData ? {
     name: (rawData as any).title,
-    description: '', // Will be loaded from metadata JSON
+    description: description || '',
     audioURI: (rawData as any).mediaURI,
-    imageURI: actualImageURI || (rawData as any).metadataURI, // Use extracted imageURI or fallback to metadataURI
+    imageURI: fetchedImageURI || (rawData as any).metadataURI, // Use extracted imageURI or fallback to metadataURI
     creator: (rawData as any).artistAddress
   } : undefined;
 
@@ -56,6 +59,8 @@ export default function TokenPageClient() {
 
   // Farcaster handle state
   const [creatorHandle, setCreatorHandle] = useState<string | null>(null);
+  const [creatorFid, setCreatorFid] = useState<number | null>(null);
+  const [creatorPrimaryAddress, setCreatorPrimaryAddress] = useState<string | null>(null);
   // Collectors state
   const [collectors, setCollectors] = useState<FarcasterUser[]>([]);
   const [isCollectorsLoading, setIsCollectorsLoading] = useState<boolean>(false);
@@ -67,82 +72,18 @@ export default function TokenPageClient() {
         const addr = (rawData as any)?.artistAddress || (data?.creator as string | undefined);
         if (!addr) return;
         const user = await getFarcasterUserByAddress(addr);
-        if (user?.username) setCreatorHandle(user.username);
+        if (user) {
+          if (user.username) setCreatorHandle(user.username);
+          if (user.fid) setCreatorFid(user.fid);
+          // Use primary address if available, otherwise use the original address
+          setCreatorPrimaryAddress(user.primaryAddress || addr);
+        }
       } catch (_) {
         // ignore
       }
     };
     resolveHandle();
   }, [rawData, data?.creator]);
-
-  // Load metadata (description and imageURI) from metadataURI
-  useEffect(() => {
-    const loadMetadata = async () => {
-      const metadataURI = (rawData as any)?.metadataURI;
-      if (!metadataURI || metadataURI === 'ipfs://placeholder-image-uri') {
-        setDescription(null);
-        setActualImageURI(null);
-        setIsMetadataLoading(false);
-        return;
-      }
-
-      try {
-        setIsMetadataLoading(true);
-
-        // Try fetching from multiple gateways
-        let response: Response | null = null;
-        const gateways = [0, 1, 2]; // Try first 3 gateways from the list
-
-        for (const gatewayIndex of gateways) {
-          try {
-            const metadataUrl = getIPFSGatewayURL(metadataURI, gatewayIndex);
-            const attemptResponse = await fetch(metadataUrl);
-            if (attemptResponse.ok) {
-              response = attemptResponse;
-              break;
-            }
-          } catch (err) {
-            continue;
-          }
-        }
-
-        if (response && response.ok) {
-          const contentType = response.headers.get('content-type');
-          // Check if it's JSON (metadata) or an image
-          if (contentType && contentType.includes('application/json')) {
-            const metadata = await response.json();
-            setDescription(metadata.description || null);
-            setActualImageURI(metadata.imageURI || null);
-          } else {
-            // Old format: metadataURI is the image itself
-            setActualImageURI(metadataURI);
-
-            // Try to find the metadata JSON for old songs via API
-            try {
-              const apiResponse = await fetch(`/api/find-metadata?imageURI=${encodeURIComponent(metadataURI)}`);
-              if (apiResponse.ok) {
-                const result = await apiResponse.json();
-                setDescription(result.description || null);
-              } else {
-                setDescription(null);
-              }
-            } catch (apiError) {
-              setDescription(null);
-            }
-          }
-        } else {
-          setDescription(null);
-          setActualImageURI(null);
-        }
-      } catch (error) {
-        setDescription(null);
-        setActualImageURI(null);
-      } finally {
-        setIsMetadataLoading(false);
-      }
-    };
-    loadMetadata();
-  }, [rawData]);
 
   // Load collectors (Farcaster profiles) for this token
   useEffect(() => {
@@ -220,9 +161,11 @@ export default function TokenPageClient() {
       return;
     }
 
-    // Generate pseudo-FID from wallet address for collection
-    const farcasterId = generatePseudoFarcasterId(address);
-    console.log('🎯 [TokenPage] Using pseudo-Farcaster ID for wallet:', address, '→', farcasterId.toString());
+    // Use real Farcaster ID if available from context, otherwise generate pseudo-FID
+    // This ensures consistency between collection and lookup
+    const realFid = (farcasterContext as any)?.user?.fid;
+    const farcasterId = realFid ? BigInt(realFid) : generatePseudoFarcasterId(address);
+    console.log('🎯 [TokenPage] Using Farcaster ID:', realFid ? `real FID ${realFid}` : `pseudo-FID from ${address}`, '→', farcasterId.toString());
     
     try {
       // Check if user already owns this song
@@ -375,14 +318,24 @@ export default function TokenPageClient() {
         <h1 className={`text-2xl font-bold mb-2 text-center ${
           isDarkMode ? 'text-white' : 'text-foreground'
         }`}>{data.name}</h1>
-        <p
-          className={`mb-6 text-center ${
-            isDarkMode ? 'text-gray-300' : 'text-blue-800'
+        <button
+          onClick={() => {
+            // Navigate to creator profile using primary address and FID
+            const profileAddress = creatorPrimaryAddress || data.creator;
+            if (profileAddress) {
+              const url = creatorFid
+                ? `/profile/${profileAddress}?fid=${creatorFid}`
+                : `/profile/${profileAddress}`;
+              router.push(url);
+            }
+          }}
+          className={`mb-6 text-center cursor-pointer hover:underline transition-all ${
+            isDarkMode ? 'text-gray-300 hover:text-white' : 'text-blue-800 hover:text-blue-600'
           }`}
-          title={creatorHandle ? `@${creatorHandle}` : `${data.creator?.slice(0,6)}...${data.creator?.slice(-4)}`}
+          title={creatorHandle ? `View @${creatorHandle}'s profile` : `View creator's profile`}
         >
           {creatorHandle ? `@${creatorHandle}` : `${data.creator?.slice(0, 6)}...${data.creator?.slice(-4)}`}
-        </p>
+        </button>
 
         {/* Audio Controls */}
         {isAudioAvailable && (

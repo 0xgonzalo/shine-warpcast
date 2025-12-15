@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
-import { CONTRACT_ADDRESS, getNFTMetadata, publicClient, getTotalSongCount, checkSongExists, getUserCollection, generatePseudoFarcasterId } from '../../utils/contract';
+import { getNFTMetadata, getTotalSongCount, checkSongExists, getUserCollection, generatePseudoFarcasterId } from '../../utils/contract';
 import { useParams, useSearchParams } from 'next/navigation';
 import NFTCard from '@/app/components/NFTCard';
 import { useFarcaster } from '../../context/FarcasterContext';
 import { useTheme } from '../../context/ThemeContext';
-import Image from 'next/image';
 import { Avatar } from '@coinbase/onchainkit/identity';
 import { getFarcasterUserByAddress, getFarcasterUserByFid } from '../../utils/farcaster';
 
@@ -80,12 +79,15 @@ export default function ProfilePage() {
         if (cancelled) return;
         if (user) {
           // Normalize to the shape used by the UI below
+          // Include primaryAddress and allAddresses for consistent display
           setFarcasterProfile({
             fid: user.fid,
             username: user.username,
             display_name: user.displayName,
             pfp_url: user.pfpUrl,
             profile: { bio: { text: user.bio } },
+            primaryAddress: user.primaryAddress,
+            allAddresses: user.allAddresses,
           });
           return;
         }
@@ -103,11 +105,11 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!walletAddress) return;
     setLoading(true);
-    
+
     (async () => {
       try {
         const created: NFT[] = [];
-        const collected: NFT[] = [];
+        const collectedMap = new Map<string, NFT>(); // Use map to dedupe
 
         // Get total song count to know the valid range
         const totalSongs = await getTotalSongCount();
@@ -121,45 +123,108 @@ export default function ProfilePage() {
           return;
         }
 
-        // For collected songs, use the new contract's getUserCollection function
-        // Generate pseudo-FID from wallet address for collection lookup
-        const farcasterId = generatePseudoFarcasterId(walletAddress);
+        // For collected songs, query:
+        // 1. Real FID if available (from Farcaster profile)
+        // 2. Pseudo-FIDs for ALL addresses owned by this user
+        // This handles songs collected from any of the user's wallets
+        const realFid = farcasterProfile?.fid || farcasterContext?.user?.fid;
 
-        console.log('🔍 Fetching collection for Farcaster ID:', farcasterId.toString());
-        const userCollectionSongIds = await getUserCollection(farcasterId) as bigint[];
-        console.log('🎵 User owns songs:', userCollectionSongIds.map((id: bigint) => id.toString()));
-
-        // Get metadata for collected songs
-        for (const songId of userCollectionSongIds) {
-          try {
-            const exists = await checkSongExists(songId);
-            if (exists) {
-              const metadata = await getNFTMetadata(songId);
-              collected.push({ tokenId: songId, metadata });
-            }
-          } catch (error) {
-            console.error(`❌ Error fetching metadata for collected song ${songId}:`, error);
+        // Build set of all addresses to generate pseudo-FIDs for
+        const allUserAddresses = new Set<string>();
+        allUserAddresses.add(walletAddress.toLowerCase());
+        if ((farcasterProfile as any)?.allAddresses) {
+          for (const addr of (farcasterProfile as any).allAddresses) {
+            allUserAddresses.add(addr.toLowerCase());
           }
         }
 
-        // For created songs, scan through existing songs and check creator
-        const maxScanRange = Math.min(Number(totalSongs), 50); // Limit scan to avoid too many calls
-        for (let i = 1; i <= maxScanRange; i++) {
-          const songId = BigInt(i);
+        // Collect FIDs to query (deduplicated)
+        const fidsToQuery = new Set<string>();
+
+        // Add real FID if available
+        if (realFid) {
+          fidsToQuery.add(BigInt(realFid).toString());
+        }
+
+        // Add pseudo-FIDs for all user addresses
+        Array.from(allUserAddresses).forEach(addr => {
+          const pseudoFid = generatePseudoFarcasterId(addr as `0x${string}`);
+          fidsToQuery.add(pseudoFid.toString());
+        });
+
+        const fidsArray = Array.from(fidsToQuery);
+        const addressesArray = Array.from(allUserAddresses);
+        console.log('🔍 Fetching collection for FIDs:', fidsArray);
+        console.log('🔍 From addresses:', addressesArray);
+
+        // Query all FIDs and merge results
+        for (const fidStr of fidsArray) {
+          const fid = BigInt(fidStr);
           try {
-            const exists = await checkSongExists(songId);
-            if (exists) {
-              const metadata = await getNFTMetadata(songId);
-              // Check if user is creator
-              if (metadata.creator?.toLowerCase() === walletAddress.toLowerCase()) {
-                created.push({ tokenId: songId, metadata });
+            const userCollectionSongIds = await getUserCollection(fid) as bigint[];
+            console.log(`🎵 FID ${fid} owns songs:`, userCollectionSongIds.map((id: bigint) => id.toString()));
+
+            // Get metadata for collected songs
+            for (const songId of userCollectionSongIds) {
+              // Skip if already processed
+              if (collectedMap.has(songId.toString())) continue;
+
+              try {
+                const exists = await checkSongExists(songId);
+                if (exists) {
+                  const metadata = await getNFTMetadata(songId);
+                  collectedMap.set(songId.toString(), { tokenId: songId, metadata });
+                }
+              } catch (error) {
+                console.error(`❌ Error fetching metadata for collected song ${songId}:`, error);
               }
             }
           } catch (error) {
-            console.error(`❌ Error checking song ${songId}:`, error);
-            // Continue with next song
+            console.error(`❌ Error fetching collection for FID ${fid}:`, error);
           }
         }
+
+        // For created songs, scan through ALL existing songs (no artificial limit)
+        // Use batch processing to avoid overwhelming RPC
+        // Reuse allUserAddresses from above for creator matching
+        const totalSongsNum = Number(totalSongs);
+        const BATCH_SIZE = 10;
+
+        console.log('🔍 Checking created songs for addresses:', Array.from(allUserAddresses));
+
+        for (let batchStart = 1; batchStart <= totalSongsNum; batchStart += BATCH_SIZE) {
+          const batchEnd = Math.min(batchStart + BATCH_SIZE - 1, totalSongsNum);
+          const batchPromises: Promise<void>[] = [];
+
+          for (let i = batchStart; i <= batchEnd; i++) {
+            const songId = BigInt(i);
+            batchPromises.push(
+              (async () => {
+                try {
+                  const exists = await checkSongExists(songId);
+                  if (exists) {
+                    const metadata = await getNFTMetadata(songId);
+                    // Check if user is creator (match against any of user's addresses)
+                    if (metadata.creator && allUserAddresses.has(metadata.creator.toLowerCase())) {
+                      created.push({ tokenId: songId, metadata });
+                    }
+                  }
+                } catch (error) {
+                  console.error(`❌ Error checking song ${songId}:`, error);
+                }
+              })()
+            );
+          }
+
+          await Promise.all(batchPromises);
+        }
+
+        // Sort created by tokenId descending (newest first)
+        created.sort((a, b) => Number(b.tokenId - a.tokenId));
+
+        // Convert collected map to array and sort by tokenId descending
+        const collected = Array.from(collectedMap.values())
+          .sort((a, b) => Number(b.tokenId - a.tokenId));
 
         console.log('🎨 Created NFTs found:', created.length);
         console.log('🎵 Collected NFTs found:', collected.length);
@@ -174,7 +239,7 @@ export default function ProfilePage() {
         setLoading(false);
       }
     })();
-  }, [walletAddress]);
+  }, [walletAddress, farcasterProfile?.fid, farcasterContext?.user?.fid]);
 
   // No need for ready checks with OnchainKit
 
@@ -251,11 +316,16 @@ export default function ProfilePage() {
             <p className={`text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
               FID: {farcasterProfile?.fid || farcasterContext?.client?.fid || 'Unknown'}
             </p>
-            
-            {/* Wallet Address */}
-            <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-              {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
-            </p>
+
+            {/* Wallet Address - Show primary/canonical address from Farcaster profile */}
+            {(() => {
+              const displayAddress = (farcasterProfile as any)?.primaryAddress || walletAddress;
+              return displayAddress ? (
+                <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                  {displayAddress.slice(0, 6)}...{displayAddress.slice(-4)}
+                </p>
+              ) : null;
+            })()}
           </div>
         ) : (
           <div className="flex flex-col items-center mb-8">

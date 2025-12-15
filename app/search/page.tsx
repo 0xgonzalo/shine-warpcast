@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { getSongMetadata, getTotalSongCount, checkSongExists } from '../utils/contract';
 import NFTExists from '../components/NFTExists';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 interface SongWithMetadata {
@@ -21,6 +20,8 @@ interface SearchUser {
   bio?: string;
   followerCount?: number;
   followingCount?: number;
+  custodyAddress?: string;
+  verifiedAddresses?: string[];
 }
 
 export default function SearchPage() {
@@ -169,9 +170,12 @@ export default function SearchPage() {
   };
 
   const handleArtistClick = (artist: SearchUser) => {
-    // Navigate to artist profile using their FID
-    if (artist.username) {
-      router.push(`/profile/${artist.username}`);
+    // Navigate to artist profile using their wallet address
+    // Priority: verified address > custody address
+    // Also pass FID as query param so profile page can fetch user data by FID
+    const walletAddress = artist.verifiedAddresses?.[0] || artist.custodyAddress;
+    if (walletAddress) {
+      router.push(`/profile/${walletAddress}?fid=${artist.fid}`);
     }
   };
 

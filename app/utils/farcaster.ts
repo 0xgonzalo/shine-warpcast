@@ -11,7 +11,10 @@ export interface FarcasterUser {
   bio?: string;
   followerCount?: number;
   followingCount?: number;
+  custodyAddress?: string;
+  primaryAddress?: string;
   verifiedAddresses?: string[];
+  allAddresses?: string[];
 }
 
 // Note: This is a simplified implementation. In a real app, you'd want to use

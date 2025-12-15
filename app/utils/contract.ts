@@ -1,8 +1,8 @@
-import { createPublicClient, http } from 'viem';
+import { createPublicClient, http, fallback } from 'viem';
 import { base } from 'viem/chains';
 import songDataBaseABI from '../../abi/SongDataBase.json';
 
-// Use the imported ABI from the generated file  
+// Use the imported ABI from the generated file
 const contractABI = songDataBaseABI as any;
 
 // Define types for the contract metadata
@@ -25,12 +25,33 @@ export const CONTRACT_ADDRESS = '0x3419c1f2d26c1c37092a28cd3a56128d2d25abd7';
 // Rate limiting utility
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Create a public client for reading from the contract
+// Build transport with fallback RPCs for resilience
+const buildTransport = () => {
+  const transports = [];
+
+  // Primary: Alchemy (if configured)
+  if (process.env.NEXT_PUBLIC_ALCHEMY_API_KEY) {
+    transports.push(http(`https://base-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`, {
+      timeout: 10000,
+      retryCount: 2,
+      retryDelay: 1000,
+    }));
+  }
+
+  // Fallback RPCs (public Base RPCs)
+  transports.push(
+    http('https://mainnet.base.org', { timeout: 10000, retryCount: 1 }),
+    http('https://base.llamarpc.com', { timeout: 10000, retryCount: 1 }),
+    http('https://1rpc.io/base', { timeout: 10000, retryCount: 1 }),
+  );
+
+  return fallback(transports, { rank: true });
+};
+
+// Create a public client for reading from the contract with fallback support
 export const publicClient = createPublicClient({
   chain: base,
-  transport: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY 
-    ? http(`https://base-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`)
-    : http(), // Fallback to default Base RPC
+  transport: buildTransport(),
 });
 
 // Contract interaction functions

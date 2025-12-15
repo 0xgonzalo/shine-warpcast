@@ -12,6 +12,7 @@ type NeynarUser = {
   profile?: { bio?: { text?: string } };
   follower_count?: number;
   following_count?: number;
+  custody_address?: string;
   verified_addresses?: { eth_addresses?: string[] };
 };
 
@@ -38,6 +39,7 @@ function normalizeUser(u: NeynarUser | undefined | null) {
     bio: u.profile?.bio?.text,
     followerCount: u.follower_count,
     followingCount: u.following_count,
+    custodyAddress: u.custody_address?.toLowerCase(),
     verifiedAddresses: (u.verified_addresses?.eth_addresses || []).map((a) => a.toLowerCase()),
   };
 }

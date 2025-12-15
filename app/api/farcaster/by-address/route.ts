@@ -13,11 +13,28 @@ type NeynarUser = {
   profile?: { bio?: { text?: string } };
   follower_count?: number;
   following_count?: number;
-  verified_addresses?: { eth_addresses?: string[] };
+  custody_address?: string;
+  verified_addresses?: {
+    eth_addresses?: string[];
+    primary?: { eth_address?: string };
+  };
 };
 
 function normalizeUser(u: NeynarUser | undefined | null) {
   if (!u) return null;
+  const verifiedAddresses = (u.verified_addresses?.eth_addresses || []).map((a) => a.toLowerCase());
+  const custodyAddress = u.custody_address?.toLowerCase();
+  const primaryAddress = u.verified_addresses?.primary?.eth_address?.toLowerCase();
+
+  // Canonical address priority: primary verified > first verified > custody
+  const canonicalAddress = primaryAddress || verifiedAddresses[0] || custodyAddress;
+
+  // All addresses this user owns (for ownership checks)
+  const addressSet = new Set<string>();
+  if (custodyAddress) addressSet.add(custodyAddress);
+  verifiedAddresses.forEach(addr => addressSet.add(addr));
+  const allAddresses = Array.from(addressSet);
+
   return {
     fid: u.fid,
     username: u.username,
@@ -26,7 +43,10 @@ function normalizeUser(u: NeynarUser | undefined | null) {
     bio: u.profile?.bio?.text,
     followerCount: u.follower_count,
     followingCount: u.following_count,
-    verifiedAddresses: (u.verified_addresses?.eth_addresses || []).map((a) => a.toLowerCase()),
+    custodyAddress,
+    primaryAddress: canonicalAddress,
+    verifiedAddresses,
+    allAddresses,
   };
 }
 
