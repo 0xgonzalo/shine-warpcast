@@ -3,17 +3,24 @@
 import { useAccount } from 'wagmi';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { useFarcaster } from '../context/FarcasterContext';
 
 export default function ProfilePage() {
   const { address } = useAccount();
   const router = useRouter();
+  const { context: farcasterContext } = useFarcaster();
 
   useEffect(() => {
     // If user has a connected wallet, redirect to their profile
+    // Include FID from Farcaster context if available for proper profile resolution
     if (address) {
-      router.push(`/profile/${address}`);
+      const realFid = (farcasterContext as any)?.user?.fid;
+      const url = realFid
+        ? `/profile/${address}?fid=${realFid}`
+        : `/profile/${address}`;
+      router.push(url);
     }
-  }, [address, router]);
+  }, [address, router, farcasterContext]);
 
   return (
     <main className="min-h-screen p-8">
