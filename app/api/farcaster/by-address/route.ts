@@ -89,7 +89,13 @@ export async function GET(req: NextRequest) {
         if (!Number.isNaN(fidNum)) {
           const result: any = await (client as any).fetchBulkUsers({ fids: [fidNum] });
           const sdkUser = result?.users?.[0] || null;
-          if (sdkUser) user = sdkUser as NeynarUser;
+          if (sdkUser) {
+            user = sdkUser as NeynarUser;
+            console.log(`[API] SDK returned user for FID ${fidNum}:`, {
+              custody_address: sdkUser.custody_address,
+              verified_addresses: sdkUser.verified_addresses,
+            });
+          }
           if (debugEnabled) debug.push(`sdk.fetchBulkUsers(fid=${fidNum}) ok=${Boolean(sdkUser)}`);
         }
       } catch (e: any) {
@@ -335,6 +341,19 @@ export async function GET(req: NextRequest) {
     }
 
     const normalized = normalizeUser(user);
+
+    // Debug: Log what we're returning
+    if (normalized && fidParam) {
+      console.log(`[API] Returning user for FID ${fidParam}:`, {
+        fid: normalized.fid,
+        username: normalized.username,
+        custodyAddress: normalized.custodyAddress,
+        primaryAddress: normalized.primaryAddress,
+        verifiedAddresses: normalized.verifiedAddresses,
+        allAddresses: normalized.allAddresses,
+      });
+    }
+
     return NextResponse.json({ user: normalized, ...(debugEnabled ? { debug } : {}) }, { status: 200 });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message || 'Internal error' }, { status: 500 });

@@ -246,7 +246,13 @@ export default function ProfilePage() {
         setLoading(false);
       }
     })();
-  }, [walletAddress, farcasterProfile?.fid, farcasterContext?.user?.fid]);
+  }, [
+    walletAddress,
+    farcasterProfile?.fid,
+    farcasterContext?.user?.fid,
+    // Re-fetch when allAddresses becomes available
+    JSON.stringify((farcasterProfile as any)?.allAddresses || []),
+  ]);
 
   // No need for ready checks with OnchainKit
 
