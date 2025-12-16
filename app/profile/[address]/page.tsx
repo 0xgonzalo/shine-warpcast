@@ -78,6 +78,13 @@ export default function ProfilePage() {
         }
         if (cancelled) return;
         if (user) {
+          console.log('✅ Loaded Farcaster user:', {
+            fid: user.fid,
+            username: user.username,
+            primaryAddress: user.primaryAddress,
+            allAddresses: user.allAddresses,
+            verifiedAddresses: user.verifiedAddresses,
+          });
           // Normalize to the shape used by the UI below
           // Include primaryAddress and allAddresses for consistent display
           setFarcasterProfile({
