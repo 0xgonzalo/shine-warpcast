@@ -1,5 +1,6 @@
 import '@coinbase/onchainkit/styles.css';
 import './globals.css';
+import { Analytics } from '@vercel/analytics/next';
 import { Providers } from '@/providers/providers';
 import Navbar from './components/Navbar';
 import FooterNav from './components/FooterNav';
@@ -30,6 +31,7 @@ export default function RootLayout({
             </FarcasterProvider>
           </ThemeProvider>
         </Providers>
+        <Analytics />
       </body>
     </html>
   );
