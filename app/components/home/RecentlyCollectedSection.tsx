@@ -122,7 +122,7 @@ export default function RecentlyCollectedSection() {
       : nft.metadata.creator
         ? `${nft.metadata.creator.slice(0, 6)}...${nft.metadata.creator.slice(-4)}`
         : undefined;
-    playAudio(audioUrl, nft.metadata.name, artist, imageUrl);
+    playAudio(audioUrl, nft.metadata.name, artist, imageUrl, nft.tokenId.toString(), nft.metadata.creator);
   };
 
   const handleViewToken = (tokenId: bigint) => {

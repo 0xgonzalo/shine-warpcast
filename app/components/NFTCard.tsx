@@ -164,8 +164,8 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
   const handlePlayAudio = () => {
     if (data?.audioURI && data.audioURI !== 'ipfs://placeholder-audio-uri') {
       const audioUrl = getIPFSGatewayURL(data.audioURI);
-      const imageUrl = data.imageURI && data.imageURI !== 'ipfs://placeholder-image-uri' 
-        ? getIPFSGatewayURL(data.imageURI) 
+      const imageUrl = data.imageURI && data.imageURI !== 'ipfs://placeholder-image-uri'
+        ? getIPFSGatewayURL(data.imageURI)
         : undefined;
       // Prefer Farcaster handle if available; fallback to truncated wallet
       const artist = creatorHandle
@@ -174,7 +174,7 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
           ? `${data.creator.slice(0, 6)}...${data.creator.slice(-4)}`
           : undefined;
 
-      playAudio(audioUrl, data.name, artist, imageUrl);
+      playAudio(audioUrl, data.name, artist, imageUrl, tokenId.toString(), data.creator);
     }
   };
 
@@ -182,8 +182,8 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
     e.stopPropagation();
     if (data?.audioURI && data.audioURI !== 'ipfs://placeholder-audio-uri') {
       const audioUrl = getIPFSGatewayURL(data.audioURI);
-      const imageUrl = data.imageURI && data.imageURI !== 'ipfs://placeholder-image-uri' 
-        ? getIPFSGatewayURL(data.imageURI) 
+      const imageUrl = data.imageURI && data.imageURI !== 'ipfs://placeholder-image-uri'
+        ? getIPFSGatewayURL(data.imageURI)
         : undefined;
       // Prefer Farcaster handle if available; fallback to truncated wallet
       const artist = creatorHandle
@@ -191,7 +191,7 @@ export default function NFTCard({ tokenId }: NFTCardProps) {
         : data.creator
           ? `${data.creator.slice(0, 6)}...${data.creator.slice(-4)}`
           : undefined;
-      addToQueue(audioUrl, data.name, artist, imageUrl);
+      addToQueue(audioUrl, data.name, artist, imageUrl, tokenId.toString(), data.creator);
     }
   };
 

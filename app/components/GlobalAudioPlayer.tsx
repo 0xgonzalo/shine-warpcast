@@ -3,6 +3,7 @@
 import { useAudio } from '../context/AudioContext';
 import { useRef, useEffect, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useTheme } from '../context/ThemeContext';
 import { getAllIPFSGatewayURLs } from '../utils/pinata';
 
@@ -11,10 +12,8 @@ const FOOTER_NAV_BREAKPOINT = 'md';
 
 export default function GlobalAudioPlayer() {
   const { isDarkMode } = useTheme();
-  const { currentAudio, isPlaying, setIsPlaying, queue, playNext, removeFromQueue, setCurrentTime, setDuration, setAudioElement } = useAudio();
+  const { currentAudio, isPlaying, setIsPlaying, queue, playNext, playPrevious, removeFromQueue, setCurrentTime, setDuration, setAudioElement } = useAudio();
   const audioRef = useRef<HTMLAudioElement>(null);
-  const [currentTimeState, setCurrentTimeState] = useState(0);
-  const [duration, setDurationState] = useState(0);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [currentGatewayIndex, setCurrentGatewayIndex] = useState(0);
   const [isLoadingFallback, setIsLoadingFallback] = useState(false);
@@ -90,25 +89,6 @@ export default function GlobalAudioPlayer() {
     }
   };
 
-  // Format time display
-  const formatTime = (time: number) => {
-    if (isNaN(time)) return '0:00';
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
-
-  // Handle progress bar click
-  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!audioRef.current || !duration) return;
-    
-    const rect = e.currentTarget.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const newTime = (clickX / rect.width) * duration;
-    
-    audioRef.current.currentTime = newTime;
-    setCurrentTimeState(newTime);
-  };
 
   // Setup audio element and event listeners
   useEffect(() => {
@@ -142,12 +122,10 @@ export default function GlobalAudioPlayer() {
     }
     
     const updateTime = () => {
-      setCurrentTimeState(audio.currentTime);
       setCurrentTime(audio.currentTime);
     };
-    
+
     const updateDuration = () => {
-      setDurationState(audio.duration);
       setDuration(audio.duration);
     };
     
@@ -168,8 +146,8 @@ export default function GlobalAudioPlayer() {
 
     const handleLoadStart = () => {
       // Reset time and duration when loading starts
-      setCurrentTimeState(0);
-      setDurationState(0);
+      setCurrentTime(0);
+      setDuration(0);
     };
 
     const handleError = () => {
@@ -215,10 +193,12 @@ export default function GlobalAudioPlayer() {
 
   if (!currentAudio) return null;
 
-  const progressPercentage = duration ? (currentTimeState / duration) * 100 : 0;
-
   return (
-    <div className={`fixed left-0 right-0 bg-[white]/10 backdrop-blur-md border-t border-gray-600 z-50 ${FOOTER_NAV_BREAKPOINT}:bottom-0 ${FOOTER_NAV_HEIGHT_CLASS}`}>
+    <div className={`fixed left-0 right-0 backdrop-blur-md border-t z-50 ${FOOTER_NAV_BREAKPOINT}:bottom-0 ${FOOTER_NAV_HEIGHT_CLASS} ${
+      isDarkMode
+        ? 'bg-[white]/10 border-gray-600'
+        : 'bg-[#0066FF]/90 border-blue-400'
+    }`}>
       <div className="max-w-full mx-auto px-4 py-2">
         {/* Queue Panel */}
         {isQueueOpen && queue.length > 0 && (
@@ -276,62 +256,99 @@ export default function GlobalAudioPlayer() {
 
           {/* Track Info */}
           <div className="flex-1 min-w-0">
-            <div className="text-white font-medium text-sm truncate flex items-center gap-2">
-              {currentAudio.name}
+            <div className="flex items-center gap-2">
+              {currentAudio.tokenId ? (
+                <Link
+                  href={`/token/${currentAudio.tokenId}`}
+                  className="text-white font-medium text-sm truncate hover:underline cursor-pointer"
+                >
+                  {currentAudio.name}
+                </Link>
+              ) : (
+                <div className="text-white font-medium text-sm truncate">
+                  {currentAudio.name}
+                </div>
+              )}
               {isLoadingFallback && (
                 <span className="text-xs text-gray-400">
                   (trying gateway {currentGatewayIndex + 1}...)
                 </span>
               )}
             </div>
-            <div className="text-white text-xs">{currentAudio.artist || 'Unknown Artist'}</div>
+            <div className="text-xs">
+              {currentAudio.artistAddress ? (
+                <Link
+                  href={`/profile/${currentAudio.artistAddress}`}
+                  className="text-white hover:underline cursor-pointer"
+                >
+                  {currentAudio.artist || 'Unknown Artist'}
+                </Link>
+              ) : (
+                <span className="text-white">{currentAudio.artist || 'Unknown Artist'}</span>
+              )}
+            </div>
           </div>
 
-          {/* Play Button */}
-          <button
-            onClick={togglePlay}
-            disabled={isLoadingFallback}
-            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors flex-shrink-0 ${
-              isDarkMode 
-                ? 'bg-white text-black hover:bg-gray-200 disabled:bg-gray-400' 
-                : 'bg-foreground text-white hover:bg-blue-600 disabled:bg-gray-400'
-            }`}
-          >
-            {isLoadingFallback ? (
-              <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12,1A11,11,0,1,0,23,12,11,11,0,0,0,12,1Zm0,19a8,8,0,1,1,8-8A8,8,0,0,1,12,20Z" opacity="0.25"/>
-                <path d="M12,4a8,8,0,0,1,7.89,6.7A1.53,1.53,0,0,0,21.38,12h0a1.5,1.5,0,0,0,1.48-1.75,11,11,0,0,0-21.72,0A1.5,1.5,0,0,0,2.62,12h0a1.53,1.53,0,0,0,1.49-1.3A8,8,0,0,1,12,4Z"/>
-              </svg>
-            ) : isPlaying ? (
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-              </svg>
-            ) : (
-              <svg className="w-4 h-4 ml-0.5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M8 5v14l11-7z"/>
-              </svg>
-            )}
-          </button>
-
-          {/* Progress Bar */}
-          <div className="flex-1 max-w-md flex items-center gap-2">
-            <span className="text-xs text-gray-400 min-w-[35px]">{formatTime(currentTimeState)}</span>
-            <div 
-              className="flex-1 h-1 bg-gray-600 rounded-full cursor-pointer relative"
-              onClick={handleProgressClick}
+          {/* Control Buttons */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Previous Button */}
+            <button
+              onClick={playPrevious}
+              disabled={isLoadingFallback}
+              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                isDarkMode
+                  ? 'bg-white/10 text-white hover:bg-white/20 disabled:bg-gray-400'
+                  : 'bg-gray-700 text-white hover:bg-gray-600 disabled:bg-gray-400'
+              }`}
+              aria-label="Previous track"
             >
-              <div 
-                className={`h-full rounded-full relative ${
-                  isDarkMode ? 'bg-white' : 'bg-foreground'
-                }`}
-                style={{ width: `${progressPercentage}%` }}
-              >
-                <div className={`absolute right-0 top-1/2 transform translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full ${
-                  isDarkMode ? 'bg-white' : 'bg-foreground'
-                }`}></div>
-              </div>
-            </div>
-            <span className="text-xs text-gray-400 min-w-[35px]">{formatTime(duration)}</span>
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M15 4v12l-7-6 7-6zM5 4h2v12H5V4z" />
+              </svg>
+            </button>
+
+            {/* Play/Pause Button */}
+            <button
+              onClick={togglePlay}
+              disabled={isLoadingFallback}
+              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                isDarkMode
+                  ? 'bg-white text-black hover:bg-gray-200 disabled:bg-gray-400'
+                  : 'bg-foreground text-white hover:bg-blue-600 disabled:bg-gray-400'
+              }`}
+              aria-label={isPlaying ? "Pause" : "Play"}
+            >
+              {isLoadingFallback ? (
+                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12,1A11,11,0,1,0,23,12,11,11,0,0,0,12,1Zm0,19a8,8,0,1,1,8-8A8,8,0,0,1,12,20Z" opacity="0.25"/>
+                  <path d="M12,4a8,8,0,0,1,7.89,6.7A1.53,1.53,0,0,0,21.38,12h0a1.5,1.5,0,0,0,1.48-1.75,11,11,0,0,0-21.72,0A1.5,1.5,0,0,0,2.62,12h0a1.53,1.53,0,0,0,1.49-1.3A8,8,0,0,1,12,4Z"/>
+                </svg>
+              ) : isPlaying ? (
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                </svg>
+              ) : (
+                <svg className="w-4 h-4 ml-0.5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+              )}
+            </button>
+
+            {/* Next Button */}
+            <button
+              onClick={playNext}
+              disabled={isLoadingFallback}
+              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                isDarkMode
+                  ? 'bg-white/10 text-white hover:bg-white/20 disabled:bg-gray-400'
+                  : 'bg-gray-700 text-white hover:bg-gray-600 disabled:bg-gray-400'
+              }`}
+              aria-label="Next track"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M5 4v12l7-6-7-6zM13 4h2v12h-2V4z" />
+              </svg>
+            </button>
           </div>
 
           {/* Queue Button */}

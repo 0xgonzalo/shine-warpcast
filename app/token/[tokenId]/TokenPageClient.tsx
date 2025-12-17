@@ -133,7 +133,7 @@ export default function TokenPageClient() {
           : data.creator
             ? `${data.creator.slice(0, 6)}...${data.creator.slice(-4)}`
             : undefined;
-        playAudio(audioUrl, data.name, artist, imageUrl);
+        playAudio(audioUrl, data.name, artist, imageUrl, tokenId.toString(), data.creator);
       }
     }
   };

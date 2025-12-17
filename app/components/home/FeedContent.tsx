@@ -123,9 +123,15 @@ export default function FeedContent({ mobileColumns, setMobileColumns }: FeedCon
 
     // Get the IPFS gateway URL for the audio
     const audioUrl = getIPFSGatewayURL(nft.metadata.audioURI);
-    
+    const imageUrl = nft.metadata.imageURI && nft.metadata.imageURI !== 'ipfs://placeholder-image-uri'
+      ? getIPFSGatewayURL(nft.metadata.imageURI)
+      : undefined;
+    const artist = nft.metadata.creator
+      ? `${nft.metadata.creator.slice(0, 6)}...${nft.metadata.creator.slice(-4)}`
+      : undefined;
+
     // Use the audio context to play the song
-    playAudio(audioUrl, nft.metadata.name);
+    playAudio(audioUrl, nft.metadata.name, artist, imageUrl, nft.tokenId.toString(), nft.metadata.creator);
     console.log(`Playing song: ${nft.metadata.name}`);
   };
 
